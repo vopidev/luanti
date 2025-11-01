@@ -560,6 +560,7 @@ protected:
 			TEST_GL_ERROR(Driver);
 			break;
 		case ETT_2D_MS: {
+#ifndef _IRR_IOS_PLATFORM_
 			GLint max_samples = 1;
 			GL.GetIntegerv(GL_MAX_SAMPLES, &max_samples);
 			MSAA = core::min_(MSAA, (u8)max_samples);
@@ -577,6 +578,7 @@ protected:
 				GL.TexImage2DMultisample(GL_TEXTURE_2D_MULTISAMPLE, MSAA, InternalFormat, Size.Width, Size.Height, GL_TRUE);
 			else
 				GL.TexStorage2DMultisample(GL_TEXTURE_2D_MULTISAMPLE, MSAA, InternalFormat, Size.Width, Size.Height, GL_TRUE);
+#endif
 			TEST_GL_ERROR(Driver);
 			break;
 		}
@@ -673,7 +675,12 @@ protected:
 		case ETT_2D:
 			return GL_TEXTURE_2D;
 		case ETT_2D_MS:
+#ifndef _IRR_IOS_PLATFORM_
 			return GL_TEXTURE_2D_MULTISAMPLE;
+#else
+			os::Printer::log("ETT_2D_MS: Multisample textures not supported on iOS, using regular 2D texture", ELL_WARNING);
+			return GL_TEXTURE_2D;
+#endif
 		case ETT_CUBEMAP:
 			return GL_TEXTURE_CUBE_MAP;
 		case ETT_2D_ARRAY:

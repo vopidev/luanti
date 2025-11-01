@@ -305,7 +305,9 @@ CIrrDeviceSDL::CIrrDeviceSDL(const SIrrlichtCreationParameters &param) :
 		SDL_SetHint(SDL_HINT_ANDROID_BLOCK_ON_PAUSE_PAUSEAUDIO, "0");
 
 		SDL_SetHint(SDL_HINT_ANDROID_TRAP_BACK_BUTTON, "1");
+#endif
 
+#if defined(__ANDROID__) || defined(_IRR_IOS_PLATFORM_)
 		// Minetest does its own screen keyboard handling.
 		SDL_SetHint(SDL_HINT_ENABLE_SCREEN_KEYBOARD, "0");
 #endif
@@ -594,7 +596,11 @@ bool CIrrDeviceSDL::createWindowWithContext()
 		break;
 	case video::EDT_OGLES2:
 	case video::EDT_WEBGL1:
+#ifdef _IRR_IOS_PLATFORM_
+		SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 3);
+#else
 		SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 2);
+#endif
 		SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 0);
 		SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_ES);
 		break;
@@ -1000,9 +1006,15 @@ bool CIrrDeviceSDL::run()
 			IsInBackground = true;
 			break;
 
+#ifdef _IRR_IOS_PLATFORM_
+		case SDL_APP_DIDENTERFOREGROUND:
+			IsInBackground = false;
+			break;
+#else
 		case SDL_APP_WILLENTERFOREGROUND:
 			IsInBackground = false;
 			break;
+#endif
 
 		case SDL_RENDER_TARGETS_RESET:
 			os::Printer::log("Received SDL_RENDER_TARGETS_RESET. Rendering is probably broken.", ELL_ERROR);
@@ -1015,7 +1027,9 @@ bool CIrrDeviceSDL::run()
 		default:
 			break;
 		} // end switch
+#ifndef _IRR_IOS_PLATFORM_
 		resetReceiveTextInputEvents();
+#endif
 	} // end while
 
 #if defined(_IRR_COMPILE_WITH_JOYSTICK_EVENTS_)
@@ -1158,6 +1172,23 @@ float CIrrDeviceSDL::getDisplayDensity() const
 	// assume 96 dpi
 	return std::max(ScaleX * 96.0f, ScaleY * 96.0f);
 }
+
+#ifdef _IRR_IOS_PLATFORM_
+void *CIrrDeviceSDL::getViewController()
+{
+	if (Window) {
+		SDL_SysWMinfo info;
+		SDL_VERSION(&info.version);
+		if (SDL_GetWindowWMInfo(Window, &info)) {
+			if (info.subsystem == SDL_SYSWM_UIKIT) {
+				UIWindow* uiWindow = info.info.uikit.window;
+				return (__bridge void*)uiWindow.rootViewController;
+			}
+		}
+	}
+	return nullptr;
+}
+#endif
 
 void CIrrDeviceSDL::SwapWindow()
 {
