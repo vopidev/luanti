@@ -5,9 +5,9 @@
 #include <sstream>
 #include "clientiface.h"
 #include "debug.h"
-#include "network/connection.h"
-#include "network/networkpacket.h"
-#include "network/serveropcodes.h"
+#include "netcode/connection.h"
+#include "netcode/networkpacket.h"
+#include "netcode/serveropcodes.h"
 #include "remoteplayer.h"
 #include "serialization.h" // SER_FMT_VER_INVALID
 #include "settings.h"

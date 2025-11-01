@@ -8,7 +8,7 @@
 #include <string>
 #include <vector>
 #include <memory>
-#include "network/networkprotocol.h"
+#include "netcode/networkprotocol.h"
 #include "irrlichttypes.h"
 
 enum ModChannelState : u8

@@ -4,7 +4,7 @@
 
 #pragma once
 
-#include "network/mtp/impl.h"
+#include "netcode/mtp/impl.h"
 
 // Constant that differentiates the protocol from random data and other protocols
 #define PROTOCOL_ID 0x4f457403

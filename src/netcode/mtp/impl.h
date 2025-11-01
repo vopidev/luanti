@@ -4,14 +4,14 @@
 
 #pragma once
 
-#include "network/connection.h"
-#include "network/socket.h"
+#include "netcode/connection.h"
+#include "netcode/socket.h"
 #include "constants.h"
 #include "util/pointer.h"
 #include "util/container.h"
 #include "util/numeric.h"
 #include "porting.h"
-#include "network/networkprotocol.h"
+#include "netcode/networkprotocol.h"
 #include <atomic>
 #include <iostream>
 #include <vector>

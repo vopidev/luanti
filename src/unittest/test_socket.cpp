@@ -6,7 +6,7 @@
 
 #include "log.h"
 #include "settings.h"
-#include "network/socket.h"
+#include "netcode/socket.h"
 
 class TestSocket : public TestBase {
 public:

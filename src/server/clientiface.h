@@ -6,8 +6,8 @@
 
 #include "irr_v3d.h"                   // for irrlicht datatypes
 
-#include "network/address.h"
-#include "network/networkprotocol.h" // session_t
+#include "netcode/address.h"
+#include "netcode/networkprotocol.h" // session_t
 #include "porting.h"
 #include "threading/mutex_auto_lock.h"
 #include "clientdynamicinfo.h"

@@ -7,7 +7,7 @@
 
 #include "constants.h"
 #include "metadata.h"
-#include "network/networkprotocol.h"
+#include "netcode/networkprotocol.h"
 #include "unit_sao.h"
 #include "util/numeric.h"
 

@@ -14,9 +14,9 @@
 #include <unordered_set>
 #include "gamedef.h"
 #include "inventorymanager.h"
-#include "network/address.h"
-#include "network/networkprotocol.h" // multiple enums
-#include "network/peerhandler.h"
+#include "netcode/address.h"
+#include "netcode/networkprotocol.h" // multiple enums
+#include "netcode/peerhandler.h"
 #include "gameparams.h"
 #include "script/common/c_types.h" // LuaError
 #include "util/numeric.h"

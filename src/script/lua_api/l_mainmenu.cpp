@@ -23,7 +23,7 @@
 #include "client/client.h"
 #include "client/renderingengine.h"
 #include "client/texturepaths.h"
-#include "network/networkprotocol.h"
+#include "netcode/networkprotocol.h"
 #include "content/mod_configuration.h"
 #include "threading/mutex_auto_lock.h"
 #include "common/c_converter.h"

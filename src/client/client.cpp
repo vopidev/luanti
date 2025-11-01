@@ -10,9 +10,9 @@
 #include <json/json.h>
 #include "client.h"
 #include "client/fontengine.h"
-#include "network/clientopcodes.h"
-#include "network/connection.h"
-#include "network/networkpacket.h"
+#include "netcode/clientopcodes.h"
+#include "netcode/connection.h"
+#include "netcode/networkpacket.h"
 #include "threading/mutex_auto_lock.h"
 #include "client/clientevent.h"
 #include "client/renderingengine.h"

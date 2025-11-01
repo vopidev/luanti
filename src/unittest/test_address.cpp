@@ -7,7 +7,7 @@
 #include <memory>
 #include "log.h"
 #include "settings.h"
-#include "network/socket.h"
+#include "netcode/socket.h"
 
 class TestAddress : public TestBase
 {

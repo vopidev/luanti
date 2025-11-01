@@ -11,7 +11,7 @@
 #include <cerrno>
 #include <sstream>
 #include <iomanip>
-#include "network/networkexceptions.h"
+#include "netcode/networkexceptions.h"
 #include "util/string.h"
 #include "util/numeric.h"
 #include "constants.h"

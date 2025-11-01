@@ -11,7 +11,7 @@
 
 #include <cassert>
 #include "threading/thread.h"
-#include "network/mtp/internal.h"
+#include "netcode/mtp/internal.h"
 
 namespace con
 {
