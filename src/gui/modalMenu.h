@@ -56,6 +56,11 @@ public:
 	porting::AndroidDialogState getAndroidUIInputState();
 #endif
 
+#if defined(__IOS__)
+	virtual bool getAndroidUIInput() { return false; }
+	bool hasAndroidUIInput();
+#endif
+
 protected:
 	virtual std::wstring getLabelByID(s32 id) = 0;
 	virtual std::string getNameByID(s32 id) = 0;
@@ -68,7 +73,7 @@ protected:
 
 	v2u32 m_screensize_old;
 	float m_gui_scale;
-#ifdef __ANDROID__
+#if defined(__ANDROID__) || defined(__IOS__)
 	std::string m_jni_field_name;
 #endif
 

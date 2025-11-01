@@ -62,7 +62,9 @@
 #define __attribute__(a)
 #endif
 
-#include "cmake_config.h" /* HAVE_ENDIAN_H */
+#if !defined(__IOS__)
+	#include "cmake_config.h" /* HAVE_ENDIAN_H */
+#endif
 
 /** endian.h **/
 /*

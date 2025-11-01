@@ -250,9 +250,9 @@ inline const char *getPlatformName()
 		defined(__NetBSD__) || defined(__OpenBSD__)
 	"BSD"
 #elif defined(__APPLE__) && defined(__MACH__)
-	#if TARGET_OS_MAC
+	#if TARGET_OS_MAC && !defined(__IOS__)
 		"OSX"
-	#elif TARGET_OS_IPHONE
+	#elif TARGET_OS_IPHONE || defined(__IOS__)
 		"iOS"
 	#else
 		"Apple"
@@ -345,4 +345,8 @@ bool open_directory(const std::string &path);
 
 #ifdef __ANDROID__
 #include "porting_android.h"
+#endif
+
+#ifdef __IOS__
+#include "porting_ios.h"
 #endif

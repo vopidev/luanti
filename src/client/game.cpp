@@ -705,7 +705,7 @@ protected:
 		return input->wasKeyReleased(k);
 	}
 
-#ifdef __ANDROID__
+#if defined(__ANDROID__) || defined(__IOS__)
 	void handleAndroidChatInput();
 #endif
 
@@ -852,7 +852,7 @@ private:
 		return g_touchcontrols && g_touchcontrols->isShootlineAvailable() &&
 				camera->getCameraMode() == CAMERA_MODE_FIRST;
 	}
-#ifdef __ANDROID__
+#if defined(__ANDROID__) || defined(__IOS__)
 	bool m_android_chat_open;
 #endif
 
@@ -1872,7 +1872,7 @@ void Game::processUserInput(f32 dtime)
 	// Input handler step() (used by the random input generator)
 	input->step(dtime);
 
-#ifdef __ANDROID__
+#if defined(__ANDROID__) || defined(__IOS__)
 	if (!m_game_formspec.handleAndroidUIInput())
 		handleAndroidChatInput();
 #endif
@@ -1900,7 +1900,7 @@ void Game::processKeyInput()
 	} else if (wasKeyDown(KeyType::INVENTORY)) {
 		m_game_formspec.showPlayerInventory(nullptr);
 	} else if (input->cancelPressed()) {
-#ifdef __ANDROID__
+#if defined(__ANDROID__) || defined(__IOS__)
 		m_android_chat_open = false;
 #endif
 		if (!gui_chat_console->isOpenInhibited()) {
@@ -2063,6 +2063,7 @@ void Game::dropSelectedItem(bool single_item)
 	client->inventoryAction(a);
 }
 
+#ifndef __IOS__
 void Game::openConsole(float scale, const wchar_t *line)
 {
 	assert(scale > 0.0f && scale <= 1.0f);
@@ -2084,6 +2085,15 @@ void Game::openConsole(float scale, const wchar_t *line)
 	} // else
 #endif
 }
+#endif
+#ifdef __IOS__
+void Game::openConsole(float scale, const wchar_t *line)
+{
+	assert(scale > 0.0f && scale <= 1.0f);
+	porting::showInputDialog(gettext("ok"), "", "", 2);
+	m_android_chat_open = true;
+}
+#endif
 
 #ifdef __ANDROID__
 void Game::handleAndroidChatInput()
@@ -2097,6 +2107,17 @@ void Game::handleAndroidChatInput()
 		}
 		if (dialogState != porting::DIALOG_SHOWN)
 			m_android_chat_open = false;
+	}
+}
+#endif
+
+#ifdef __IOS__
+void Game::handleAndroidChatInput()
+{
+	if (m_android_chat_open && porting::getInputDialogState() == 0) {
+		std::string text = porting::getInputDialogValue();
+		client->typeChatMessage(utf8_to_wide(text));
+		m_android_chat_open = false;
 	}
 }
 #endif

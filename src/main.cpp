@@ -28,7 +28,7 @@
 #include "player.h"
 #include "porting.h"
 #include "serialization.h" // SER_FMT_VER_HIGHEST_*
-#include "network/socket.h"
+#include "netcode/socket.h"
 #include "mapblock.h"
 #if USE_CURSES
 	#include "terminal_chat_console.h"
@@ -38,6 +38,10 @@
 #include "client/clientlauncher.h"
 #include "gui/guiEngine.h"
 #include "gui/mainmenumanager.h"
+#endif
+
+#if defined(__IOS__)
+	#include "SDL_main.h"
 #endif
 
 // for version information only
@@ -126,6 +130,11 @@ static OptionList allowed_options;
 
 int main(int argc, char *argv[])
 {
+#if defined(__IOS__)
+	porting::initializeErrorReportingService();
+	porting::initializeAnalyticsService();
+#endif
+
 	int retval;
 	debug_set_exception_handler();
 
@@ -178,7 +187,11 @@ int main(int argc, char *argv[])
 	}
 
 	porting::signal_handler_init();
+#if defined(__IOS__)
+	porting::initializeIOSPlatform();
+#else
 	porting::initializePaths();
+#endif
 
 	if (!create_userdata_path()) {
 		errorstream << "Cannot create user data directory" << std::endl;
@@ -563,7 +576,7 @@ static bool create_userdata_path()
 {
 	bool success;
 
-#ifdef __ANDROID__
+#if defined(__ANDROID__) || defined(__IOS__)
 	if (!fs::PathExists(porting::path_user)) {
 		success = fs::CreateDir(porting::path_user);
 	} else {
@@ -616,7 +629,7 @@ namespace {
 
 static bool use_debugger(int argc, char *argv[])
 {
-#if defined(__ANDROID__)
+#if defined(__ANDROID__) || defined(__IOS__)
 	return false;
 #else
 #ifdef _WIN32
@@ -717,8 +730,27 @@ static bool init_common(const Settings &cmd_args, int argc, char *argv[])
 
 	migrate_settings();
 
-	init_log_streams(cmd_args);
+#if defined(__IOS__)
+	// Sync Luanti debug_log_level with iOS DebugManager LogLevel
+	// IMPORTANT: Must be done BEFORE init_log_streams() so logger is configured with correct level
+	{
+		std::string ios_debug_level = porting::getDebugLogLevel();
+		if (!ios_debug_level.empty()) {
+			g_settings->set("debug_log_level", ios_debug_level);
 
+			// Update stderr_output to match iOS debug level
+			// By default stderr is set to LL_ACTION in main(), but iOS may need INFO or VERBOSE
+			LogLevel log_level = Logger::stringToLevel(ios_debug_level);
+			if (log_level != LL_MAX && log_level > LL_ACTION) {
+				g_logger.removeOutput(&stderr_output);
+				g_logger.addOutputMaxLevel(&stderr_output, log_level);
+			}
+		}
+	}
+#endif
+
+	init_log_streams(cmd_args);
+	
 	// Initialize random seed
 	u64 seed;
 	if (!porting::secure_rand_fill_buf(&seed, sizeof(seed))) {
@@ -733,6 +765,18 @@ static bool init_common(const Settings &cmd_args, int argc, char *argv[])
 	}
 	srand(seed);
 	mysrand(seed);
+
+#if defined(__ANDROID__) || defined(__IOS__)
+	std::string device_language = porting::getDeviceActualLanguage();
+	if (!device_language.empty()) {
+	  std::string current_language = g_settings->get("language");
+	  if (current_language != device_language) {
+		  g_settings->set("language", device_language);
+		  infostream << "[ANDROID | IOS]: Syncing with system language: " << device_language
+					 << " (was: " << current_language << ")"  <<std::endl;
+	  }
+	}
+#endif
 
 	// Initialize HTTP fetcher
 	httpfetch_init(g_settings->getS32("curl_parallel_limit"));

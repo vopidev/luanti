@@ -373,6 +373,25 @@ bool RecursiveDelete(const std::string &path)
 
 	assert(IsPathAbsolute(path));
 
+#ifdef __IOS__
+	/*
+		Executing fork() and execve() is unsafe and unavailable on some platforms
+	*/
+	bool success = true;
+	std::vector<std::string> paths;
+	paths.push_back(path);
+	fs::GetRecursiveSubPaths(path, paths, true, {});
+	// Go backwards to successfully delete the output of GetRecursiveSubPaths
+	for (int i = paths.size() - 1; i >= 0; i--) {
+		const std::string &p = paths[i];
+		bool did = DeleteSingleFileOrEmptyDirectory(p);
+		if (!did) {
+			errorstream << "Failed to delete " << p << std::endl;
+			success = false;
+		}
+	}
+	return success;
+#else
 	const pid_t child_pid = fork();
 
 	if (child_pid == -1) {
@@ -405,6 +424,7 @@ bool RecursiveDelete(const std::string &path)
 		while (tpid != child_pid);
 		return WIFEXITED(status) && WEXITSTATUS(status) == 0;
 	}
+#endif
 }
 
 bool DeleteSingleFileOrEmptyDirectory(const std::string &path)
@@ -436,7 +456,7 @@ std::string TempPath()
 		configuration hardcodes mkstemp("/tmp/lua_XXXXXX").
 	*/
 
-#ifdef __ANDROID__
+#if defined(__ANDROID__) || defined(__IOS__)
 	return porting::path_cache;
 #else
 	return DIR_DELIM "tmp";

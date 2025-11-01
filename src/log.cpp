@@ -323,6 +323,33 @@ void StreamLogOutput::logRaw(LogLevel lev, std::string_view line)
 {
 	bool colored_message = (Logger::color_mode == LOG_COLOR_ALWAYS) ||
 		(Logger::color_mode == LOG_COLOR_AUTO && is_tty);
+#if defined(__MACH__) && defined(__APPLE__)
+	if (colored_message) {
+		switch (lev) {
+		case LL_ERROR:
+			// error is red
+			m_stream << "📕 ";
+			break;
+		case LL_WARNING:
+			// warning is yellow
+			m_stream << "📙 ";
+			break;
+		case LL_INFO:
+			// info is a green
+			m_stream << "📗 ";
+			break;
+		case LL_VERBOSE:
+		case LL_TRACE:
+			// trace and verbose is blue
+			m_stream << "📘 ";
+			break;
+		default:
+			// action is white
+			m_stream << "📔 ";
+		}
+	}
+	m_stream << line << std::endl;
+#else
 	if (colored_message) {
 		switch (lev) {
 		case LL_ERROR:
@@ -354,6 +381,7 @@ void StreamLogOutput::logRaw(LogLevel lev, std::string_view line)
 		// reset to white color
 		m_stream << "\033[0m";
 	}
+#endif
 }
 
 void StreamProxy::fix_stream_state(std::ostream &os)

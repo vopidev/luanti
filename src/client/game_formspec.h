@@ -46,7 +46,7 @@ struct GameFormSpec
 	bool handleCallbacks();
 	void reset();
 
-#ifdef __ANDROID__
+#if defined(__ANDROID__) || defined(__IOS__)
 	// Returns false if no formspec open
 	bool handleAndroidUIInput();
 #endif

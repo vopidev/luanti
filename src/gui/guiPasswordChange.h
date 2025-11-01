@@ -47,6 +47,10 @@ public:
 	void getAndroidUIInput();
 #endif
 
+#ifdef __IOS__
+	bool getAndroidUIInput();
+#endif
+
 protected:
 	std::wstring getLabelByID(s32 id) { return L""; }
 	std::string getNameByID(s32 id);

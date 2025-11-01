@@ -38,7 +38,7 @@ GUIModalMenu::GUIModalMenu(gui::IGUIEnvironment* env, gui::IGUIElement* parent,
 	s32 id, IMenuManager *menumgr, bool remap_click_outside) :
 		IGUIElement(gui::EGUIET_ELEMENT, env, parent, id,
 				core::rect<s32>(0, 0, 100, 100)),
-#ifdef __ANDROID__
+#if defined(__ANDROID__) || defined(__IOS__)
 		m_jni_field_name(""),
 #endif
 		m_menumgr(menumgr),
@@ -243,12 +243,17 @@ void GUIModalMenu::leave()
 
 bool GUIModalMenu::preprocessEvent(const SEvent &event)
 {
-#ifdef __ANDROID__
+#if defined(__ANDROID__) || defined(__IOS__)
 	// display software keyboard when clicking edit boxes
+#ifdef __ANDROID__
 	if (event.EventType == EET_MOUSE_INPUT_EVENT &&
-			((event.MouseInput.Event == EMIE_LMOUSE_PRESSED_DOWN &&
-			!porting::hasPhysicalKeyboardAndroid()) ||
-			event.MouseInput.Event == EMIE_LMOUSE_DOUBLE_CLICK)) {
+		event.MouseInput.Event == EMIE_LMOUSE_PRESSED_DOWN &&
+		!porting::hasPhysicalKeyboardAndroid()) {
+#endif
+#ifdef __IOS__
+		if (event.EventType == EET_MOUSE_INPUT_EVENT &&
+				event.MouseInput.Event == EMIE_LMOUSE_PRESSED_DOWN) {
+#endif
 		gui::IGUIElement *hovered =
 			Environment->getRootGUIElement()->getElementFromPoint(
 				core::position2d<s32>(event.MouseInput.X, event.MouseInput.Y));
@@ -275,14 +280,19 @@ bool GUIModalMenu::preprocessEvent(const SEvent &event)
 			if (((gui::IGUIEditBox *)hovered)->isPasswordBox())
 				type = 3;
 
+#ifdef __ANDROID__
 			porting::showTextInputDialog("",
 					wide_to_utf8(((gui::IGUIEditBox *) hovered)->getText()), type);
-			// Since we have opened the dialog, we have to return true to mark
-			// the event as handled (avoids double-opening).
-			return true;
+#endif
+			
+#ifdef __IOS__
+			porting::showInputDialog(gettext("OK"), "",
+					wide_to_utf8(((gui::IGUIEditBox *)hovered)->getText()), type);
+#endif
+			return retval;
 		}
 	}
-
+#ifdef __ANDROID__
 	if (event.EventType == EET_GUI_EVENT) {
 		if (event.GUIEvent.EventType == gui::EGET_LISTBOX_OPENED) {
 			gui::IGUIComboBox *dropdown = (gui::IGUIComboBox *) event.GUIEvent.Caller;
@@ -305,6 +315,7 @@ bool GUIModalMenu::preprocessEvent(const SEvent &event)
 			return true; // Prevent the Irrlicht dropdown from opening.
 		}
 	}
+#endif
 #endif
 
 	// If the second touch arrives here again, that means nobody handled it.
@@ -381,6 +392,24 @@ porting::AndroidDialogState GUIModalMenu::getAndroidUIInputState()
 		return porting::DIALOG_CANCELED;
 
 	return porting::getInputDialogState();
+}
+#endif
+
+#ifdef __IOS__
+bool GUIModalMenu::hasAndroidUIInput()
+{
+	// no dialog shown
+	if (m_jni_field_name.empty())
+		return false;
+	// still waiting
+	if (porting::getInputDialogState() == -1)
+		return true;
+	// no value abort dialog processing
+	if (porting::getInputDialogState() != 0) {
+		m_jni_field_name.clear();
+		return false;
+	}
+	return true;
 }
 #endif
 

@@ -3430,6 +3430,43 @@ void GUIFormSpecMenu::getAndroidUIInput()
 }
 #endif
 
+#ifdef __IOS__
+bool GUIFormSpecMenu::getAndroidUIInput()
+{
+	if (!hasAndroidUIInput())
+		return false;
+	// still waiting
+	if (porting::getInputDialogState() == -1)
+		return true;
+	std::string fieldname = m_jni_field_name;
+	m_jni_field_name.clear();
+	for (const FieldSpec &field : m_fields) {
+		if (field.fname != fieldname)
+			continue;
+		IGUIElement *element = getElementFromId(field.fid, true);
+		if (!element || element->getType() != gui::EGUIET_EDIT_BOX)
+			return false;
+		gui::IGUIEditBox *editbox = (gui::IGUIEditBox *)element;
+		std::string text = porting::getInputDialogValue();
+		editbox->setText(utf8_to_wide(text).c_str());
+		bool enter_after_edit = false;
+		auto iter = field_enter_after_edit.find(fieldname);
+		if (iter != field_enter_after_edit.end()) {
+			enter_after_edit = iter->second;
+		}
+		if (enter_after_edit && editbox->getParent()) {
+			SEvent enter;
+			enter.EventType = EET_GUI_EVENT;
+			enter.GUIEvent.Caller = editbox;
+			enter.GUIEvent.Element = nullptr;
+			enter.GUIEvent.EventType = gui::EGET_EDITBOX_ENTER;
+			editbox->getParent()->OnEvent(enter);
+		}
+	}
+	return false;
+}
+#endif
+
 GUIInventoryList::ItemSpec GUIFormSpecMenu::getItemAtPos(v2s32 p) const
 {
 	for (const GUIInventoryList *e : m_inventorylists) {

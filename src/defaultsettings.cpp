@@ -12,6 +12,10 @@
 #include "util/string.h"
 #include "server.h"
 
+// VOPI Engine: iOS-specific settings
+#ifdef __IOS__
+#include "default_ios_settings.h"
+#endif
 
 /*
  * inspired by https://github.com/systemd/systemd/blob/7aed43437175623e0f3ae8b071bbc500c13ce893/src/hostname/hostnamed.c#L406
@@ -20,7 +24,7 @@
  */
 static bool detect_touch()
 {
-#if defined(__ANDROID__)
+#if defined(__ANDROID__) || defined(__IOS__)
 	return true;
 #elif defined(__linux__)
 	std::string chassis_type;
@@ -83,7 +87,7 @@ void set_default_settings()
 	// Client
 	settings->setDefault("address", "");
 	settings->setDefault("remote_port", "30000");
-#if defined(__unix__) && !defined(__APPLE__) && !defined (__ANDROID__)
+#if defined(__unix__) && !defined(__APPLE__) && !defined (__ANDROID__) && !defined (__IOS__)
 	// On Linux+X11 (not Linux+Wayland or Linux+XWayland), I've encountered a bug
 	// where fake mouse events were generated from touch events if in relative
 	// mouse mode, resulting in the touchscreen controls being instantly disabled
@@ -409,7 +413,7 @@ void set_default_settings()
 	settings->setDefault("contentdb_enable_updates_indicator", "true");
 	settings->setDefault("contentdb_max_concurrent_downloads", "3");
 
-#ifdef __ANDROID__
+#if defined(__ANDROID__) || defined(__IOS__)
 	settings->setDefault("contentdb_flag_blacklist", "nonfree, android_default");
 #else
 	settings->setDefault("contentdb_flag_blacklist", "nonfree, desktop_default");
@@ -597,5 +601,10 @@ void set_default_settings()
 		settings->setDefault("mono_font_size", "14");
 	}
 	// Tablets >= 6.0 use non-Android defaults for these settings
+#endif
+
+	// VOPI Engine: Apply iOS-specific settings
+#ifdef __IOS__
+	vopi::set_ios_settings(settings);
 #endif
 }

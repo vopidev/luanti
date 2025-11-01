@@ -282,6 +282,10 @@ public:
 #ifdef __ANDROID__
 	void getAndroidUIInput();
 #endif
+	
+#ifdef __IOS__
+	bool getAndroidUIInput();
+#endif
 
 	// Returns the fixed formspec coordinate size for the given parameters.
 	static double getFixedImgsize(double screen_dpi, double gui_scaling);
