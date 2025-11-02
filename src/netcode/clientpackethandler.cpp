@@ -525,6 +525,28 @@ void Client::handleCommand_Fov(NetworkPacket *pkt)
 	m_camera->notifyFovChange();
 }
 
+#if IS_VOPI_ENGINE
+void Client::handleCommand_ViewBobbing(NetworkPacket *pkt)
+{
+	f32 amount;
+	bool is_multiplier = false;
+	f32 transition_time = 0.0f;
+
+	*pkt >> amount >> is_multiplier;
+
+	// Wrap transition_time extraction within a
+	// try-catch to preserve backwards compat
+	try {
+		*pkt >> transition_time;
+	} catch (PacketError &e) {};
+
+	LocalPlayer *player = m_env.getLocalPlayer();
+	assert(player);
+	player->setViewBobbing({ amount, is_multiplier, transition_time });
+	m_camera->notifyViewBobbingChange();
+}
+#endif
+
 void Client::handleCommand_HP(NetworkPacket *pkt)
 {
 	LocalPlayer *player = m_env.getLocalPlayer();

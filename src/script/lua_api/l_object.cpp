@@ -1492,6 +1492,46 @@ int ObjectRef::l_get_fov(lua_State *L)
 	return 3;
 }
 
+#if IS_VOPI_ENGINE
+// set_view_bobbing(self, amount, is_multiplier, transition_time)
+int ObjectRef::l_set_view_bobbing(lua_State *L)
+{
+	NO_MAP_LOCK_REQUIRED;
+	ObjectRef *ref = checkObject<ObjectRef>(L, 1);
+	RemotePlayer *player = getplayer(ref);
+	if (player == nullptr)
+		return 0;
+
+	PlayerViewBobbingSpec s;
+	s.amount = readParam<float>(L, 2);
+	s.is_multiplier = readParam<bool>(L, 3, false);
+	s.transition_time = 0.0f;
+	if (lua_isnumber(L, 4))
+		s.transition_time = readParam<float>(L, 4);
+
+	if (player->setViewBobbing(s))
+		getServer(L)->SendPlayerViewBobbing(player->getPeerId());
+	return 0;
+}
+
+// get_view_bobbing(self)
+int ObjectRef::l_get_view_bobbing(lua_State *L)
+{
+	NO_MAP_LOCK_REQUIRED;
+	ObjectRef *ref = checkObject<ObjectRef>(L, 1);
+	RemotePlayer *player = getplayer(ref);
+	if (player == nullptr)
+		return 0;
+
+	const auto &bobbing_spec = player->getViewBobbing();
+
+	lua_pushnumber(L, bobbing_spec.amount);
+	lua_pushboolean(L, bobbing_spec.is_multiplier);
+	lua_pushnumber(L, bobbing_spec.transition_time);
+	return 3;
+}
+#endif
+
 // set_breath(self, breath)
 int ObjectRef::l_set_breath(lua_State *L)
 {
@@ -2921,6 +2961,10 @@ luaL_Reg ObjectRef::methods[] = {
 	luamethod(ObjectRef, set_look_pitch),
 	luamethod(ObjectRef, get_fov),
 	luamethod(ObjectRef, set_fov),
+#if IS_VOPI_ENGINE
+	luamethod(ObjectRef, get_view_bobbing),
+	luamethod(ObjectRef, set_view_bobbing),
+#endif
 	luamethod(ObjectRef, get_breath),
 	luamethod(ObjectRef, set_breath),
 	luamethod(ObjectRef, get_attribute),

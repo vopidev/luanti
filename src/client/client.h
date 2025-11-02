@@ -177,6 +177,9 @@ public:
 	void handleCommand_ActiveObjectMessages(NetworkPacket* pkt);
 	void handleCommand_Movement(NetworkPacket* pkt);
 	void handleCommand_Fov(NetworkPacket *pkt);
+#if IS_VOPI_ENGINE
+	void handleCommand_ViewBobbing(NetworkPacket *pkt);
+#endif
 	void handleCommand_HP(NetworkPacket* pkt);
 	void handleCommand_Breath(NetworkPacket* pkt);
 	void handleCommand_MovePlayer(NetworkPacket* pkt);
