@@ -48,6 +48,20 @@ void GameUI::init()
 	// Second line of debug text
 	m_guitext2 = gui::StaticText::add(guienv, L"", core::rect<s32>(0, 0, 0, 0), false,
 		true, guiroot);
+	
+#if IS_VOPI_ENGINE && (defined(__ANDROID__) || defined(__IOS__))
+	// Third line of debug text
+	m_guitext3 = gui::StaticText::add(guienv, L"", core::rect<s32>(0, 0, 0, 0), false,
+		false, guiroot);
+	// Fourth line of debug text
+	m_guitext4 = gui::StaticText::add(guienv, L"", core::rect<s32>(0, 0, 0, 0), false,
+		false, guiroot);
+	round_screen = g_settings->getFloat("hud_round_screen");
+	v2u32 screensize = RenderingEngine::getWindowSize();
+	button_size = (MYMIN(screensize.Y / 4.5f,
+				RenderingEngine::getDisplayDensity() *
+				g_settings->getFloat("hud_scaling") * 65.0f)) * 1.3f;
+#endif
 
 	// Chat text
 	m_guitext_chat = gui::StaticText::add(guienv, L"", core::rect<s32>(0, 0, 0, 0),
@@ -91,6 +105,108 @@ void GameUI::update(const RunStats &stats, Client *client, MapDrawControl *draw_
 	v2u32 screensize = RenderingEngine::getWindowSize();
 
 	LocalPlayer *player = client->getEnv().getLocalPlayer();
+	
+#if IS_VOPI_ENGINE && (defined(__ANDROID__) || defined(__IOS__))
+	v3f player_position = player->getPosition();
+	
+	// Minimal debug text must only contain info that can't give a gameplay advantage
+	if (m_flags.show_minimal_debug) {
+		const u16 fps = 1.0 / stats.dtime_jitter.avg;
+		m_drawtime_avg *= 0.95f;
+		m_drawtime_avg += 0.05f * (stats.drawtime / 1000);
+		
+		std::ostringstream os1(std::ios_base::binary);
+		os1 << std::fixed
+			<< "| FPS: " << fps
+			<< std::setprecision(0)
+			<< " | dt: " << m_drawtime_avg << " ms"
+			<< " | yaw: "
+			<< (wrapDegrees_0_360(cam.camera_yaw)) << "°"
+			<< " |";
+		
+		setStaticText(m_guitext, utf8_to_wide(os1.str()).c_str());
+		
+		std::ostringstream os2(std::ios_base::binary);
+		os2 << std::fixed
+			<< "| X: " << static_cast<int>(player_position.X / BS)
+			<< ", Y: " << static_cast<int>(player_position.Y / BS)
+			<< ", Z: " << static_cast<int>(player_position.Z / BS)
+			<< " |";
+		
+		setStaticText(m_guitext2, utf8_to_wide(os2.str()).c_str());
+		
+		m_guitext->setRelativePosition(core::rect<s32>(screensize.X/2 + button_size,
+			5, screensize.X, 5 + g_fontengine->getTextHeight()));
+		
+		m_guitext2->setRelativePosition(core::rect<s32>(screensize.X/2 + button_size,
+			5 + g_fontengine->getTextHeight(), screensize.X,
+			5 + g_fontengine->getTextHeight() * 2
+		));
+		
+		m_guitext->setBackgroundColor(video::SColor(85,0,0,0));
+		m_guitext2->setBackgroundColor(video::SColor(85,0,0,0));
+	}
+	
+	// Finally set the guitext visible depending on the flag
+	m_guitext->setVisible(m_flags.show_minimal_debug);
+	m_guitext2->setVisible(m_flags.show_minimal_debug);
+	// Basic debug text also shows info that might give a gameplay advantage
+	if (m_flags.show_basic_debug) {
+		LocalPlayer *player = client->getEnv().getLocalPlayer();
+		v3f player_position = player->getPosition();
+		std::ostringstream os1(std::ios_base::binary);
+		os1 << std::setprecision(1) << std::fixed
+			<< "| seed: "
+			<< ((u64)client->getMapSeed())
+			<< " |";
+		
+		setStaticText(m_guitext3, utf8_to_wide(os1.str()).c_str());
+		
+		std::ostringstream os2(std::ios_base::binary);
+		if (pointed_old.type == POINTEDTHING_NODE) {
+			ClientMap &map = client->getEnv().getClientMap();
+			const NodeDefManager *nodedef = client->getNodeDefManager();
+			MapNode n = map.getNode(pointed_old.node_undersurface);
+
+			if (n.getContent() != CONTENT_IGNORE) {
+				if (nodedef->get(n).name == "unknown") {
+					os2 << "| pointed: <unknown node> |";
+				} else {
+					os2 << std::fixed <<"| pointed: " << nodedef->get(n).name << " |";
+				}
+				//os2 << " param2: " << (u64) n.getParam2()
+				//	<< " |";
+			}
+		}
+		setStaticText(m_guitext4, utf8_to_wide(os2.str()).c_str());
+		m_guitext3->setRelativePosition(core::rect<s32>(screensize.X/2 + button_size,
+			5 + g_fontengine->getTextHeight() * 2, screensize.X,
+			5 + g_fontengine->getTextHeight() * 3
+		));
+		
+		m_guitext4->setRelativePosition(core::rect<s32>(screensize.X/2 + button_size,
+			5 + g_fontengine->getTextHeight() * 3, screensize.X,
+			5 + g_fontengine->getTextHeight() * 4
+		));
+		
+		m_guitext3->setBackgroundColor(video::SColor(85,0,0,0));
+		
+		if (pointed_old.type == POINTEDTHING_NODE) {
+			ClientMap &map = client->getEnv().getClientMap();
+			const NodeDefManager *nodedef = client->getNodeDefManager();
+			MapNode n = map.getNode(pointed_old.node_undersurface);
+			if (n.getContent() != CONTENT_IGNORE) {
+				m_guitext4->setBackgroundColor(video::SColor(85,0,0,0));
+			}
+		} else {
+			m_guitext4->setBackgroundColor(video::SColor(0,0,0,0));
+		}
+	}
+	m_guitext3->setVisible(m_flags.show_basic_debug);
+	m_guitext4->setVisible(m_flags.show_basic_debug);
+	setStaticText(m_guitext_info, m_infotext.c_str());
+	m_guitext_info->setVisible(m_flags.show_hud && g_menumgr.menuCount() == 0);
+#else
 
 	s32 minimal_debug_height = 0;
 
@@ -164,6 +280,7 @@ void GameUI::update(const RunStats &stats, Client *client, MapDrawControl *draw_
 
 	setStaticText(m_guitext_info, m_infotext.c_str());
 	m_guitext_info->setVisible(m_flags.show_hud && g_menumgr.menuCount() == 0);
+#endif
 
 	static const float statustext_time_max = 1.5f;
 
@@ -193,11 +310,20 @@ void GameUI::update(const RunStats &stats, Client *client, MapDrawControl *draw_
 	if (!m_statustext.empty()) {
 		s32 status_width  = guitext_status->getTextWidth();
 		s32 status_height = guitext_status->getTextHeight();
+#if IS_VOPI_ENGINE && (defined(__ANDROID__) || defined(__IOS__))
+		s32 status_y = screensize.Y  - 250;
+#else
 		s32 status_y = screensize.Y  - (overriden ? 15 : 150);
+#endif
 		s32 status_x = (screensize.X - status_width) / 2;
 
 		guitext_status->setRelativePosition(core::rect<s32>(status_x ,
 			status_y - status_height, status_x + status_width, status_y));
+
+#if IS_VOPI_ENGINE && (defined(__ANDROID__) || defined(__IOS__))
+		m_guitext_status->setBackgroundColor(video::SColor(85,0,0,0));
+		//m_guitext_status->setDrawBorder(true);
+#endif
 
 		// Fade out
 		video::SColor fade_color = m_statustext_initial_color;
@@ -205,8 +331,14 @@ void GameUI::update(const RunStats &stats, Client *client, MapDrawControl *draw_
 		fade_color.setAlpha(static_cast<u32>(
 			fade_color.getAlpha() * (1.0f - d * d)));
 		guitext_status->setOverrideColor(fade_color);
+#if !IS_VOPI_ENGINE  && !defined(__ANDROID__) && !defined(__IOS__)
 		guitext_status->enableOverrideColor(true);
+#endif
 	}
+
+#if IS_VOPI_ENGINE  && (defined(__ANDROID__) || defined(__IOS__))
+	m_guitext_chat->setBackgroundColor(video::SColor(85,0,0,0));
+#endif
 
 	// Hide chat when disabled by server or when console is visible
 	m_guitext_chat->setVisible(isChatVisible() && !chat_console->isVisible() && (player->hud_flags & HUD_FLAG_CHAT_VISIBLE));
@@ -234,16 +366,25 @@ void GameUI::updateChatSize()
 	// Update gui element size and position
 	s32 chat_y = 5;
 
+#if IS_VOPI_ENGINE && (defined(__ANDROID__) || defined(__IOS__))
+	chat_y = g_fontengine->getLineHeight() * 2;
+#else
 	if (m_flags.show_minimal_debug)
 		chat_y += m_guitext->getTextHeight();
 	if (m_flags.show_basic_debug)
 		chat_y += m_guitext2->getTextHeight();
+#endif
 
 	const v2u32 &window_size = RenderingEngine::getWindowSize();
 
+#if IS_VOPI_ENGINE && (defined(__ANDROID__) || defined(__IOS__))
+	core::rect<s32> chat_size(round_screen, chat_y, window_size.X * 0.43f, 0);
+	chat_size.LowerRightCorner.Y = std::min((s32)window_size.Y, m_guitext_chat->getTextHeight() + chat_y);
+#else
 	core::rect<s32> chat_size(10, chat_y, window_size.X - 20, 0);
 	chat_size.LowerRightCorner.Y = std::min((s32)window_size.Y,
 			m_guitext_chat->getTextHeight() + chat_y);
+#endif
 
 	if (chat_size == m_current_chat_size)
 		return;
@@ -333,6 +474,18 @@ void GameUI::clearText()
 		m_guitext2->remove();
 		m_guitext2 = nullptr;
 	}
+	
+#if IS_VOPI_ENGINE && (defined(__ANDROID__) || defined(__IOS__))
+	if (m_guitext3) {
+		m_guitext3->remove();
+		m_guitext3 = nullptr;
+	}
+	
+	if (m_guitext4) {
+		m_guitext4->remove();
+		m_guitext4 = nullptr;
+	}
+#endif
 
 	if (m_guitext_info) {
 		m_guitext_info->remove();

@@ -87,6 +87,14 @@ private:
 
 	gui::IGUIStaticText *m_guitext = nullptr;  // First line of debug text
 	gui::IGUIStaticText *m_guitext2 = nullptr; // Second line of debug text
+	
+#if IS_VOPI_ENGINE && (defined(__ANDROID__) || defined(__IOS__))
+	gui::IGUIStaticText *m_guitext3 = nullptr; // Third line of debug text
+	gui::IGUIStaticText *m_guitext4 = nullptr; // Fourth line of debug text
+	
+	f32 round_screen = 0;
+	s32 button_size = 0;
+#endif
 
 	gui::IGUIStaticText *m_guitext_info = nullptr; // At the middle of the screen
 	std::wstring m_infotext;
