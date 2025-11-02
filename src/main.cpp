@@ -38,6 +38,9 @@
 #include "client/clientlauncher.h"
 #include "gui/guiEngine.h"
 #include "gui/mainmenumanager.h"
+#if IS_VOPI_ENGINE
+#include "translation.h"
+#endif
 #endif
 
 #if defined(__IOS__)
@@ -712,6 +715,15 @@ static bool use_debugger(int argc, char *argv[])
 #endif
 }
 
+#if CHECK_CLIENT_BUILD() && IS_VOPI_ENGINE
+static void language_setting_changed(const std::string &name, void *userdata)
+{
+	init_gettext(porting::path_locale.c_str(),
+		g_settings->get("language"), 0, nullptr);
+	g_client_translations->clear();
+}
+#endif
+
 static bool init_common(const Settings &cmd_args, int argc, char *argv[])
 {
 	startup_message();
@@ -783,6 +795,10 @@ static bool init_common(const Settings &cmd_args, int argc, char *argv[])
 
 	init_gettext(porting::path_locale.c_str(),
 		g_settings->get("language"), argc, argv);
+	
+#if CHECK_CLIENT_BUILD() && IS_VOPI_ENGINE
+	g_settings->registerChangedCallback("language", language_setting_changed, nullptr);
+#endif
 
 	return true;
 }
