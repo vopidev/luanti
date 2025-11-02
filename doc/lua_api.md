@@ -3182,10 +3182,37 @@ Elements
   half a coordinate.  With the old system, newlines are spaced 2/5 of
   an inventory slot.
 
+### `label[<X>,<Y>;<label>;<alignment>]`
+
+* The label formspec element displays the text set in `label`
+  at the specified position with the given alignment.
+* `alignment`: Text alignment. Can be `"left"`, `"center"`, or `"right"`.
+  Defaults to `"left"`.
+* **Note**: If the new coordinate system is enabled, labels are
+  positioned from the center of the text, not the top.
+* The text is displayed directly without automatic line breaking,
+  so label should not be used for big text chunks.  Newlines can be
+  used to make labels multiline.
+* **Note**: With the new coordinate system, newlines are spaced with
+  half a coordinate.  With the old system, newlines are spaced 2/5 of
+  an inventory slot.
+
 ### `label[<X>,<Y>;<W>,<H>;<label>]`
 
 * The "area label" formspec element displays the text set in `label`
   at the specified position and size.
+* Text is wrapped to fit within the given bounds.
+* If the text overflows, it is currently simply truncated, but this behavior is
+  subject to change. There is no scrollbar.
+* See also `textarea` for an alternative.
+* Only available with the new coordinate system.
+
+### `label[<X>,<Y>;<W>,<H>;<label>;<alignment>]`
+
+* The "area label" formspec element displays the text set in `label`
+  at the specified position and size with the given alignment.
+* `alignment`: Text alignment. Can be `"left"`, `"center"`, or `"right"`.
+  Defaults to `"left"`.
 * Text is wrapped to fit within the given bounds.
 * If the text overflows, it is currently simply truncated, but this behavior is
   subject to change. There is no scrollbar.
@@ -8727,6 +8754,18 @@ child will follow movement and rotation of that bone.
     * Server-sent FOV value. Returns 0 if an FOV override doesn't exist.
     * Boolean indicating whether the FOV value is a multiplier.
     * Time (in seconds) taken for the FOV transition. Set by `set_fov`.
+* `set_view_bobbing(amount, is_multiplier, transition_time)`: Sets player's view bobbing
+    * `amount`: View bobbing amount value.
+    * `is_multiplier`: Set to `true` if the amount value is a multiplier.
+      Defaults to `false`.
+    * `transition_time`: If defined, enables smooth view bobbing transition.
+      Interpreted as the time (in seconds) to reach target view bobbing amount.
+      If set to 0, view bobbing change is instantaneous. Defaults to 0.
+    * Set `amount` to 0 to clear view bobbing override.
+* `get_view_bobbing()`: Returns the following:
+    * Server-sent view bobbing amount. Returns 0 if a view bobbing override doesn't exist.
+    * Boolean indicating whether the view bobbing amount is a multiplier.
+    * Time (in seconds) taken for the view bobbing transition. Set by `set_view_bobbing`.
 * `set_attribute(attribute, value)`:  DEPRECATED, use get_meta() instead
     * Sets an extra attribute with value on player.
     * `value` must be a string, or a number which will be converted to a
