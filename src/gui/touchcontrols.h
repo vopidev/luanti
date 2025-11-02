@@ -131,6 +131,10 @@ private:
 	v2u32 m_screensize;
 	s32 m_button_size;
 
+#if IS_VOPI_ENGINE
+	s32 m_joystick_center_size;
+#endif
+
 	// cached settings
 	TouchInteractionStyle m_interaction_style;
 	double m_touchscreen_threshold;

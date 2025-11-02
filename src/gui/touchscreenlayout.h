@@ -75,6 +75,10 @@ struct ButtonMeta {
 	// Offset, multiplied by the global button size before it is applied.
 	// Together, position and offset define the position of the button's center.
 	v2f offset;
+	
+#if IS_VOPI_ENGINE
+	float scale = 1.0f;  // button scale for KW only
+#endif
 
 	// Returns the button's effective center position in pixels.
 	v2s32 getPos(v2u32 screensize, s32 button_size) const;
