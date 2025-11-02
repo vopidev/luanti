@@ -130,6 +130,10 @@ private:
 	s32 m_hotbar_imagesize; // Takes hud_scaling into account, updated by resizeHotbar()
 	s32 m_padding; // Takes hud_scaling into account, updated by resizeHotbar()
 	video::SColor hbar_colors[4];
+	
+#if IS_VOPI_ENGINE
+	float m_hud_padding;
+#endif
 
 	std::vector<aabb3f> m_selection_boxes;
 	std::vector<aabb3f> m_halo_boxes;

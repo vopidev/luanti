@@ -132,6 +132,10 @@ Hud::Hud(Client *client, LocalPlayer *player,
 
 	b->getMaterial().MaterialType = video::EMT_TRANSPARENT_ALPHA_CHANNEL;
 	b->setHardwareMappingHint(scene::EHM_STATIC);
+	
+#if IS_VOPI_ENGINE
+	m_hud_padding = g_settings->getU16("hud_hotbar_padding");
+#endif
 }
 
 void Hud::readScalingSetting()
@@ -785,7 +789,11 @@ void Hud::drawHotbar(const v2s32 &pos, const v2f &offset, u16 dir, const v2f &al
 	}
 
 	u16 playeritem = player->getWieldIndex();
+#if IS_VOPI_ENGINE
+	v2s32 screen_offset(offset.X, offset.Y - m_hud_padding);
+#else
 	v2s32 screen_offset(offset.X, offset.Y);
+#endif
 
 	s32 hotbar_itemcount = player->getMaxHotbarItemcount();
 	s32 width = hotbar_itemcount * (m_hotbar_imagesize + m_padding * 2);
