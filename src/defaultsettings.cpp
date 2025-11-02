@@ -558,9 +558,10 @@ void set_default_settings()
 	settings->setDefault("touch_interaction_style", "tap");
 	settings->setDefault("touch_punch_gesture", "short_tap");
 	settings->setDefault("clickable_chat_weblinks", "true");
-	
+
 #if IS_VOPI_ENGINE
 	settings->setDefault("hud_hotbar_padding", "5");
+	settings->setDefault("chat_message_max_age", "60.0");
 #endif
 
 	// Altered settings for Android

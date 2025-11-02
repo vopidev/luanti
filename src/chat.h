@@ -308,4 +308,9 @@ private:
 	ChatBuffer m_console_buffer;
 	ChatBuffer m_recent_buffer;
 	ChatPrompt m_prompt;
+
+#if IS_VOPI_ENGINE
+	// Cached max age for recent chat messages (from settings)
+	f32 m_recent_chat_max_age = 60.0f;
+#endif
 };
