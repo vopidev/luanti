@@ -97,3 +97,17 @@ void GUIEditBoxWithScrollBar::setBackgroundColor(const video::SColor &bg_color)
 	m_bg_color = bg_color;
 	m_bg_color_used = true;
 }
+
+#if IS_VOPI_ENGINE
+//! Sets the scrollbar style
+void GUIEditBoxWithScrollBar::setScrollbarStyle(const StyleSpec &style, ISimpleTextureSource *tsrc)
+{
+	if (VScrollBar) {
+		GUIScrollBar *scrollbar = static_cast<GUIScrollBar*>(VScrollBar);
+		if (scrollbar) {
+			scrollbar->setArrowsVisible(false);
+			scrollbar->setStyle(style, tsrc);
+		}
+	}
+}
+#endif

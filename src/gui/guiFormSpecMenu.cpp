@@ -643,6 +643,95 @@ void GUIFormSpecMenu::parseRealCoordinates(parserData* data, const std::string &
 	data->real_coordinates = is_yes(element);
 }
 
+#if IS_VOPI_ENGINE
+void GUIFormSpecMenu::parseScrollBar(parserData* data, const std::string &element)
+{
+	std::vector<std::string> parts = split(element,';');
+
+	if (parts.size() >= 5) {
+		std::vector<std::string> v_pos = split(parts[0],',');
+		std::vector<std::string> v_geom = split(parts[1],',');
+		std::string name = parts[3];
+		std::string value = parts[4];
+		std::vector<std::string> textures;
+
+		if (parts.size() == 6)
+			textures = split(parts[5], ',');
+
+		MY_CHECKPOS("scrollbar",0);
+		MY_CHECKGEOM("scrollbar",1);
+
+		v2s32 pos;
+		v2s32 dim;
+
+		if (data->real_coordinates) {
+			pos = getRealCoordinateBasePos(v_pos);
+			dim = getRealCoordinateGeometry(v_geom);
+		} else {
+			pos = getElementBasePos(&v_pos);
+			dim.X = stof(v_geom[0]) * spacing.X;
+			dim.Y = stof(v_geom[1]) * spacing.Y;
+		}
+		
+		core::rect<s32> rect =core::rect<s32>(pos.X, pos.Y, pos.X + dim.X, pos.Y + dim.Y);
+
+		FieldSpec spec(
+			name,
+			L"",
+			L"",
+			258+m_fields.size()
+		);
+
+		bool is_horizontal = true;
+
+		if (parts[2] == "vertical")
+			is_horizontal = false;
+
+		spec.ftype = f_ScrollBar;
+		spec.send  = true;
+		GUIScrollBar *e = new GUIScrollBar(Environment, data->current_parent,
+				   spec.fid, rect, is_horizontal, true, m_tsrc);
+
+		auto style = getDefaultStyleForElement("scrollbar", name);
+		e->setNotClipped(style.getBool(StyleSpec::NOCLIP, false));
+		e->setArrowsVisible(data->scrollbar_options.arrow_visiblity);
+
+		s32 max = data->scrollbar_options.max;
+		s32 min = data->scrollbar_options.min;
+
+		e->setMax(max);
+		e->setMin(min);
+
+		e->setPos(stoi(value));
+
+		e->setSmallStep(data->scrollbar_options.small_step);
+		e->setLargeStep(data->scrollbar_options.large_step);
+
+		s32 scrollbar_size = is_horizontal ? dim.X : dim.Y;
+
+		e->setPageSize(scrollbar_size * (max - min + 1) / data->scrollbar_options.thumb_size);
+
+		std::vector<video::ITexture *> itextures;
+
+		if (textures.empty()) {
+			// Fall back to the scrollbar textures specified in style[]
+			e->setStyle(style, m_tsrc);
+		} else {
+			for (u32 i = 0; i < textures.size(); ++i)
+				itextures.push_back(m_tsrc->getTexture(textures[i]));
+			e->setTextures(itextures);
+		}
+		if (spec.fname == m_focused_element) {
+			Environment->setFocus(e);
+		}
+		m_scrollbars.emplace_back(spec,e);
+		m_fields.push_back(spec);
+		return;
+	}
+	errorstream << "Invalid scrollbar element(" << parts.size() << "): '" << element
+		<< "'" << std::endl;
+}
+#else
 void GUIFormSpecMenu::parseScrollBar(parserData* data, const std::string &element)
 {
 	std::vector<std::string> parts;
@@ -717,6 +806,7 @@ void GUIFormSpecMenu::parseScrollBar(parserData* data, const std::string &elemen
 	m_scrollbars.emplace_back(spec,e);
 	m_fields.push_back(spec);
 }
+#endif
 
 void GUIFormSpecMenu::parseScrollBarOptions(parserData* data, const std::string &element)
 {
@@ -1242,8 +1332,12 @@ void GUIFormSpecMenu::parseTable(parserData* data, const std::string &element)
 
 	// Apply styling before calculating the cell sizes
 	auto style = getDefaultStyleForElement("table", name);
+#if IS_VOPI_ENGINE
+	e->setStyle(style);
+#else
 	e->setNotClipped(style.getBool(StyleSpec::NOCLIP, false));
 	e->setOverrideFont(style.getFont());
+#endif
 
 	if (spec.fname == m_focused_element) {
 		Environment->setFocus(e);
@@ -1331,8 +1425,12 @@ void GUIFormSpecMenu::parseTextList(parserData* data, const std::string &element
 		e->setSelected(stoi(str_initial_selection));
 
 	auto style = getDefaultStyleForElement("textlist", name);
+#if IS_VOPI_ENGINE
+	e->setStyle(style);
+#else
 	e->setNotClipped(style.getBool(StyleSpec::NOCLIP, false));
 	e->setOverrideFont(style.getFont());
+#endif
 
 	m_tables.emplace_back(spec, e);
 	m_fields.push_back(spec);
@@ -1539,10 +1637,20 @@ void GUIFormSpecMenu::createTextField(parserData *data, FieldSpec &spec,
 		spec.flabel.swap(spec.fdefault);
 	}
 
+	
+#if IS_VOPI_ENGINE
+	GUIEditBoxWithScrollBar *box = nullptr;
+#endif
 	gui::IGUIEditBox *e = nullptr;
 	if (is_multiline) {
+#if IS_VOPI_ENGINE
+		box = new GUIEditBoxWithScrollBar(spec.fdefault.c_str(), true, Environment,
+				data->current_parent, spec.fid, rect, m_tsrc, is_editable, true);
+		e = box;
+#else
 		e = new GUIEditBoxWithScrollBar(spec.fdefault.c_str(), true, Environment,
 				data->current_parent, spec.fid, rect, m_tsrc, is_editable, true);
+#endif
 	} else if (is_editable) {
 		e = Environment->addEditBox(spec.fdefault.c_str(), rect, true,
 				data->current_parent, spec.fid);
@@ -1577,6 +1685,10 @@ void GUIFormSpecMenu::createTextField(parserData *data, FieldSpec &spec,
 		e->setDrawBackground(border);
 		e->setOverrideFont(style.getFont());
 
+#if IS_VOPI_ENGINE
+		if (box != nullptr)
+			box->setScrollbarStyle(style, m_tsrc);
+#endif
 		e->drop();
 	}
 

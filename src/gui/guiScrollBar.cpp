@@ -14,17 +14,33 @@ the arrow buttons where there is insufficient space.
 #include "guiButton.h"
 #include "porting.h"
 #include "settings.h"
+#if IS_VOPI_ENGINE
+#include <IGUIImage.h>
+#else
 #include <IGUISkin.h>
+#endif
 
 GUIScrollBar::GUIScrollBar(IGUIEnvironment *environment, IGUIElement *parent, s32 id,
 		core::rect<s32> rectangle, bool horizontal, bool auto_scale,
 		ISimpleTextureSource *tsrc) :
 		IGUIScrollBar(environment, parent, id, rectangle),
+#if IS_VOPI_ENGINE
+		up_button(nullptr), down_button(nullptr),
+		m_bg_image(nullptr), m_bg_top_image(nullptr), m_bg_bottom_image(nullptr),
+		m_slider_image(nullptr), m_slider_top_image(nullptr),
+		m_slider_bottom_image(nullptr), m_slider_top_size(1), m_slider_bottom_size(1),
+		is_dragging(false), is_horizontal(horizontal),
+		is_auto_scaling(auto_scale), dragged_by_slider(false),
+		tray_clicked(false), scroll_pos(0), draw_center(0), thumb_size(0),
+		min_pos(0), max_pos(100), small_step(10), large_step(50),
+		drag_offset(0), page_size(100), border_size(0),
+#else
 		up_button(nullptr), down_button(nullptr), is_dragging(false),
 		is_horizontal(horizontal), is_auto_scaling(auto_scale),
 		dragged_by_slider(false), tray_clicked(false), scroll_pos(0),
 		draw_center(0), thumb_size(0), min_pos(0), max_pos(100), small_step(10),
 		large_step(50), drag_offset(0), page_size(100), border_size(0),
+#endif
 		m_tsrc(tsrc)
 {
 	refreshControls();
@@ -153,6 +169,16 @@ bool GUIScrollBar::OnEvent(const SEvent &event)
 	return IGUIElement::OnEvent(event);
 }
 
+#if IS_VOPI_ENGINE
+gui::IGUIImage* GUIScrollBar::addImage(const core::rect<s32> &rect, video::ITexture *texture)
+{
+	gui::IGUIImage *e = Environment->addImage(rect, this);
+	e->setImage(texture);
+	e->setScaleImage(true);
+	return e;
+}
+#endif
+
 void GUIScrollBar::draw()
 {
 	if (!IsVisible)
@@ -168,9 +194,44 @@ void GUIScrollBar::draw()
 		refreshControls();
 
 	slider_rect = AbsoluteRect;
+#if IS_VOPI_ENGINE
+	if (m_textures.size() >= 1) {
+		s32 w = RelativeRect.getWidth();
+		s32 h = RelativeRect.getHeight();
+		core::rect<s32> rect{0, w, w, h - w};
+		if (is_horizontal)
+			rect = {h, 0, w - h, h};
+		if (!m_bg_image)
+			m_bg_image = addImage(rect, m_textures[0]);
+		else
+			m_bg_image->setRelativePosition(rect);
+		
+		if (m_textures.size() >= 4 && arrow_visibility == HIDE) {
+			core::rect<s32> top_rect{0, 0, w, w};
+			if (is_horizontal) {
+				top_rect = {0, 0, h, h};
+			}
+			if (!m_bg_top_image)
+				m_bg_top_image = addImage(top_rect, m_textures[2]);
+			else
+				m_bg_top_image->setRelativePosition(top_rect);
+			core::rect<s32> bottom_rect{0, h - w, w, h};
+			if (is_horizontal) {
+				bottom_rect = {w - h, 0, w, h};
+			}
+			if (!m_bg_bottom_image)
+				m_bg_bottom_image = addImage(bottom_rect, m_textures[3]);
+			else
+				m_bg_bottom_image->setRelativePosition(bottom_rect);
+		}
+	} else {
+		skin->draw2DRectangle(this, skin->getColor(EGDC_SCROLLBAR),
+			slider_rect, &AbsoluteClippingRect);
+	}
+#else
 	skin->draw2DRectangle(this, skin->getColor(EGDC_SCROLLBAR), slider_rect,
 			&AbsoluteClippingRect);
-
+#endif
 	if (core::isnotzero(range())) {
 		if (is_horizontal) {
 			slider_rect.UpperLeftCorner.X = AbsoluteRect.UpperLeftCorner.X +
@@ -183,7 +244,67 @@ void GUIScrollBar::draw()
 			slider_rect.LowerRightCorner.Y =
 					slider_rect.UpperLeftCorner.Y + thumb_size;
 		}
+#if IS_VOPI_ENGINE
+		if (m_textures.size() >= 2) {
+			s32 w = slider_rect.getWidth();
+			s32 h = slider_rect.getHeight();
+						
+			s32 top_size = m_slider_top_size;
+			s32 bottom_size = m_slider_bottom_size;
+			s32 main_size = h - (top_size + bottom_size);
+			
+			if (main_size <= 0)
+				main_size = 1;
+			
+			// Top part
+			core::rect<s32> top_rect{0, draw_center - (h / 2), w, draw_center - (h / 2) + top_size};
+			
+			// Main part
+			core::rect<s32> rect{0, top_rect.LowerRightCorner.Y, w, top_rect.LowerRightCorner.Y + main_size};
+			
+			// Bottom part
+			core::rect<s32> bottom_rect{0, rect.LowerRightCorner.Y, w, rect.LowerRightCorner.Y + bottom_size};
+			
+			if (is_horizontal){
+				s32 left_size = m_slider_top_size;
+				s32 right_size = m_slider_bottom_size;
+				s32 main_size = w - (left_size + right_size);
+				
+				if (main_size <= 0)
+					main_size = 1;
+				
+				// Left part
+				top_rect = {draw_center - (w / 2), 0, draw_center - (w / 2) + left_size, h};
+				
+				// Main part
+				rect = {top_rect.LowerRightCorner.X, 0, top_rect.LowerRightCorner.X + main_size, h};
+				
+				// Right part
+				bottom_rect = {rect.LowerRightCorner.X, 0, rect.LowerRightCorner.X + right_size, h};
+			}
+			
+			if (!m_slider_image)
+				m_slider_image = addImage(rect, m_textures[1]);
+			else
+				m_slider_image->setRelativePosition(rect);
+			
+			if (m_textures.size() >= 6) {
+				if (!m_slider_top_image)
+					m_slider_top_image = addImage(top_rect, m_textures[4]);
+				else
+					m_slider_top_image->setRelativePosition(top_rect);
+				
+				if (!m_slider_bottom_image)
+					m_slider_bottom_image = addImage(bottom_rect, m_textures[5]);
+				else
+					m_slider_bottom_image->setRelativePosition(bottom_rect);
+			}
+		} else {
+			skin->draw3DButtonPaneStandard(this, slider_rect, &AbsoluteClippingRect);
+		}
+#else
 		skin->draw3DButtonPaneStandard(this, slider_rect, &AbsoluteClippingRect);
+#endif
 	}
 	IGUIElement::draw();
 }
@@ -357,10 +478,55 @@ void GUIScrollBar::setArrowsVisible(ArrowVisibility visible)
 	refreshControls();
 }
 
+#if IS_VOPI_ENGINE
+void GUIScrollBar::setArrowsVisible(bool visible)
+{
+	if(visible)
+		arrow_visibility = ArrowVisibility::SHOW;
+	else
+		arrow_visibility = ArrowVisibility::HIDE;
+	refreshControls();
+}
+#endif
+
 s32 GUIScrollBar::getPos() const
 {
 	return scroll_pos;
 }
+
+#if IS_VOPI_ENGINE
+void GUIScrollBar::setTextures(const std::vector<video::ITexture *> &textures)
+{
+	m_textures = textures;
+	refreshControls();
+}
+void GUIScrollBar::setStyle(const StyleSpec &style, ISimpleTextureSource *tsrc)
+{
+	if (style.isNotDefault(StyleSpec::SCROLLBAR_BGIMG) &&
+			style.isNotDefault(StyleSpec::SCROLLBAR_THUMB_IMG) &&
+			style.isNotDefault(StyleSpec::SCROLLBAR_TOP_IMG) &&
+			style.isNotDefault(StyleSpec::SCROLLBAR_BOTTOM_IMG)) {
+		//arrow_visibility = ArrowVisibility::SHOW;
+		std::vector<video::ITexture *> textures = {
+			style.getTexture(StyleSpec::SCROLLBAR_BGIMG, tsrc),
+			style.getTexture(StyleSpec::SCROLLBAR_THUMB_IMG, tsrc),
+			style.getTexture(StyleSpec::SCROLLBAR_TOP_IMG, tsrc),
+			style.getTexture(StyleSpec::SCROLLBAR_BOTTOM_IMG, tsrc)
+		};
+		if (style.isNotDefault(StyleSpec::SCROLLBAR_THUMB_TOP_IMG) &&
+				style.isNotDefault(StyleSpec::SCROLLBAR_THUMB_BOTTOM_IMG)) {
+			textures.push_back(style.getTexture(StyleSpec::SCROLLBAR_THUMB_TOP_IMG, tsrc));
+			textures.push_back(style.getTexture(StyleSpec::SCROLLBAR_THUMB_BOTTOM_IMG, tsrc));
+			
+			if (style.isNotDefault(StyleSpec::SCROLLBAR_THUMB_TOP_SIZE) && style.isNotDefault(StyleSpec::SCROLLBAR_THUMB_BOTTOM_SIZE)) {
+				m_slider_top_size = style.getS32(StyleSpec::SCROLLBAR_THUMB_TOP_SIZE, 1);
+				m_slider_bottom_size = style.getS32(StyleSpec::SCROLLBAR_THUMB_BOTTOM_SIZE, 1);
+			}
+		}
+		setTextures(textures);
+	}
+}
+#endif
 
 s32 GUIScrollBar::getTargetPos() const
 {
@@ -393,7 +559,17 @@ void GUIScrollBar::refreshControls()
 			up_button->setSubElement(true);
 			up_button->setTabStop(false);
 		}
+#if IS_VOPI_ENGINE
+		if (m_textures.size() >= 3) {
+			up_button->setImage(m_textures[2]);
+			up_button->setScaleImage(true);
+			up_button->setDrawBorder(false);
+			up_button->setUseAlphaChannel(true);
+			up_button->setSpriteBank(nullptr);
+		} else if (sprites) {
+#else
 		if (sprites) {
+#endif
 			up_button->setSpriteBank(sprites);
 			up_button->setSprite(EGBS_BUTTON_UP,
 					s32(skin->getIcon(EGDI_CURSOR_LEFT)),
@@ -415,7 +591,17 @@ void GUIScrollBar::refreshControls()
 			down_button->setSubElement(true);
 			down_button->setTabStop(false);
 		}
+#if IS_VOPI_ENGINE
+		if (m_textures.size() >= 4) {
+			down_button->setImage(m_textures[3]);
+			down_button->setScaleImage(true);
+			down_button->setDrawBorder(false);
+			down_button->setUseAlphaChannel(true);
+			down_button->setSpriteBank(nullptr);
+		} else if (sprites) {
+#else
 		if (sprites) {
+#endif
 			down_button->setSpriteBank(sprites);
 			down_button->setSprite(EGBS_BUTTON_UP,
 					s32(skin->getIcon(EGDI_CURSOR_RIGHT)),
@@ -431,7 +617,12 @@ void GUIScrollBar::refreshControls()
 				EGUIA_UPPERLEFT, EGUIA_LOWERRIGHT);
 	} else {
 		s32 w = RelativeRect.getWidth();
+#if IS_VOPI_ENGINE
+		s32 h = RelativeRect.getHeight();
+		border_size = h < w * 4 ? 0 : w;
+#else
 		border_size = RelativeRect.getHeight() < w * 4 ? 0 : w;
+#endif
 		if (!up_button) {
 			core::rect<s32> up_button_rect(0, 0, w, w);
 			up_button = GUIButton::addButton(Environment, up_button_rect, m_tsrc,
@@ -439,7 +630,17 @@ void GUIScrollBar::refreshControls()
 			up_button->setSubElement(true);
 			up_button->setTabStop(false);
 		}
+#if IS_VOPI_ENGINE
+		if (m_textures.size() >= 3) {
+			up_button->setImage(m_textures[2]);
+			up_button->setScaleImage(true);
+			up_button->setDrawBorder(false);
+			up_button->setUseAlphaChannel(true);
+			up_button->setSpriteBank(nullptr);
+		} else if (sprites) {
+#else
 		if (sprites) {
+#endif
 			up_button->setSpriteBank(sprites);
 			up_button->setSprite(EGBS_BUTTON_UP,
 					s32(skin->getIcon(EGDI_CURSOR_UP)),
@@ -452,16 +653,30 @@ void GUIScrollBar::refreshControls()
 		up_button->setAlignment(EGUIA_UPPERLEFT, EGUIA_LOWERRIGHT,
 				EGUIA_UPPERLEFT, EGUIA_UPPERLEFT);
 		if (!down_button) {
+#if IS_VOPI_ENGINE
+			core::rect<s32> down_button_rect(0, 0, w, w);
+#else
 			core::rect<s32> down_button_rect(
 					0, RelativeRect.getHeight() - w,
 					w, RelativeRect.getHeight()
 				);
+#endif
 			down_button = GUIButton::addButton(Environment, down_button_rect, m_tsrc,
 					this, -1, L"");
 			down_button->setSubElement(true);
 			down_button->setTabStop(false);
 		}
+#if IS_VOPI_ENGINE
+		if (m_textures.size() >= 4) {
+			down_button->setImage(m_textures[3]);
+			down_button->setScaleImage(true);
+			down_button->setDrawBorder(false);
+			down_button->setUseAlphaChannel(true);
+			down_button->setSpriteBank(nullptr);
+		} else if (sprites) {
+#else
 		if (sprites) {
+#endif
 			down_button->setSpriteBank(sprites);
 			down_button->setSprite(EGBS_BUTTON_UP,
 					s32(skin->getIcon(EGDI_CURSOR_DOWN)),
