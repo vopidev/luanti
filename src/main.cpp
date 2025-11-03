@@ -134,8 +134,7 @@ static OptionList allowed_options;
 int main(int argc, char *argv[])
 {
 #if defined(__IOS__)
-	porting::initializeErrorReportingService();
-	porting::initializeAnalyticsService();
+	porting::initializeIOSServices();
 #endif
 
 	int retval;
