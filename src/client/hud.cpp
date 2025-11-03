@@ -132,9 +132,9 @@ Hud::Hud(Client *client, LocalPlayer *player,
 
 	b->getMaterial().MaterialType = video::EMT_TRANSPARENT_ALPHA_CHANNEL;
 	b->setHardwareMappingHint(scene::EHM_STATIC);
-	
+
 #if IS_VOPI_ENGINE
-	m_hud_padding = g_settings->getU16("hud_hotbar_padding");
+	m_hud_padding = g_settings->getU16("hud_hotbar_bottom_margin");
 #endif
 }
 

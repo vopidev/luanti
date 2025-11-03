@@ -560,8 +560,10 @@ void set_default_settings()
 	settings->setDefault("clickable_chat_weblinks", "true");
 
 #if IS_VOPI_ENGINE
-	settings->setDefault("hud_hotbar_padding", "5");
+	settings->setDefault("hud_hotbar_bottom_margin", "5");
 	settings->setDefault("chat_message_max_age", "60.0");
+	settings->setDefault("mesh_icon_padding_percent", "0.0");
+	settings->setDefault("image_icon_padding_percent", "0.0");
 #endif
 
 	// Altered settings for Android

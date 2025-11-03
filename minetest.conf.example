@@ -979,6 +979,18 @@
 #    type: bool
 # inventory_items_animations = false
 
+#    [VOPI Engine] Padding for 3D mesh item icons as percentage of slot size.
+#    Adds space between the 3D model and the edge of the inventory slot.
+#    Value range: 0-25 (e.g. 5 = 5% padding).
+#    type: float min: 0 max: 25
+# mesh_icon_padding_percent = 0.0
+
+#    [VOPI Engine] Padding for 2D texture item icons as percentage of slot size.
+#    Adds space between the texture and the edge of the inventory slot.
+#    Value range: 0-25 (e.g. 5 = 5% padding).
+#    type: float min: 0 max: 25
+# image_icon_padding_percent = 0.0
+
 #    Formspec full-screen background opacity (between 0 and 255).
 #    type: int min: 0 max: 255
 # formspec_fullscreen_bg_opacity = 140
@@ -1028,6 +1040,12 @@
 #    Useful if there's something to be displayed right or left of hotbar.
 #    type: float min: 0.001 max: 1
 # hud_hotbar_max_width = 1.0
+
+#    [VOPI Engine] Bottom margin for the hotbar in pixels.
+#    Lifts the hotbar up from the bottom edge of the screen.
+#    Useful for mobile devices to avoid UI overlap with system controls.
+#    type: int min: 0 max: 50
+# hud_hotbar_bottom_margin = 5
 
 ### Chat
 
@@ -1266,6 +1284,11 @@
 #    Kick players who sent more than X messages per 10 seconds.
 #    type: int min: 1 max: 65535
 # chat_message_limit_trigger_kick = 50
+
+#    [VOPI Engine] Maximum age of chat messages in seconds before they auto-disappear.
+#    Useful for mobile devices to prevent chat clutter. Set to 0 to disable.
+#    type: float min: 0 max: 600
+# chat_message_max_age = 60.0
 
 ## Server Gameplay
 
