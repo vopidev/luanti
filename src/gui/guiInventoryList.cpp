@@ -140,7 +140,7 @@ void GUIInventoryList::draw()
 			drawItemStack(driver, m_font, item, rect, &AbsoluteClippingRect,
 					client, rotation_kind);
 		}
-
+#if !IS_VOPI_ENGINE && !defined(__ANDROID__) && !defined(__IOS__)
 		// Add hovering tooltip. The tooltip disappears if any item is selected,
 		// including the currently hovered one.
 		bool show_tooltip = !item.empty() && hovering && !selected_item;
@@ -167,6 +167,7 @@ void GUIInventoryList::draw()
 				tooltip += "\n[" + orig_item.name + "]";
 			m_fs_menu->addHoveredItemTooltip(tooltip);
 		}
+#endif
 	}
 
 	IGUIElement::draw();
@@ -229,3 +230,21 @@ s32 GUIInventoryList::getItemIndexAtPos(v2s32 p) const
 
 	return -1;
 }
+
+#if IS_VOPI_ENGINE
+core::rect<s32> GUIInventoryList::getSlotRect(s32 item_i) const
+{
+	core::rect<s32> imgrect(0, 0, m_slot_size.X, m_slot_size.Y);
+	v2s32 base_pos = AbsoluteRect.UpperLeftCorner;
+	
+	// Calculate the position in the grid relative to start_item_i
+	s32 i = item_i - m_start_item_i;
+	
+	// Calculate the slot position
+	v2s32 p((i % m_geom.X) * m_slot_spacing.X,
+			(i / m_geom.X) * m_slot_spacing.Y);
+			
+	// Rotate the slot rectangle
+	return imgrect + base_pos + p;
+}
+#endif
