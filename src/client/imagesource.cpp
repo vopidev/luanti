@@ -748,6 +748,46 @@ static void apply_mask(video::IImage *mask, video::IImage *dst,
 	}
 }
 
+#if IS_VOPI_ENGINE
+video::IImage *create_crack_image(video::IImage *crack, s32 frame_index, video::IVideoDriver *driver)
+{
+	if (!crack || !driver)
+		return nullptr;
+
+	core::dimension2d<u32> strip_size = crack->getDimension();
+
+	// Validate texture dimensions
+	if (strip_size.Width == 0 || strip_size.Height == 0)
+		return nullptr;
+
+	// Assume square frames (Width x Width per frame)
+	core::dimension2d<u32> frame_size(strip_size.Width, strip_size.Width);
+	s32 frame_count = strip_size.Height / strip_size.Width;
+
+	// Validate frame count
+	if (frame_count <= 0)
+		return nullptr;
+
+	// Clamp frame_index to valid range
+	if (frame_index < 0)
+		frame_index = 0;
+	if (frame_index >= frame_count)
+		frame_index = frame_count - 1;
+
+	// Calculate source rectangle for this frame
+	core::rect<s32> frame(v2s32(0, frame_index * frame_size.Height), frame_size);
+
+	// Create output image
+	video::IImage *crack_frame = driver->createImage(video::ECF_A8R8G8B8, frame_size);
+	if (!crack_frame)
+		return nullptr;
+
+	// Copy the specific frame from the strip
+	crack->copyTo(crack_frame, v2s32(0, 0), frame);
+
+	return crack_frame;
+}
+#else
 static video::IImage *create_crack_image(video::IImage *crack, s32 frame_index,
 		core::dimension2d<u32> size, u8 tiles, video::IVideoDriver *driver)
 {
@@ -790,11 +830,71 @@ static video::IImage *create_crack_image(video::IImage *crack, s32 frame_index,
 		for (u8 j = 0; j < tiles; j++)
 			crack_tile->copyTo(result, v2s32(i * tile_size.Width, j * tile_size.Height));
 
-exit__has_tile:
+	exit__has_tile:
 	crack_tile->drop();
 	return result;
 }
+#endif
 
+#if IS_VOPI_ENGINE
+static void draw_crack(video::IImage *crack, video::IImage *dst,
+		bool use_overlay, s32 frame_count, s32 progression,
+		video::IVideoDriver *driver, u8 tiles)
+{
+	// Dimension of destination image
+	core::dimension2d<u32> dim_dst = dst->getDimension();
+
+	video::IImage *crack_image = create_crack_image(crack, progression, driver);
+	if (!crack_image)
+		return;
+
+	core::dimension2d<u32> crack_dim = crack_image->getDimension();
+
+	// If crack texture is larger than destination, scale it down
+	video::IImage *crack_to_use = crack_image;
+	if (crack_dim.Width > dim_dst.Width || crack_dim.Height > dim_dst.Height) {
+		// Scale crack to fit destination
+		core::dimension2d<u32> scaled_size(
+			std::min(crack_dim.Width, dim_dst.Width),
+			std::min(crack_dim.Height, dim_dst.Height)
+		);
+		video::IImage *crack_scaled = driver->createImage(video::ECF_A8R8G8B8, scaled_size);
+		if (crack_scaled) {
+			crack_image->copyToScaling(crack_scaled);
+			crack_to_use = crack_scaled;
+			crack_dim = scaled_size;
+		}
+	}
+
+	auto blit = use_overlay ? blit_with_alpha<true> : blit_with_alpha<false>;
+
+	// Calculate how many times the crack image needs to be tiled to fill the destination
+	s32 tile_count_x = (dim_dst.Width + crack_dim.Width - 1) / crack_dim.Width;  // Round up
+	s32 tile_count_y = (dim_dst.Height + crack_dim.Height - 1) / crack_dim.Height;  // Round up
+
+	for (s32 tile_y = 0; tile_y < tile_count_y; ++tile_y) {
+		for (s32 tile_x = 0; tile_x < tile_count_x; ++tile_x) {
+			v2s32 dst_pos(tile_x * crack_dim.Width, tile_y * crack_dim.Height);
+
+			// Calculate actual size to copy (might be smaller for edge tiles)
+			core::dimension2d<u32> copy_size(
+				std::min(crack_dim.Width, dim_dst.Width - dst_pos.X),
+				std::min(crack_dim.Height, dim_dst.Height - dst_pos.Y)
+			);
+
+			// Only blit if we're within destination bounds
+			if (dst_pos.X < (s32)dim_dst.Width && dst_pos.Y < (s32)dim_dst.Height) {
+				blit(crack_to_use, dst, dst_pos, copy_size);
+			}
+		}
+	}
+
+	// Clean up
+	if (crack_to_use != crack_image)
+		crack_to_use->drop();
+	crack_image->drop();
+}
+#else
 static void draw_crack(video::IImage *crack, video::IImage *dst,
 		bool use_overlay, s32 frame_count, s32 progression,
 		video::IVideoDriver *driver, u8 tiles)
@@ -825,6 +925,7 @@ static void draw_crack(video::IImage *crack, video::IImage *dst,
 
 	crack_scaled->drop();
 }
+#endif
 
 static void brighten(video::IImage *image)
 {
@@ -978,7 +1079,11 @@ static void imageTransform(u32 transform, video::IImage *src, video::IImage *dst
 			COMPLAIN_INVALID("height"); \
 	} while(0)
 
+#if IS_VOPI_ENGINE
+bool ImageSource::generateImagePart(std::string_view name, std::string_view part_of_name,
+#else
 bool ImageSource::generateImagePart(std::string_view part_of_name,
+#endif
 		video::IImage *& baseimg, std::set<std::string> &source_image_names)
 {
 	const char escape = '\\'; // same as in generateImage()
@@ -1037,7 +1142,16 @@ bool ImageSource::generateImagePart(std::string_view part_of_name,
 	else
 	{
 		// A special texture modification
-
+#if IS_VOPI_ENGINE
+		/*
+			Interface for changing the cracking texture.
+			[texture_crack:texture_name.png]
+		*/
+		std::string crack_image_name = "crack_16.png";
+		Strfnd sf(name);
+		sf.next("texture_crack:");
+		std::string image_name = sf.next("]");
+#endif
 		/*
 			[crack:N:P
 			[cracko:N:P
@@ -1065,16 +1179,39 @@ bool ImageSource::generateImagePart(std::string_view part_of_name,
 				frame_count = progression;
 				progression = stoi(s);
 			}
-
+#if IS_VOPI_ENGINE
+			// Interface for changing the cracking texture.
+			// Extract custom crack texture name from [texture_crack:name]
+			if (str_starts_with(image_name, "crack_"))
+			{
+				crack_image_name = image_name;
+			}
+#endif
 			if (progression >= 0) {
 				/*
 					Load crack image.
 
 					It is an image with a number of cracking stages
-					horizontally tiled.
+					vertically tiled.
 				*/
+#if IS_VOPI_ENGINE
+				video::IImage *img_crack = m_sourcecache.getOrLoad(crack_image_name);
+
+				// Auto-detect frame count from custom crack texture dimensions
+				// If frame_count is provided but doesn't match texture, use texture's actual frame count
+				if (img_crack && crack_image_name != "crack_anylength.png") {
+					core::dimension2d<u32> crack_dim = img_crack->getDimension();
+					s32 actual_frame_count = crack_dim.Height / crack_dim.Width;
+
+					// Only override if texture has valid frames and differs from specified
+					if (actual_frame_count > 0 && actual_frame_count != frame_count) {
+						frame_count = actual_frame_count;
+					}
+				}
+#else
 				video::IImage *img_crack = m_sourcecache.getOrLoad(
 					"crack_anylength.png");
+#endif
 
 				if (img_crack) {
 					draw_crack(img_crack, baseimg,
@@ -1789,8 +1926,16 @@ bool ImageSource::generateImagePart(std::string_view part_of_name,
 		}
 		else
 		{
+#if IS_VOPI_ENGINE
+			if (!str_starts_with(part_of_name, "[texture_crack"))
+			{
+				errorstream << "generateImagePart(): Invalid "
+						" modification: \"" << part_of_name << "\"" << std::endl;
+			}
+#else
 			errorstream << "generateImagePart(): Invalid "
 					" modification: \"" << part_of_name << "\"" << std::endl;
+#endif
 		}
 	}
 
@@ -1900,7 +2045,11 @@ video::IImage* ImageSource::generateImage(std::string_view name,
 		} else {
 			baseimg = tmp;
 		}
+#if IS_VOPI_ENGINE
+	} else if (!generateImagePart(name, last_part_of_name, baseimg, source_image_names)) {
+#else
 	} else if (!generateImagePart(last_part_of_name, baseimg, source_image_names)) {
+#endif
 		// Generate image according to part of name
 		errorstream << "generateImage(): "
 				"Failed to generate \"" << last_part_of_name << "\"\n"

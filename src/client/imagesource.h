@@ -55,7 +55,11 @@ private:
 	// Generate image based on a string like "stone.png" or "[crack:1:0".
 	// If baseimg is NULL, it is created. Otherwise stuff is made on it.
 	// source_image_names is important to determine when to flush the image from a cache (dynamic media).
+#if IS_VOPI_ENGINE
+	bool generateImagePart(std::string_view name, std::string_view part_of_name, video::IImage *& baseimg,
+#else
 	bool generateImagePart(std::string_view part_of_name, video::IImage *& baseimg,
+#endif
 			std::set<std::string> &source_image_names);
 
 	// Cached settings needed for making textures from meshes

@@ -1367,6 +1367,19 @@ bool Game::createClient(const GameStartData &start_data)
 
 	/* Pre-calculated values
 	 */
+#if IS_VOPI_ENGINE
+	// Try to load custom crack texture first, fallback to default
+	video::ITexture *t = texture_src->getTexture("crack_16.png");
+	if (!t) {
+		t = texture_src->getTexture("crack_anylength.png");
+	}
+	if (t) {
+		v2u32 size = t->getOriginalSize();
+		crack_animation_length = size.Y / size.X;
+	} else {
+		crack_animation_length = 5;  // Fallback
+	}
+#else
 	video::ITexture *t = texture_src->getTexture("crack_anylength.png");
 	if (t) {
 		v2u32 size = t->getOriginalSize();
@@ -1374,6 +1387,7 @@ bool Game::createClient(const GameStartData &start_data)
 	} else {
 		crack_animation_length = 5;
 	}
+#endif
 
 	if (!initGui())
 		return false;
