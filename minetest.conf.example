@@ -1324,6 +1324,11 @@
 #    type: float min: 0 max: 600
 # chat_message_max_age = 60.0
 
+#    [VOPI Engine] Default player name for singleplayer mode.
+#    This name will be used automatically when starting a singleplayer game.
+#    type: string
+# default_player_name = Player
+
 ## Server Gameplay
 
 #    Controls length of day/night cycle.
