@@ -347,7 +347,11 @@ void ClientLauncher::config_guienv()
 	skin->setColor(gui::EGDC_3D_LIGHT, video::SColor(0, 0, 0, 0));
 	skin->setColor(gui::EGDC_3D_HIGH_LIGHT, video::SColor(255, 30, 30, 30));
 	skin->setColor(gui::EGDC_3D_SHADOW, video::SColor(255, 0, 0, 0));
+#if IS_VOPI_ENGINE
+	skin->setColor(gui::EGDC_HIGH_LIGHT, video::SColor(255, 255, 193, 198));
+#else
 	skin->setColor(gui::EGDC_HIGH_LIGHT, video::SColor(255, 70, 120, 50));
+#endif
 	skin->setColor(gui::EGDC_HIGH_LIGHT_TEXT, video::SColor(255, 255, 255, 255));
 	skin->setColor(gui::EGDC_EDITABLE, video::SColor(255, 128, 128, 128));
 	skin->setColor(gui::EGDC_FOCUSED_EDITABLE, video::SColor(255, 96, 134, 49));
@@ -369,12 +373,16 @@ void ClientLauncher::config_guienv()
 	if (density > 1.5f) {
 		// Texture dimensions should be a power of 2
 		std::string path = porting::path_share + "/textures/base/pack/";
+#if IS_VOPI_ENGINE
+		path.append("gui_common/gui_checkbox_enable.png");
+#else
 		if (density > 3.5f)
 			path.append("checkbox_64.png");
 		else if (density > 2.0f)
 			path.append("checkbox_32.png");
 		else
 			path.append("checkbox_16.png");
+#endif
 
 		auto cached_id = sprite_ids.find(path);
 		if (cached_id != sprite_ids.end()) {
