@@ -600,9 +600,32 @@ Draw a step of the crack animation on the texture.
 `crack` draws it normally, while `cracko` lays it over, keeping transparent
 pixels intact.
 
+**Custom crack texture (VOPI Engine only):**
+
+* `[texture_crack:<texture_name>]`
+
+This modifier allows you to specify a custom crack texture instead of the
+default `crack_anylength.png`. Must be placed before the `[crack]` modifier
+in the texture string.
+
+The custom crack texture should be a vertical strip of square frames
+(e.g., 16x80 pixels for 5 frames of 16x16 each). The frame count is
+automatically detected from the texture dimensions (height / width).
+
+When a custom crack texture is specified, subsequent `[crack]` or `[cracko]`
+modifiers will use it. The texture name should start with `crack_` to be
+recognized (e.g., `crack_stone.png`, `crack_glass.png`).
+
 Example:
 
     default_cobble.png^[crack:10:1
+
+    -- With custom crack texture (auto-detects frame count):
+    stone.png^[texture_crack:crack_stone.png]^[crack:5:0]
+
+    -- Different crack textures for different materials:
+    glass.png^[texture_crack:crack_glass.png]^[crack:7:3]
+    wood.png^[texture_crack:crack_wood.png]^[crack:10:5]
 
 #### `[combine:<w>x<h>:<x1>,<y1>=<file1>:<x2>,<y2>=<file2>:...`
 
