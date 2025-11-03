@@ -94,15 +94,15 @@ private:
 #if IS_VOPI_ENGINE && (defined(__ANDROID__) || defined(__IOS__))
 	gui::IGUIStaticText *m_guitext3 = nullptr; // Third line of debug text
 	gui::IGUIStaticText *m_guitext4 = nullptr; // Fourth line of debug text
-	
-	f32 round_screen = 0;
-	s32 button_size = 0;
 #endif
 
 	gui::IGUIStaticText *m_guitext_info = nullptr; // At the middle of the screen
 	std::wstring m_infotext;
 
 #if IS_VOPI_ENGINE
+	f32 round_screen = 0;
+	s32 button_size = 0;
+
 	s32 m_info_text_margin_right;
 	s32 m_info_text_margin_top;
 

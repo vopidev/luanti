@@ -46,6 +46,12 @@ void GameUI::init()
 	// Get the base font size
 	u16 base_font_size = g_fontengine->getDefaultFontSize();
 	std::string textures_path = porting::path_share + "/textures/base/pack/gui_pop_up/";
+
+	round_screen = g_settings->getFloat("round_screen");
+	v2u32 screensize = driver->getScreenSize();
+	button_size = (MYMIN(screensize.Y / 4.5f,
+				RenderingEngine::getDisplayDensity() *
+				g_settings->getFloat("hud_scaling") * 65.0f)) * 1.3f;
 #endif
 	// First line of debug text
 	m_guitext = gui::StaticText::add(guienv, utf8_to_wide(PROJECT_NAME_C).c_str(),
@@ -62,11 +68,6 @@ void GameUI::init()
 	// Fourth line of debug text
 	m_guitext4 = gui::StaticText::add(guienv, L"", core::rect<s32>(0, 0, 0, 0), false,
 		false, guiroot);
-	round_screen = g_settings->getFloat("hud_round_screen");
-	v2u32 screensize = driver->getScreenSize();
-	button_size = (MYMIN(screensize.Y / 4.5f,
-				RenderingEngine::getDisplayDensity() *
-				g_settings->getFloat("hud_scaling") * 65.0f)) * 1.3f;
 #endif
 
 	// Chat text
