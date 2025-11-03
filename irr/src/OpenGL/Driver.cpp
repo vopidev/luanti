@@ -1712,8 +1712,21 @@ u32 COpenGL3DriverBase::getMaximalPrimitiveCount() const
 	return Version.Spec == OpenGLSpec::ES ? 65535 : 0x7fffffff;
 }
 
+#ifdef _IRR_IOS_PLATFORM_
+// iOS ES 3.0: The default framebuffer is NOT 0 (it's created by CAEAGLLayer).
+// Cache the actual screen framebuffer ID to use instead of 0.
+static GLint g_iOSScreenFBO = -1;
+#endif
+
 bool COpenGL3DriverBase::setRenderTargetEx(IRenderTarget *target, u16 clearFlag, SColor clearColor, f32 clearDepth, u8 clearStencil)
 {
+#ifdef _IRR_IOS_PLATFORM_
+	// Cache the screen FBO ID on first call, before any FBO switches
+	if (g_iOSScreenFBO == -1) {
+		GL.GetIntegerv(GL_FRAMEBUFFER_BINDING, &g_iOSScreenFBO);
+	}
+#endif
+
 	if (target && target->getDriverType() != getDriverType()) {
 		os::Printer::log("Fatal Error: Tried to set a render target not owned by OpenGL 3 driver.", ELL_ERROR);
 		return false;
@@ -1738,7 +1751,12 @@ bool COpenGL3DriverBase::setRenderTargetEx(IRenderTarget *target, u16 clearFlag,
 
 		setViewPortRaw(destRenderTargetSize.Width, destRenderTargetSize.Height);
 	} else {
+#ifdef _IRR_IOS_PLATFORM_
+		// iOS ES 3.0: Use the cached screen FBO instead of 0, which doesn't exist on iOS
+		CacheHandler->setFBO(g_iOSScreenFBO);
+#else
 		CacheHandler->setFBO(0);
+#endif
 
 		destRenderTargetSize = core::dimension2d<u32>(0, 0);
 
