@@ -41,6 +41,12 @@ GameUI::GameUI()
 }
 void GameUI::init()
 {
+#if IS_VOPI_ENGINE
+	video::IVideoDriver *driver = RenderingEngine::get_video_driver();
+	// Get the base font size
+	u16 base_font_size = g_fontengine->getDefaultFontSize();
+	std::string textures_path = porting::path_share + "/textures/base/pack/gui_pop_up/";
+#endif
 	// First line of debug text
 	m_guitext = gui::StaticText::add(guienv, utf8_to_wide(PROJECT_NAME_C).c_str(),
 		core::rect<s32>(0, 0, 0, 0), false, true, guiroot);
@@ -57,24 +63,142 @@ void GameUI::init()
 	m_guitext4 = gui::StaticText::add(guienv, L"", core::rect<s32>(0, 0, 0, 0), false,
 		false, guiroot);
 	round_screen = g_settings->getFloat("hud_round_screen");
-	v2u32 screensize = RenderingEngine::getWindowSize();
+	v2u32 screensize = driver->getScreenSize();
 	button_size = (MYMIN(screensize.Y / 4.5f,
 				RenderingEngine::getDisplayDensity() *
 				g_settings->getFloat("hud_scaling") * 65.0f)) * 1.3f;
 #endif
 
 	// Chat text
+#if IS_VOPI_ENGINE
+	m_guitext_chat = gui::StaticText::add(guienv, L"", core::rect<s32>(0, 0, 0, 0), false, true, guiroot);
+	// Get the scaling factor from settings
+	const f32 chat_font_scale = g_settings->getFloat("chat_font_scale");
+	// Calculate the new font size and round it to the nearest integer
+	const u16 chat_font_size = std::round(base_font_size * chat_font_scale);
+#else
 	m_guitext_chat = gui::StaticText::add(guienv, L"", core::rect<s32>(0, 0, 0, 0),
 		//false, false); // Disable word wrap as of now
 		false, true, guiroot);
 	u16 chat_font_size = g_settings->getU16("chat_font_size");
+#endif
 	if (chat_font_size != 0) {
 		m_guitext_chat->setOverrideFont(g_fontengine->getFont(
 			rangelim(chat_font_size, 5, 72), FM_Unspecified));
 	}
 
+#if IS_VOPI_ENGINE
+	//Chat text background
+	std::string m_guiimage_chat_up_left_path = textures_path + "gui_chat_bg_up_left.png";
+	std::string m_guiimage_chat_up_path = textures_path + "gui_chat_bg_up.png";
+	std::string m_guiimage_chat_up_right_path = textures_path + "gui_chat_bg_up_right.png";
+	std::string m_guiimage_chat_left_path = textures_path + "gui_chat_bg_left.png";
+	std::string m_guiimage_chat_center_path = textures_path + "gui_chat_bg_center.png";
+	std::string m_guiimage_chat_right_path = textures_path + "gui_chat_bg_right.png";
+	std::string m_guiimage_chat_down_left_path = textures_path + "gui_chat_bg_down_left.png";
+	std::string m_guiimage_chat_down_path = textures_path + "gui_chat_bg_down.png";
+	std::string m_guiimage_chat_down_right_path = textures_path + "gui_chat_bg_down_right.png";
+	
+	m_guiimage_chat_up_left = guienv->addImage(core::rect<s32>(0, 0, 1, 1), guiroot, -1, nullptr, true);
+	m_guiimage_chat_up = guienv->addImage(core::rect<s32>(0, 0, 1, 1), guiroot, -1, nullptr, true);
+	m_guiimage_chat_up_right = guienv->addImage(core::rect<s32>(0, 0, 1, 1), guiroot, -1, nullptr, true);
+	m_guiimage_chat_left = guienv->addImage(core::rect<s32>(0, 0, 1, 1), guiroot, -1, nullptr, true);
+	m_guiimage_chat_center = guienv->addImage(core::rect<s32>(0, 0, 1, 1), guiroot, -1, nullptr, true);
+	m_guiimage_chat_right = guienv->addImage(core::rect<s32>(0, 0, 1, 1), guiroot, -1, nullptr, true);
+	m_guiimage_chat_down_left = guienv->addImage(core::rect<s32>(0, 0, 1, 1), guiroot, -1, nullptr, true);
+	m_guiimage_chat_down = guienv->addImage(core::rect<s32>(0, 0, 1, 1), guiroot, -1, nullptr, true);
+	m_guiimage_chat_down_right = guienv->addImage(core::rect<s32>(0, 0, 1, 1), guiroot, -1, nullptr, true);
+	
+	m_guiimage_chat_up_left->setImage(driver->getTexture(m_guiimage_chat_up_left_path.c_str()));
+	m_guiimage_chat_up->setImage(driver->getTexture(m_guiimage_chat_up_path.c_str()));
+	m_guiimage_chat_up_right->setImage(driver->getTexture(m_guiimage_chat_up_right_path.c_str()));
+	m_guiimage_chat_left->setImage(driver->getTexture(m_guiimage_chat_left_path.c_str()));
+	m_guiimage_chat_center->setImage(driver->getTexture(m_guiimage_chat_center_path.c_str()));
+	m_guiimage_chat_right->setImage(driver->getTexture(m_guiimage_chat_right_path.c_str()));
+	m_guiimage_chat_down_left->setImage(driver->getTexture(m_guiimage_chat_down_left_path.c_str()));
+	m_guiimage_chat_down->setImage(driver->getTexture(m_guiimage_chat_down_path.c_str()));
+	m_guiimage_chat_down_right->setImage(driver->getTexture(m_guiimage_chat_down_right_path.c_str()));
+	
+	m_guiimage_chat_up_left->setScaleImage(true);
+	m_guiimage_chat_up->setScaleImage(true);
+	m_guiimage_chat_up_right->setScaleImage(true);
+	m_guiimage_chat_left->setScaleImage(true);
+	m_guiimage_chat_center->setScaleImage(true);
+	m_guiimage_chat_right->setScaleImage(true);
+	m_guiimage_chat_down_left->setScaleImage(true);
+	m_guiimage_chat_down->setScaleImage(true);
+	m_guiimage_chat_down_right->setScaleImage(true);
+	m_guiimage_chat_up_left->setVisible(false);
+	m_guiimage_chat_up->setVisible(false);
+	m_guiimage_chat_up_right->setVisible(false);
+	m_guiimage_chat_left->setVisible(false);
+	m_guiimage_chat_center->setVisible(false);
+	m_guiimage_chat_right->setVisible(false);
+	m_guiimage_chat_down_left->setVisible(false);
+	m_guiimage_chat_down->setVisible(false);
+	m_guiimage_chat_down_right->setVisible(false);
+	m_show_chat_background = g_settings->getBool("show_chat_background");
+#endif
 
 	// Infotext of nodes and objects.
+#if IS_VOPI_ENGINE
+	m_guitext_info = gui::StaticText::add(guienv, L"", core::rect<s32>(0, 0, 0, 0), false, false, guiroot);
+	// Get the scaling factor from settings
+	const f32 info_font_scale = g_settings->getFloat("info_font_scale");
+	// Calculate the new font size and round it to the nearest integer
+	const u16 info_font_size = std::round(base_font_size * info_font_scale);
+	if (info_font_size != 0) {
+		m_guitext_info->setOverrideFont(g_fontengine->getFont(
+			rangelim(info_font_size, 5, 72), FM_Unspecified));
+	}
+	m_guitext_info->setTextAlignment(gui::EGUIA_CENTER, gui::EGUIA_CENTER);
+	m_guitext_info->setVisible(false);
+	
+#if defined(__ANDROID__) || defined(__IOS__)
+	m_info_text_margin_right = round_screen + 30;
+	m_info_text_margin_top = g_fontengine->getLineHeight() * 2;
+#else
+	m_info_text_margin_right = 10;
+	m_info_text_margin_top = 0;
+#endif
+	//Info text background
+	m_guiimage_info_up_left = guienv->addImage(core::rect<s32>(0, 0, 1, 1), guiroot, -1, nullptr, true);
+	m_guiimage_info_up = guienv->addImage(core::rect<s32>(0, 0, 1, 1), guiroot, -1, nullptr, true);
+	m_guiimage_info_up_right = guienv->addImage(core::rect<s32>(0, 0, 1, 1), guiroot, -1, nullptr, true);
+	m_guiimage_info_left = guienv->addImage(core::rect<s32>(0, 0, 1, 1), guiroot, -1, nullptr, true);
+	m_guiimage_info_center = guienv->addImage(core::rect<s32>(0, 0, 1, 1), guiroot, -1, nullptr, true);
+	m_guiimage_info_right = guienv->addImage(core::rect<s32>(0, 0, 1, 1), guiroot, -1, nullptr, true);
+	m_guiimage_info_down_left = guienv->addImage(core::rect<s32>(0, 0, 1, 1), guiroot, -1, nullptr, true);
+	m_guiimage_info_down = guienv->addImage(core::rect<s32>(0, 0, 1, 1), guiroot, -1, nullptr, true);
+	m_guiimage_info_down_right = guienv->addImage(core::rect<s32>(0, 0, 1, 1), guiroot, -1, nullptr, true);
+	m_guiimage_info_up_left->setImage(driver->getTexture(m_guiimage_chat_up_left_path.c_str()));
+	m_guiimage_info_up->setImage(driver->getTexture(m_guiimage_chat_up_path.c_str()));
+	m_guiimage_info_up_right->setImage(driver->getTexture(m_guiimage_chat_up_right_path.c_str()));
+	m_guiimage_info_left->setImage(driver->getTexture(m_guiimage_chat_left_path.c_str()));
+	m_guiimage_info_center->setImage(driver->getTexture(m_guiimage_chat_center_path.c_str()));
+	m_guiimage_info_right->setImage(driver->getTexture(m_guiimage_chat_right_path.c_str()));
+	m_guiimage_info_down_left->setImage(driver->getTexture(m_guiimage_chat_down_left_path.c_str()));
+	m_guiimage_info_down->setImage(driver->getTexture(m_guiimage_chat_down_path.c_str()));
+	m_guiimage_info_down_right->setImage(driver->getTexture(m_guiimage_chat_down_right_path.c_str()));
+	m_guiimage_info_up_left->setScaleImage(true);
+	m_guiimage_info_up->setScaleImage(true);
+	m_guiimage_info_up_right->setScaleImage(true);
+	m_guiimage_info_left->setScaleImage(true);
+	m_guiimage_info_center->setScaleImage(true);
+	m_guiimage_info_right->setScaleImage(true);
+	m_guiimage_info_down_left->setScaleImage(true);
+	m_guiimage_info_down->setScaleImage(true);
+	m_guiimage_info_down_right->setScaleImage(true);
+	m_guiimage_info_up_left->setVisible(false);
+	m_guiimage_info_up->setVisible(false);
+	m_guiimage_info_up_right->setVisible(false);
+	m_guiimage_info_left->setVisible(false);
+	m_guiimage_info_center->setVisible(false);
+	m_guiimage_info_right->setVisible(false);
+	m_guiimage_info_down_left->setVisible(false);
+	m_guiimage_info_down->setVisible(false);
+	m_guiimage_info_down_right->setVisible(false);
+#else
 	// If in debug mode, object debug infos shown here, too.
 	// Located on the left on the screen, below chat.
 	u32 chat_font_height = m_guitext_chat->getActiveFont()->getDimension(L"Ay").Height;
@@ -84,11 +208,80 @@ void GameUI::init()
 			v2s32(100, chat_font_height *
 			(g_settings->getU16("recent_chat_messages") + 3)),
 			false, true, guiroot);
+#endif
 
 	// Status text (displays info when showing and hiding GUI stuff, etc.)
+#if IS_VOPI_ENGINE
+	m_guitext_status = gui::StaticText::add(guienv, L"<Status>", core::rect<s32>(0, 0, 0, 0), false, false, guiroot);
+	// Get the scaling factor from settings
+	const f32 status_font_scale = g_settings->getFloat("status_font_scale");
+	// Calculate the new font size and round it to the nearest integer
+	const u16 status_font_size = std::round(base_font_size * status_font_scale);
+	if (status_font_size != 0) {
+		m_guitext_status->setOverrideFont(g_fontengine->getFont(
+			rangelim(status_font_size, 5, 72), FM_Unspecified));
+	}
+	m_guitext_status->setTextAlignment(gui::EGUIA_CENTER, gui::EGUIA_CENTER);
+#else
 	m_guitext_status = gui::StaticText::add(guienv, L"<Status>",
 		core::rect<s32>(0, 0, 0, 0), false, false, guiroot);
+#endif
 	m_guitext_status->setVisible(false);
+
+#if IS_VOPI_ENGINE
+	//Status text background
+	std::string m_guiimage_status_up_left_path = textures_path + "gui_status_bg_up_left.png";
+	std::string m_guiimage_status_up_path = textures_path + "gui_status_bg_up.png";
+	std::string m_guiimage_status_up_right_path = textures_path + "gui_status_bg_up_right.png";
+	std::string m_guiimage_status_left_path = textures_path + "gui_status_bg_left.png";
+	std::string m_guiimage_status_center_path = textures_path + "gui_status_bg_center.png";
+	std::string m_guiimage_status_right_path = textures_path + "gui_status_bg_right.png";
+	std::string m_guiimage_status_down_left_path = textures_path + "gui_status_bg_down_left.png";
+	std::string m_guiimage_status_down_path = textures_path + "gui_status_bg_down.png";
+	std::string m_guiimage_status_down_right_path = textures_path + "gui_status_bg_down_right.png";
+	
+	m_guiimage_status_up_left = guienv->addImage(core::rect<s32>(0, 0, 1, 1), guiroot, -1, nullptr, true);
+	m_guiimage_status_up = guienv->addImage(core::rect<s32>(0, 0, 1, 1), guiroot, -1, nullptr, true);
+	m_guiimage_status_up_right = guienv->addImage(core::rect<s32>(0, 0, 1, 1), guiroot, -1, nullptr, true);
+	m_guiimage_status_left = guienv->addImage(core::rect<s32>(0, 0, 1, 1), guiroot, -1, nullptr, true);
+	m_guiimage_status_center = guienv->addImage(core::rect<s32>(0, 0, 1, 1), guiroot, -1, nullptr, true);
+	m_guiimage_status_right = guienv->addImage(core::rect<s32>(0, 0, 1, 1), guiroot, -1, nullptr, true);
+	m_guiimage_status_down_left = guienv->addImage(core::rect<s32>(0, 0, 1, 1), guiroot, -1, nullptr, true);
+	m_guiimage_status_down = guienv->addImage(core::rect<s32>(0, 0, 1, 1), guiroot, -1, nullptr, true);
+	m_guiimage_status_down_right = guienv->addImage(core::rect<s32>(0, 0, 1, 1), guiroot, -1, nullptr, true);
+	
+	m_guiimage_status_up_left->setImage(driver->getTexture(m_guiimage_status_up_left_path.c_str()));
+	m_guiimage_status_up->setImage(driver->getTexture(m_guiimage_status_up_path.c_str()));
+	m_guiimage_status_up_right->setImage(driver->getTexture(m_guiimage_status_up_right_path.c_str()));
+	m_guiimage_status_left->setImage(driver->getTexture(m_guiimage_status_left_path.c_str()));
+	m_guiimage_status_center->setImage(driver->getTexture(m_guiimage_status_center_path.c_str()));
+	m_guiimage_status_right->setImage(driver->getTexture(m_guiimage_status_right_path.c_str()));
+	m_guiimage_status_down_left->setImage(driver->getTexture(m_guiimage_status_down_left_path.c_str()));
+	m_guiimage_status_down->setImage(driver->getTexture(m_guiimage_status_down_path.c_str()));
+	m_guiimage_status_down_right->setImage(driver->getTexture(m_guiimage_status_down_right_path.c_str()));
+	
+	m_guiimage_status_up_left->setScaleImage(true);
+	m_guiimage_status_up->setScaleImage(true);
+	m_guiimage_status_up_right->setScaleImage(true);
+	m_guiimage_status_left->setScaleImage(true);
+	m_guiimage_status_center->setScaleImage(true);
+	m_guiimage_status_right->setScaleImage(true);
+	m_guiimage_status_down_left->setScaleImage(true);
+	m_guiimage_status_down->setScaleImage(true);
+	m_guiimage_status_down_right->setScaleImage(true);
+
+	m_guiimage_status_up_left->setVisible(false);
+	m_guiimage_status_up->setVisible(false);
+	m_guiimage_status_up_right->setVisible(false);
+	m_guiimage_status_left->setVisible(false);
+	m_guiimage_status_center->setVisible(false);
+	m_guiimage_status_right->setVisible(false);
+	m_guiimage_status_down_left->setVisible(false);
+	m_guiimage_status_down->setVisible(false);
+	m_guiimage_status_down_right->setVisible(false);
+
+	m_show_status_background = g_settings->getBool("show_status_background");
+#endif
 
 	// Profiler text (size is updated when text is updated)
 	m_guitext_profiler = gui::StaticText::add(guienv, L"<Profiler>",
@@ -96,6 +289,12 @@ void GameUI::init()
 	m_guitext_profiler->setOverrideFont(g_fontengine->getFont(
 		g_fontengine->getDefaultFontSize() * 0.9f, FM_Mono));
 	m_guitext_profiler->setVisible(false);
+
+#if IS_VOPI_ENGINE
+	guiroot->bringToFront(m_guitext_chat);
+	guiroot->bringToFront(m_guitext_info);
+	guiroot->bringToFront(m_guitext_status);
+#endif
 }
 
 void GameUI::update(const RunStats &stats, Client *client, MapDrawControl *draw_control,
@@ -282,6 +481,7 @@ void GameUI::update(const RunStats &stats, Client *client, MapDrawControl *draw_
 	m_guitext_info->setVisible(m_flags.show_hud && g_menumgr.menuCount() == 0);
 #endif
 
+	//Status text
 	static const float statustext_time_max = 1.5f;
 
 	if (!m_statustext.empty()) {
@@ -309,20 +509,85 @@ void GameUI::update(const RunStats &stats, Client *client, MapDrawControl *draw_
 	setStaticText(guitext_status, m_statustext.c_str());
 	guitext_status->setVisible(!m_statustext.empty());
 
+#if IS_VOPI_ENGINE
+	bool show_status_bg = m_show_status_background && !m_statustext.empty();
+	m_guiimage_status_up_left->setVisible(show_status_bg);
+	m_guiimage_status_up->setVisible(show_status_bg);
+	m_guiimage_status_up_right->setVisible(show_status_bg);
+	m_guiimage_status_left->setVisible(show_status_bg);
+	m_guiimage_status_center->setVisible(show_status_bg);
+	m_guiimage_status_right->setVisible(show_status_bg);
+	m_guiimage_status_down_left->setVisible(show_status_bg);
+	m_guiimage_status_down->setVisible(show_status_bg);
+	m_guiimage_status_down_right->setVisible(show_status_bg);
+#endif
+
 	if (!m_statustext.empty()) {
+#if IS_VOPI_ENGINE
+		// Get screen dimensions
+		v2u32 screensize = RenderingEngine::getWindowSize();
+		// Calculate text dimensions
+		s32 text_width = m_guitext_status->getTextWidth();
+		s32 text_height = m_guitext_status->getTextHeight();
+		// Define platform-specific variables
+#if defined(__ANDROID__) || defined(__IOS__)
+		s32 padding = 10;  // Padding for mobile
+#else
+		s32 padding = 5;  // Padding for desktop
+#endif
+		// Calculate central block height
+		s32 central_height = text_height + (2 * padding);
+		// Calculate side element dimensions
+		s32 side_width = central_height / 4;
+		s32 side_height = central_height;
+		// Ensure side_width is at least 5 pixels and at most 15 pixels
+		side_width = std::max(5, std::min(side_width, 50));
+		// Calculate total width and height
+		s32 total_width = text_width + (side_width * 2) + (2 * padding);
+		s32 total_height = central_height;
+		// Ensure the width doesn't exceed the screen width
+		total_width = std::min(total_width, (s32)screensize.X);
+		// Calculate positions
+#if defined(__ANDROID__) || defined(__IOS__)
+		s32 status_y = screensize.Y - (s32)screensize.Y / 4;
+#else
+		s32 status_y = screensize.Y - (s32)screensize.Y / 6;
+#endif
+		s32 status_x = (screensize.X - total_width) / 2;
+		// Position the text
+		m_guitext_status->setRelativePosition(
+			core::rect<s32>(
+				status_x + side_width,
+				status_y + padding,
+				status_x + total_width - side_width,
+				status_y + total_height - padding
+			)
+		);
+		// Calculate middle width
+		s32 middle_width = total_width - (side_width * 2);
+		// Left column
+		m_guiimage_status_up_left->setRelativePosition(core::rect<s32>(status_x, status_y, status_x + side_width, status_y + side_width));
+		m_guiimage_status_left->setRelativePosition(core::rect<s32>(status_x, status_y + side_width, status_x + side_width, status_y + total_height - side_width));
+		m_guiimage_status_down_left->setRelativePosition(core::rect<s32>(status_x, status_y + total_height - side_width, status_x + side_width, status_y + total_height));
+		// Middle column
+		m_guiimage_status_up->setRelativePosition(core::rect<s32>(status_x + side_width, status_y, status_x + total_width - side_width, status_y + side_width));
+		m_guiimage_status_center->setRelativePosition(core::rect<s32>(status_x + side_width, status_y + side_width, status_x + total_width - side_width, status_y + total_height - side_width));
+		m_guiimage_status_down->setRelativePosition(core::rect<s32>(status_x + side_width, status_y + total_height - side_width, status_x + total_width - side_width, status_y + total_height));
+		// Right column
+		m_guiimage_status_up_right->setRelativePosition(core::rect<s32>(status_x + total_width - side_width, status_y, status_x + total_width, status_y + side_width));
+		m_guiimage_status_right->setRelativePosition(core::rect<s32>(status_x + total_width - side_width, status_y + side_width, status_x + total_width, status_y + total_height - side_width));
+		m_guiimage_status_down_right->setRelativePosition(core::rect<s32>(status_x + total_width - side_width, status_y + total_height - side_width, status_x + total_width, status_y + total_height));
+	}
+#else
 		s32 status_width  = guitext_status->getTextWidth();
 		s32 status_height = guitext_status->getTextHeight();
-#if IS_VOPI_ENGINE && (defined(__ANDROID__) || defined(__IOS__))
-		s32 status_y = screensize.Y  - 250;
-#else
 		s32 status_y = screensize.Y  - (overriden ? 15 : 150);
-#endif
 		s32 status_x = (screensize.X - status_width) / 2;
 
 		guitext_status->setRelativePosition(core::rect<s32>(status_x ,
 			status_y - status_height, status_x + status_width, status_y));
 
-#if IS_VOPI_ENGINE && (defined(__ANDROID__) || defined(__IOS__))
+#if defined(__ANDROID__) || defined(__IOS__)
 		m_guitext_status->setBackgroundColor(video::SColor(85,0,0,0));
 		//m_guitext_status->setDrawBorder(true);
 #endif
@@ -333,17 +598,31 @@ void GameUI::update(const RunStats &stats, Client *client, MapDrawControl *draw_
 		fade_color.setAlpha(static_cast<u32>(
 			fade_color.getAlpha() * (1.0f - d * d)));
 		guitext_status->setOverrideColor(fade_color);
-#if !IS_VOPI_ENGINE  && !defined(__ANDROID__) && !defined(__IOS__)
+#if !defined(__ANDROID__) && !defined(__IOS__)
 		guitext_status->enableOverrideColor(true);
 #endif
 	}
 
-#if IS_VOPI_ENGINE  && (defined(__ANDROID__) || defined(__IOS__))
+#if defined(__ANDROID__) || defined(__IOS__)
 	m_guitext_chat->setBackgroundColor(video::SColor(85,0,0,0));
 #endif
+#endif
 
+	//Chat text
 	// Hide chat when disabled by server or when console is visible
 	m_guitext_chat->setVisible(isChatVisible() && !chat_console->isVisible() && (player->hud_flags & HUD_FLAG_CHAT_VISIBLE));
+
+#if IS_VOPI_ENGINE
+	m_guiimage_chat_up_left->setVisible(isChatVisible() && !chat_console->isVisible() && m_show_chat_background);
+	m_guiimage_chat_up->setVisible(isChatVisible() && !chat_console->isVisible() && m_show_chat_background);
+	m_guiimage_chat_up_right->setVisible(isChatVisible() && !chat_console->isVisible() && m_show_chat_background);
+	m_guiimage_chat_left->setVisible(isChatVisible() && !chat_console->isVisible() && m_show_chat_background);
+	m_guiimage_chat_center->setVisible(isChatVisible() && !chat_console->isVisible() && m_show_chat_background);
+	m_guiimage_chat_right->setVisible(isChatVisible() && !chat_console->isVisible() && m_show_chat_background);
+	m_guiimage_chat_down_left->setVisible(isChatVisible() && !chat_console->isVisible() && m_show_chat_background);
+	m_guiimage_chat_down->setVisible(isChatVisible() && !chat_console->isVisible() && m_show_chat_background);
+	m_guiimage_chat_down_right->setVisible(isChatVisible() && !chat_console->isVisible() && m_show_chat_background);
+#endif
 }
 
 void GameUI::initFlags()
@@ -360,39 +639,108 @@ void GameUI::setChatText(const EnrichedString &chat_text, u32 recent_chat_count)
 {
 	setStaticText(m_guitext_chat, chat_text);
 
+#if IS_VOPI_ENGINE
+	m_guitext_chat->enableOverrideColor(true);
+	if (m_show_chat_background) {
+		m_guitext_chat->setOverrideColor(video::SColor(255,251,158,185));
+	} else {
+		m_guitext_chat->setOverrideColor(video::SColor(255,255,255,255));
+	}
+#endif
+
 	m_recent_chat_count = recent_chat_count;
 }
 
 void GameUI::updateChatSize()
 {
+#if IS_VOPI_ENGINE
+	const v2u32& window_size = RenderingEngine::getWindowSize();
+	// Step 1: Define maximum and minimum chat window dimensions
+	s32 max_chat_width = (window_size.X / 2) - round_screen - (button_size * 1.3);
+	s32 min_chat_width = (window_size.X / 2) - round_screen - (button_size * 1.3);  // Adjust as needed
+	s32 max_chat_height = window_size.Y / 2;
+	s32 min_chat_height = g_fontengine->getLineHeight();  // At least 1 lines
+	// Step 2: Determine the initial position of the chat
+	s32 chat_y = 2;
+	#if defined(__ANDROID__) || defined(__IOS__)
+		chat_y = g_fontengine->getLineHeight() * 2;
+	#else
+		// Check if debug window is visible
+		bool debug_visible = m_flags.show_minimal_debug || m_flags.show_basic_debug;
+		if (debug_visible) {
+			chat_y += g_fontengine->getTextHeight() * 2 + 5;  // 2 lines of debug text + margin
+		}
+	#endif
+	// Step 3: Calculate the actual chat size based on content
+	s32 content_height = m_guitext_chat->getTextHeight();
+	s32 chat_height = std::max(min_chat_height, std::min(content_height, max_chat_height));
+	s32 chat_width = std::max(min_chat_width, std::min(m_guitext_chat->getTextWidth(), max_chat_width));
+	// Step 4: Define the background size and position
+	s32 padding;
+	s32 corner_size;
+	#if defined(__ANDROID__) || defined(__IOS__)
+		padding = 18;
+		corner_size = 15;
+	#else
+		padding = 9;
+		corner_size = 8;
+	#endif
+	core::rect<s32> bg_size(
+		#if defined(__ANDROID__) || defined(__IOS__)
+			round_screen + 10,
+		#else
+			10,
+		#endif
+		chat_y,
+		#if defined(__ANDROID__) || defined(__IOS__)
+			round_screen + 10 + chat_width + padding * 2,
+		#else
+			10 + chat_width + padding * 2,
+		#endif
+		chat_y + chat_height + padding * 2
+	);
+	// Step 5: Define the chat text position
+	core::rect<s32> chat_size = bg_size;
+	chat_size.UpperLeftCorner.X += padding;
+	chat_size.UpperLeftCorner.Y += padding;
+	chat_size.LowerRightCorner.X -= padding;
+	chat_size.LowerRightCorner.Y -= padding;
+#else
 	// Update gui element size and position
 	s32 chat_y = 5;
 
-#if IS_VOPI_ENGINE && (defined(__ANDROID__) || defined(__IOS__))
-	chat_y = g_fontengine->getLineHeight() * 2;
-#else
 	if (m_flags.show_minimal_debug)
 		chat_y += m_guitext->getTextHeight();
 	if (m_flags.show_basic_debug)
 		chat_y += m_guitext2->getTextHeight();
-#endif
 
 	const v2u32 &window_size = RenderingEngine::getWindowSize();
 
-#if IS_VOPI_ENGINE && (defined(__ANDROID__) || defined(__IOS__))
-	core::rect<s32> chat_size(round_screen, chat_y, window_size.X * 0.43f, 0);
-	chat_size.LowerRightCorner.Y = std::min((s32)window_size.Y, m_guitext_chat->getTextHeight() + chat_y);
-#else
 	core::rect<s32> chat_size(10, chat_y, window_size.X - 20, 0);
 	chat_size.LowerRightCorner.Y = std::min((s32)window_size.Y,
 			m_guitext_chat->getTextHeight() + chat_y);
 #endif
 
+	// Check if the size has changed
 	if (chat_size == m_current_chat_size)
 		return;
 	m_current_chat_size = chat_size;
 
+	// Set the position of chat text
 	m_guitext_chat->setRelativePosition(chat_size);
+
+#if IS_VOPI_ENGINE
+	// Set the positions and sizes of the 9 background images
+	m_guiimage_chat_up_left->setRelativePosition(core::rect<s32>(bg_size.UpperLeftCorner.X, bg_size.UpperLeftCorner.Y, bg_size.UpperLeftCorner.X + corner_size, bg_size.UpperLeftCorner.Y + corner_size));
+	m_guiimage_chat_up_right->setRelativePosition(core::rect<s32>(bg_size.LowerRightCorner.X - corner_size, bg_size.UpperLeftCorner.Y, bg_size.LowerRightCorner.X, bg_size.UpperLeftCorner.Y + corner_size));
+	m_guiimage_chat_down_left->setRelativePosition(core::rect<s32>(bg_size.UpperLeftCorner.X, bg_size.LowerRightCorner.Y - corner_size, bg_size.UpperLeftCorner.X + corner_size, bg_size.LowerRightCorner.Y));
+	m_guiimage_chat_down_right->setRelativePosition(core::rect<s32>(bg_size.LowerRightCorner.X - corner_size, bg_size.LowerRightCorner.Y - corner_size, bg_size.LowerRightCorner.X, bg_size.LowerRightCorner.Y));
+	m_guiimage_chat_up->setRelativePosition(core::rect<s32>(bg_size.UpperLeftCorner.X + corner_size, bg_size.UpperLeftCorner.Y, bg_size.LowerRightCorner.X - corner_size, bg_size.UpperLeftCorner.Y + corner_size));
+	m_guiimage_chat_down->setRelativePosition(core::rect<s32>(bg_size.UpperLeftCorner.X + corner_size, bg_size.LowerRightCorner.Y - corner_size, bg_size.LowerRightCorner.X - corner_size, bg_size.LowerRightCorner.Y));
+	m_guiimage_chat_left->setRelativePosition(core::rect<s32>(bg_size.UpperLeftCorner.X, bg_size.UpperLeftCorner.Y + corner_size, bg_size.UpperLeftCorner.X + corner_size, bg_size.LowerRightCorner.Y - corner_size));
+	m_guiimage_chat_right->setRelativePosition(core::rect<s32>(bg_size.LowerRightCorner.X - corner_size, bg_size.UpperLeftCorner.Y + corner_size, bg_size.LowerRightCorner.X, bg_size.LowerRightCorner.Y - corner_size));
+	m_guiimage_chat_center->setRelativePosition(core::rect<s32>(bg_size.UpperLeftCorner.X + corner_size, bg_size.UpperLeftCorner.Y + corner_size, bg_size.LowerRightCorner.X - corner_size, bg_size.LowerRightCorner.Y - corner_size));
+#endif
 }
 
 void GameUI::updateProfiler()
@@ -465,6 +813,17 @@ void GameUI::clearText()
 	if (m_guitext_chat) {
 		m_guitext_chat->remove();
 		m_guitext_chat = nullptr;
+#if IS_VOPI_ENGINE
+		m_guiimage_chat_up_left->setVisible(false);
+		m_guiimage_chat_up->setVisible(false);
+		m_guiimage_chat_up_right->setVisible(false);
+		m_guiimage_chat_left->setVisible(false);
+		m_guiimage_chat_center->setVisible(false);
+		m_guiimage_chat_right->setVisible(false);
+		m_guiimage_chat_down_left->setVisible(false);
+		m_guiimage_chat_down->setVisible(false);
+		m_guiimage_chat_down_right->setVisible(false);
+#endif
 	}
 
 	if (m_guitext) {
@@ -492,11 +851,33 @@ void GameUI::clearText()
 	if (m_guitext_info) {
 		m_guitext_info->remove();
 		m_guitext_info = nullptr;
+#if IS_VOPI_ENGINE
+		m_guiimage_info_up_left->setVisible(false);
+		m_guiimage_info_up->setVisible(false);
+		m_guiimage_info_up_right->setVisible(false);
+		m_guiimage_info_left->setVisible(false);
+		m_guiimage_info_center->setVisible(false);
+		m_guiimage_info_right->setVisible(false);
+		m_guiimage_info_down_left->setVisible(false);
+		m_guiimage_info_down->setVisible(false);
+		m_guiimage_info_down_right->setVisible(false);
+#endif
 	}
 
 	if (m_guitext_status) {
 		m_guitext_status->remove();
 		m_guitext_status = nullptr;
+#if IS_VOPI_ENGINE
+		m_guiimage_status_up_left->setVisible(false);
+		m_guiimage_status_up->setVisible(false);
+		m_guiimage_status_up_right->setVisible(false);
+		m_guiimage_status_left->setVisible(false);
+		m_guiimage_status_center->setVisible(false);
+		m_guiimage_status_right->setVisible(false);
+		m_guiimage_status_down_left->setVisible(false);
+		m_guiimage_status_down->setVisible(false);
+		m_guiimage_status_down_right->setVisible(false);
+#endif
 	}
 
 	if (m_guitext_profiler) {
