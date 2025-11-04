@@ -25,7 +25,11 @@ public:
 	void setFrameLoop(f32 begin, f32 end);
 	void setAnimationSpeed(f32 speed);
 	void enableMouseControl(bool enable) noexcept { m_mouse_ctrl = enable; };
+#if IS_VOPI_ENGINE
+	void setRotation(v2f rot) noexcept;
+#else
 	void setRotation(v2f rot) noexcept { m_custom_rot = rot; };
+#endif
 	void enableContinuousRotation(bool enable) noexcept { m_inf_rot = enable; };
 	void setStyles(const std::array<StyleSpec, StyleSpec::NUM_STATES> &styles);
 

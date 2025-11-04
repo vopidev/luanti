@@ -43,6 +43,47 @@ scene::IAnimatedMeshSceneNode *GUIScene::setMesh(scene::IAnimatedMesh *mesh)
 	m_mesh->setPosition(-m_mesh->getBoundingBox().getCenter());
 	m_mesh->animateJoints();
 
+#if IS_VOPI_ENGINE
+	// Fix vertex colors by setting all vertices to white
+	if (mesh) {
+		video::SColor white(255, 255, 255, 255);
+		for (u32 i = 0; i < mesh->getMeshBufferCount(); ++i) {
+			scene::IMeshBuffer *buf = mesh->getMeshBuffer(i);
+			if (buf) {
+				// Use safe function that handles different vertex types
+				const u32 stride = getVertexPitchFromType(buf->getVertexType());
+				u32 vertex_count = buf->getVertexCount();
+				u8 *vertices = (u8 *)buf->getVertices();
+				for (u32 j = 0; j < vertex_count; ++j) {
+					((video::S3DVertex *)(vertices + j * stride))->Color = white;
+				}
+				buf->setDirty(scene::EBT_VERTEX);
+			}
+		}
+	}
+
+	// Initialize camera safely
+	if (!m_target) {
+		updateCamera(m_smgr->addEmptySceneNode());
+		if (m_cam) {  // Add null check
+			m_cam->bindTargetAndRotation(true);
+		}
+	}
+
+	// Set initial distance and rotation
+	if (m_mesh) {
+		core::aabbox3df box = m_mesh->getBoundingBox();
+		f32 diagonal = box.getExtent().getLength();
+
+		// Calculate optimal camera distance
+		m_cam_distance = diagonal * 1.8f;
+		rotateCamera(v3f(m_custom_rot.X, m_custom_rot.Y, 0.f));
+		setCameraRotation(getCameraRotation());
+
+		m_initial_rotation = false;
+	}
+#endif
+
 	return m_mesh;
 }
 
@@ -97,12 +138,14 @@ void GUIScene::draw()
 
 	m_smgr->drawAll();
 
+#if !IS_VOPI_ENGINE
 	if (m_initial_rotation && m_mesh) {
 		rotateCamera(v3f(m_custom_rot.X, m_custom_rot.Y, 0.f));
 		calcOptimalDistance();
 
 		m_initial_rotation = false;
 	}
+#endif
 
 	m_driver->setViewPort(oldViewPort);
 }
@@ -258,3 +301,14 @@ void GUIScene::cameraLoop()
 		m_update_cam = false;
 	}
 }
+
+#if IS_VOPI_ENGINE
+void GUIScene::setRotation(v2f rot) noexcept
+{
+	m_custom_rot = rot;
+
+	if (m_mesh && !m_initial_rotation) {
+		rotateCamera(v3f(m_custom_rot.X, m_custom_rot.Y, 0.f));
+	}
+}
+#endif
