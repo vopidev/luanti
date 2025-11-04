@@ -173,6 +173,14 @@ static const char *buttons_crosshair = enum_to_string(es_TouchInteractionStyle, 
 
 bool ButtonLayout::isButtonAllowed(touch_gui_button_id id)
 {
+#if IS_VOPI_ENGINE
+	if (id == fly_id || id == fast_id || id == noclip_id ||
+		id == debug_id || id == range_id || id == minimap_id ||
+		id == toggle_chat_id) {
+		return false;
+	}
+#endif
+
 	if (id == dig_id || id == place_id)
 		return g_settings->get("touch_interaction_style") == buttons_crosshair;
 	if (id == aux1_id)
