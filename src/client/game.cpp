@@ -845,6 +845,11 @@ private:
 
 	bool m_does_lost_focus_pause_game = false;
 
+#if defined(__ANDROID__) || defined(__IOS__)
+	// Track focus loss to show pause menu
+	bool m_lost_focus_needs_pause = false;
+#endif
+
 	// if true, (almost) the whole game is paused
 	// this happens in pause menu in singleplayer
 	bool m_is_paused = false;
@@ -1862,6 +1867,12 @@ void Game::processUserInput(f32 dtime)
 			m_game_focused = false;
 			infostream << "Game lost focus" << std::endl;
 			input->releaseAllKeys();
+#if defined(__ANDROID__) || defined(__IOS__)
+			// Mark that we need to show pause when focus returns
+			if (!device->isWindowActive()) {
+				m_lost_focus_needs_pause = true;
+			}
+#endif
 		} else {
 			input->clear();
 		}
@@ -1870,6 +1881,15 @@ void Game::processUserInput(f32 dtime)
 			g_touchcontrols->hide();
 
 	} else {
+#if defined(__ANDROID__) || defined(__IOS__)
+		// On mobile, show pause menu immediately when regaining focus
+		if (!m_game_focused && m_lost_focus_needs_pause && !isMenuActive()) {
+			m_lost_focus_needs_pause = false;
+			infostream << "Showing pause menu immediately on focus regain" << std::endl;
+			m_game_formspec.showPauseMenu();
+			// Don't process touch controls this frame - pause menu will handle input
+		} else
+#endif
 		if (g_touchcontrols) {
 			/* on touchcontrols step may generate own input events which ain't
 			 * what we want in case we just did clear them */
