@@ -560,7 +560,14 @@ void set_default_settings()
 	settings->setDefault("clickable_chat_weblinks", "true");
 
 #if IS_VOPI_ENGINE
+	// Main menu appearance
 	settings->setDefault("main_menu_bg", "bg_1080.png");
+
+	// Audio settings
+	settings->setDefault("mute_music", "false");
+	settings->setDefault("mute_sound", "false");
+	settings->setDefault("mute_ui_sound", "false");
+
 	// HUD settings
 	settings->setDefault("hud_hotbar_bottom_margin", "5");
 	settings->setDefault("round_screen", "0");
