@@ -801,7 +801,8 @@ void GUIFormSpecMenu::parseScrollBar(parserData* data, const std::string &elemen
 		e->setMax(max);
 		e->setMin(min);
 
-		e->setPos(stoi(value));
+		spec.aux_f32 = stoi(value);
+		e->setPos(spec.aux_f32);
 
 		e->setSmallStep(data->scrollbar_options.small_step);
 		e->setLargeStep(data->scrollbar_options.large_step);
