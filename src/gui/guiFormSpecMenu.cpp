@@ -2042,6 +2042,38 @@ void GUIFormSpecMenu::parseLabel(parserData* data, const std::string &element)
 	if (!font)
 		font = m_font;
 
+#if IS_VOPI_ENGINE
+	auto add_label = [&](core::rect<s32> rect, const EnrichedString &text,
+			EGUI_ALIGNMENT align_h, EGUI_ALIGNMENT align_v, bool word_wrap,
+			bool auto_center_multiline = false) {
+		FieldSpec spec(
+			"",
+			L"",
+			L"",
+			258 + m_fields.size(),
+			4
+		);
+		gui::StaticText *e = new gui::StaticText(text, false, Environment,
+				data->current_parent, spec.fid, rect, false);
+		e->setTextAlignment(align_h, align_v);
+		e->setWordWrap(word_wrap);
+		// VOPI_ENGINE: Enable auto-centering for multi-line word-wrapped labels
+		if (auto_center_multiline && word_wrap) {
+			e->setAutoCenterMultiline(true);
+		}
+
+		e->setNotClipped(style.getBool(StyleSpec::NOCLIP, false));
+		e->setOverrideColor(style.getColor(StyleSpec::TEXTCOLOR, video::SColor(0xFFFFFFFF)));
+		e->setOverrideFont(font);
+		e->drop();
+
+		m_fields.push_back(spec);
+
+		// labels should let events through
+		e->grab();
+		m_clickthrough_elements.push_back(e);
+	};
+#else
 	auto add_label = [&](core::rect<s32> rect, const EnrichedString &text,
 			EGUI_ALIGNMENT align_h, EGUI_ALIGNMENT align_v, bool word_wrap) {
 		FieldSpec spec(
@@ -2067,6 +2099,7 @@ void GUIFormSpecMenu::parseLabel(parserData* data, const std::string &element)
 		e->grab();
 		m_clickthrough_elements.push_back(e);
 	};
+#endif
 
 	// Text position depends on whether size is specified
 	std::string text_param = parts[has_size ? 2 : 1];
@@ -2167,20 +2200,38 @@ void GUIFormSpecMenu::parseLabel(parserData* data, const std::string &element)
 		}
 	} else {
 		v2s32 pos = getRealCoordinateBasePos(v_pos);
+
+#if IS_VOPI_ENGINE
+		gui::EGUI_ALIGNMENT e_align = gui::EGUIA_UPPERLEFT;
+		core::rect<s32> rect;
+
+		if (align == "center") {
+			e_align = gui::EGUIA_CENTER;
+			// Center alignment: rect centered around pos.X
+			rect = core::rect<s32>(
+				pos.X - geom.X / 2, pos.Y,
+				pos.X + geom.X / 2, pos.Y + geom.Y);
+		} else if (align == "right") {
+			e_align = gui::EGUIA_LOWERRIGHT;
+			// Right alignment: pos.X is the right edge, text goes left
+			rect = core::rect<s32>(
+				pos.X - geom.X, pos.Y,
+				pos.X, pos.Y + geom.Y);
+		} else {
+			// Left alignment (default): pos.X is the left edge, text goes right
+			rect = core::rect<s32>(
+				pos.X, pos.Y,
+				pos.X + geom.X, pos.Y + geom.Y);
+		}
+
+		// VOPI_ENGINE: Use UPPERLEFT vertical alignment, but enable auto-centering
+		// for multi-line labels (centers only when 2+ lines, with reduced spacing)
+		add_label(rect, str, e_align, gui::EGUIA_UPPERLEFT, true, true);
+#else
 		core::rect<s32> rect(
 				pos.X, pos.Y,
 				pos.X + geom.X,
 				pos.Y + geom.Y);
-
-#if IS_VOPI_ENGINE
-		gui::EGUI_ALIGNMENT e_align = gui::EGUIA_UPPERLEFT;
-		if (align == "center") {
-			e_align = gui::EGUIA_CENTER;
-		} else if (align == "right") {
-			e_align = gui::EGUIA_LOWERRIGHT;
-		}
-		add_label(rect, str, e_align, gui::EGUIA_UPPERLEFT, true);
-#else
 		add_label(rect, str, gui::EGUIA_UPPERLEFT, gui::EGUIA_UPPERLEFT, true);
 #endif
 	}

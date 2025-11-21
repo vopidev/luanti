@@ -132,6 +132,13 @@ namespace gui
 		//! Checks if word wrap is enabled
 		virtual bool isWordWrapEnabled() const;
 
+#if IS_VOPI_ENGINE
+		//! VOPI_ENGINE: Enables auto-centering and reduced line spacing for multi-line text
+		//! When enabled and text wraps to 2+ lines, text will be vertically centered
+		//! and line spacing will be reduced by 15%
+		void setAutoCenterMultiline(bool enable);
+#endif
+
 		//! Sets the new caption of this element.
 		virtual void setText(const wchar_t* text);
 
@@ -176,6 +183,9 @@ namespace gui
 		bool Background;
 		bool RestrainTextInside;
 		bool RightToLeft;
+#if IS_VOPI_ENGINE
+		bool AutoCenterMultiline; // VOPI_ENGINE: auto-center and reduce spacing for 2+ lines
+#endif
 
 		gui::IGUIFont* OverrideFont;
 		gui::IGUIFont* LastBreakFont; // stored because: if skin changes, line break must be recalculated.
