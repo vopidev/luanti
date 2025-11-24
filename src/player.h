@@ -140,6 +140,15 @@ struct PlayerPhysicsOverride
 	float acceleration_fast = 1.f;
 	float speed_walk = 1.f;
 
+#if IS_VOPI_ENGINE
+	// When true, disables engine-side swim up (jump key in liquid)
+	// Allows Lua to implement custom swimming behavior
+	bool disable_swim_up = false;
+	// When true, disables engine-side swim down (sneak key in liquid)
+	// Allows Lua to implement custom swimming behavior
+	bool disable_swim_down = false;
+#endif
+
 	bool operator==(const PlayerPhysicsOverride &other) const;
 	bool operator!=(const PlayerPhysicsOverride &other) const {
 		return !(*this == other);

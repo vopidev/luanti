@@ -1619,6 +1619,18 @@ void GenericCAO::processMessage(const std::string &data)
 			override_speed_walk = 1.0f;
 		}
 
+#if IS_VOPI_ENGINE
+		// VOPI: disable swim controls for custom swimming behavior
+		bool override_disable_swim_up = readU8(is);
+		if (is.eof()) {
+			override_disable_swim_up = false;
+		}
+		bool override_disable_swim_down = readU8(is);
+		if (is.eof()) {
+			override_disable_swim_down = false;
+		}
+#endif
+
 		if (m_is_local_player) {
 			auto &phys = m_env->getLocalPlayer()->physics_override;
 			phys.speed = override_speed;
@@ -1637,6 +1649,10 @@ void GenericCAO::processMessage(const std::string &data)
 			phys.speed_fast = override_speed_fast;
 			phys.acceleration_fast = override_acceleration_fast;
 			phys.speed_walk = override_speed_walk;
+#if IS_VOPI_ENGINE
+			phys.disable_swim_up = override_disable_swim_up;
+			phys.disable_swim_down = override_disable_swim_down;
+#endif
 		}
 	} else if (cmd == AO_CMD_SET_ANIMATION) {
 		v2f range = readV2F32(is);

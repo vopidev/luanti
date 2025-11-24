@@ -258,6 +258,9 @@ static auto tie(const PlayerPhysicsOverride &o)
 	o.speed_crouch, o.liquid_fluidity, o.liquid_fluidity_smooth, o.liquid_sink,
 	o.acceleration_default, o.acceleration_air, o.speed_fast, o.acceleration_fast,
 	o.speed_walk
+#if IS_VOPI_ENGINE
+	, o.disable_swim_up, o.disable_swim_down
+#endif
 	);
 }
 

@@ -329,6 +329,11 @@ std::string PlayerSAO::generateUpdatePhysicsOverrideCommand() const
 	writeF32(os, phys.speed_fast);
 	writeF32(os, phys.acceleration_fast);
 	writeF32(os, phys.speed_walk);
+#if IS_VOPI_ENGINE
+	// VOPI: disable swim controls for custom swimming behavior
+	writeU8(os, phys.disable_swim_up);
+	writeU8(os, phys.disable_swim_down);
+#endif
 	return os.str();
 }
 
