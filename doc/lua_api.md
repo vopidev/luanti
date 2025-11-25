@@ -1861,6 +1861,19 @@ Displays an image on the HUD.
 * `text`: The name of the texture that is displayed.
 * `alignment`: The alignment of the image.
 * `offset`: offset in pixels from position.
+* `middle`: 9-slice (9-patch) definition table `{x, y, w, h}` for scalable images.
+  When set, the image is rendered using 9-slice scaling, which preserves corners
+  and stretches only the middle regions. This is useful for UI elements like
+  buttons, panels, and notification backgrounds.
+  * `x`, `y`: top-left corner of the stretchable center region (in pixels)
+  * `w`, `h`: bottom-right corner of the stretchable center region.
+    Negative values are interpreted as offset from texture edge.
+  Example: For a 48x48 texture with 10px borders: `{x=10, y=10, w=-10, h=-10}`
+* `middle_scale`: Scale factor for 9-slice border size on screen (default 1.0).
+  Values > 1.0 make borders larger, < 1.0 make them smaller.
+  Only used when `middle` is set.
+* `size`: When using 9-slice (`middle` is set), specifies the target size in pixels.
+  The image will be scaled to this size using 9-slice rendering.
 
 ### `text`
 
@@ -11560,6 +11573,15 @@ Used by `ObjectRef:hud_add`. Returned by `ObjectRef:hud_get`.
     -- Z index: lower z-index HUDs are displayed behind higher z-index HUDs
 
     style = 0,
+
+    middle = {x=0, y=0, w=0, h=0},
+    -- 9-slice definition for scalable images (type = "image" only)
+    -- When set (non-zero area), enables 9-slice rendering
+    -- x, y: top-left corner of stretchable region
+    -- w, h: bottom-right corner (negative = offset from edge)
+
+    middle_scale = 1.0,
+    -- Scale factor for 9-slice borders (default 1.0)
 }
 ```
 

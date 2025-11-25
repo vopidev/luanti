@@ -1838,6 +1838,15 @@ void Server::SendHUDAdd(session_t peer_id, u32 id, HudElement *form)
 			<< form->align << form->offset << form->world_pos << form->size
 			<< form->z_index << form->text2 << form->style;
 
+#if IS_VOPI_ENGINE
+	// Serialize 9-slice middle rect (4 x s32) and scale (f32)
+	pkt << (s32) form->middle.UpperLeftCorner.X
+		<< (s32) form->middle.UpperLeftCorner.Y
+		<< (s32) form->middle.LowerRightCorner.X
+		<< (s32) form->middle.LowerRightCorner.Y
+		<< form->middle_scale;
+#endif
+
 	Send(&pkt);
 }
 
@@ -1871,6 +1880,16 @@ void Server::SendHUDChange(session_t peer_id, u32 id, HudElementStat stat, void 
 		case HUD_STAT_SIZE:
 			pkt << *(v2s32 *) value;
 			break;
+#if IS_VOPI_ENGINE
+		case HUD_STAT_MIDDLE: {
+			core::rect<s32> *middle = (core::rect<s32> *) value;
+			pkt << (s32) middle->UpperLeftCorner.X
+				<< (s32) middle->UpperLeftCorner.Y
+				<< (s32) middle->LowerRightCorner.X
+				<< (s32) middle->LowerRightCorner.Y;
+			break;
+		}
+#endif
 		default: // all other types
 			pkt << *(u32 *) value;
 			break;

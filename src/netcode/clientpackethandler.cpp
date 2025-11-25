@@ -1196,6 +1196,18 @@ void Client::handleCommand_HudAdd(NetworkPacket* pkt)
 		*pkt >> text2;
 		*pkt >> style;
 	} catch(PacketError &e) {};
+	
+#if IS_VOPI_ENGINE
+	// Deserialize 9-slice middle rect (4 x s32) and scale (f32)
+	core::rect<s32> middle;
+	f32 middle_scale = 1.0f;
+	try {
+		s32 mx, my, mw, mh;
+		*pkt >> mx >> my >> mw >> mh >> middle_scale;
+		middle.UpperLeftCorner = core::vector2di(mx, my);
+		middle.LowerRightCorner = core::vector2di(mw, mh);
+	} catch(PacketError &e) {};
+#endif
 
 	ClientEvent *event = new ClientEvent();
 	event->type              = CE_HUDADD;
@@ -1216,6 +1228,10 @@ void Client::handleCommand_HudAdd(NetworkPacket* pkt)
 	event->hudadd->z_index   = z_index;
 	event->hudadd->text2     = text2;
 	event->hudadd->style     = style;
+#if IS_VOPI_ENGINE
+	event->hudadd->middle       = middle;
+	event->hudadd->middle_scale = middle_scale;
+#endif
 	m_client_event_queue.push(event);
 }
 
@@ -1267,10 +1283,25 @@ void Client::handleCommand_HudChange(NetworkPacket* pkt)
 		case HUD_STAT_SIZE:
 			*pkt >> v2s32data;
 			break;
+#if IS_VOPI_ENGINE
+		case HUD_STAT_MIDDLE:
+			// Read below after switch
+			break;
+#endif
 		default:
 			*pkt >> intdata;
 			break;
 	}
+
+#if IS_VOPI_ENGINE
+	core::rect<s32> rectdata;
+	if (static_cast<HudElementStat>(stat) == HUD_STAT_MIDDLE) {
+		s32 mx, my, mw, mh;
+		*pkt >> mx >> my >> mw >> mh;
+		rectdata.UpperLeftCorner = core::vector2di(mx, my);
+		rectdata.LowerRightCorner = core::vector2di(mw, mh);
+	}
+#endif
 
 	ClientEvent *event = new ClientEvent();
 	event->type                 = CE_HUDCHANGE;
@@ -1282,6 +1313,9 @@ void Client::handleCommand_HudChange(NetworkPacket* pkt)
 	event->hudchange->sdata     = sdata;
 	event->hudchange->data      = intdata;
 	event->hudchange->v2s32data = v2s32data;
+#if IS_VOPI_ENGINE
+	event->hudchange->rectdata  = rectdata;
+#endif
 	m_client_event_queue.push(event);
 }
 

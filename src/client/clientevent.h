@@ -52,6 +52,10 @@ struct ClientEventHudAdd
 	v3f world_pos;
 	v2s32 size;
 	s16 z_index;
+#if IS_VOPI_ENGINE
+	core::rect<s32> middle;  // 9-slice middle rect
+	f32 middle_scale = 1.0f; // 9-slice border scale factor
+#endif
 };
 
 struct ClientEventHudChange
@@ -63,6 +67,9 @@ struct ClientEventHudChange
 	u32 data;
 	v3f v3fdata;
 	v2s32 v2s32data;
+#if IS_VOPI_ENGINE
+	core::rect<s32> rectdata;  // 9-slice middle rect
+#endif
 };
 
 struct ClientEvent

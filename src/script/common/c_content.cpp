@@ -2353,6 +2353,25 @@ void read_hud_element(lua_State *L, HudElement *elem)
 	lua_pop(L, 1);
 
 	elem->style = getintfield_default(L, 2, "style", 0);
+	
+#if IS_VOPI_ENGINE
+	// Read 9-slice middle rect for image elements
+	// Format: {x = left, y = top, w = right, h = bottom}
+	// Negative w/h values are interpreted as offset from texture edge
+	lua_getfield(L, 2, "middle");
+	if (lua_istable(L, -1)) {
+		s32 x = getintfield_default(L, -1, "x", 0);
+		s32 y = getintfield_default(L, -1, "y", 0);
+		s32 w = getintfield_default(L, -1, "w", 0);
+		s32 h = getintfield_default(L, -1, "h", 0);
+		elem->middle.UpperLeftCorner = core::vector2di(x, y);
+		elem->middle.LowerRightCorner = core::vector2di(w, h);
+	}
+	lua_pop(L, 1);
+
+	// Read 9-slice border scale factor (default 1.0)
+	elem->middle_scale = getfloatfield_default(L, 2, "middle_scale", 1.0f);
+#endif
 
 	/* check for known deprecated element usage */
 	if ((elem->type  == HUD_ELEM_STATBAR) && (elem->size == v2s32()))
@@ -2419,6 +2438,24 @@ void push_hud_element(lua_State *L, HudElement *elem)
 
 	lua_pushinteger(L, elem->style);
 	lua_setfield(L, -2, "style");
+	
+#if IS_VOPI_ENGINE
+	// Push 9-slice middle rect
+	lua_createtable(L, 0, 4);
+	lua_pushinteger(L, elem->middle.UpperLeftCorner.X);
+	lua_setfield(L, -2, "x");
+	lua_pushinteger(L, elem->middle.UpperLeftCorner.Y);
+	lua_setfield(L, -2, "y");
+	lua_pushinteger(L, elem->middle.LowerRightCorner.X);
+	lua_setfield(L, -2, "w");
+	lua_pushinteger(L, elem->middle.LowerRightCorner.Y);
+	lua_setfield(L, -2, "h");
+	lua_setfield(L, -2, "middle");
+
+	// Push 9-slice border scale factor
+	lua_pushnumber(L, elem->middle_scale);
+	lua_setfield(L, -2, "middle_scale");
+#endif
 }
 
 bool read_hud_change(lua_State *L, HudElementStat &stat, HudElement *elem, void **value)
@@ -2488,6 +2525,19 @@ bool read_hud_change(lua_State *L, HudElementStat &stat, HudElement *elem, void 
 			elem->style = luaL_checknumber(L, 4);
 			*value = &elem->style;
 			break;
+#if IS_VOPI_ENGINE
+		case HUD_STAT_MIDDLE:
+			if (lua_istable(L, 4)) {
+				s32 x = getintfield_default(L, 4, "x", 0);
+				s32 y = getintfield_default(L, 4, "y", 0);
+				s32 w = getintfield_default(L, 4, "w", 0);
+				s32 h = getintfield_default(L, 4, "h", 0);
+				elem->middle.UpperLeftCorner = core::vector2di(x, y);
+				elem->middle.LowerRightCorner = core::vector2di(w, h);
+			}
+			*value = &elem->middle;
+			break;
+#endif
 		case HudElementStat_END:
 			return false;
 			break;

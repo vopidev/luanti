@@ -8,6 +8,9 @@
 #include "irrlichttypes_bloated.h"
 #include <string>
 #include "util/enum_string.h"
+#if IS_VOPI_ENGINE
+	#include <rect.h>
+#endif
 
 #define HUD_DIR_LEFT_RIGHT 0
 #define HUD_DIR_RIGHT_LEFT 1
@@ -71,6 +74,9 @@ enum HudElementStat : u8 {
 	HUD_STAT_Z_INDEX,
 	HUD_STAT_TEXT2,
 	HUD_STAT_STYLE,
+#if IS_VOPI_ENGINE
+	HUD_STAT_MIDDLE,
+#endif
 	HudElementStat_END // Dummy for validity check
 };
 
@@ -97,6 +103,15 @@ struct HudElement {
 	s16 z_index = 0;
 	std::string text2;
 	u32 style;
+#if IS_VOPI_ENGINE
+	// 9-slice middle rect for image elements
+	// When set (non-zero area), the image will be rendered using 9-slice scaling
+	// Format: {x, y} = top-left corner, {w, h} = bottom-right corner (negative = from edge)
+	core::rect<s32> middle;
+	// Scale factor for 9-slice border (default 1.0 = no scaling)
+	// Values > 1.0 make border larger on screen, < 1.0 make it smaller
+	f32 middle_scale = 1.0f;
+#endif
 };
 
 extern const EnumString es_HudElementType[];
