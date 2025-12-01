@@ -892,3 +892,26 @@ void TouchControls::applyContextControls(const TouchInteractionMode &mode)
 		m_place_pressed = false;
 	}
 }
+
+#if IS_VOPI_ENGINE
+void TouchControls::resetTapState()
+{
+	m_tap_state = TapState::None;
+	m_dig_pressed_until = 0;
+	m_place_pressed_until = 0;
+
+	// Mark current touch as "moved" to prevent long tap from being re-detected
+	// This prevents dig from starting after eating food while still holding finger
+	m_move_has_really_moved = true;
+
+	// Release any pressed keys to prevent actions continuing after item change
+	if (m_dig_pressed) {
+		emitKeyboardEvent(id_to_keypress(dig_id), false);
+		m_dig_pressed = false;
+	}
+	if (m_place_pressed) {
+		emitKeyboardEvent(id_to_keypress(place_id), false);
+		m_place_pressed = false;
+	}
+}
+#endif

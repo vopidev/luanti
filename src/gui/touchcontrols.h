@@ -76,6 +76,11 @@ public:
 	void translateEvent(const SEvent &event);
 	void applyContextControls(const TouchInteractionMode &mode);
 
+#if IS_VOPI_ENGINE
+	// Reset tap state when wielded item changes (prevents dig after eating food)
+	void resetTapState();
+#endif
+
 	double getYawChange()
 	{
 		double res = m_camera_yaw_change;

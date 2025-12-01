@@ -3237,6 +3237,17 @@ void Game::processPlayerInteraction(f32 dtime, bool show_hud)
 	if (pointed != runData.pointed_old)
 		infostream << "Pointing at " << pointed.dump() << std::endl;
 
+#if IS_VOPI_ENGINE
+	// Reset tap state when wielded item changes (prevents dig after eating food)
+	{
+		static std::string prev_wielded_item_name;
+		if (g_touchcontrols && tool_item.name != prev_wielded_item_name) {
+			g_touchcontrols->resetTapState();
+			prev_wielded_item_name = tool_item.name;
+		}
+	}
+#endif
+
 	if (g_touchcontrols) {
 		auto mode = selected_def.touch_interaction.getMode(selected_def, pointed.type);
 		g_touchcontrols->applyContextControls(mode);
