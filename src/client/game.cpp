@@ -574,6 +574,15 @@ public:
 	void run();
 	void shutdown();
 
+#if IS_VOPI_ENGINE
+	// Check if chat HUD is visible (for Lua API)
+	// Returns true when chat messages are displayed on screen (top-left area)
+	bool isChatOpen() const
+	{
+		return m_game_ui && m_game_ui->isChatVisible();
+	}
+#endif
+
 protected:
 
 	// Basic initialisation
@@ -867,6 +876,17 @@ private:
 	float m_shutdown_progress = 0.0f;
 };
 
+#if IS_VOPI_ENGINE
+// Global Game instance pointer for Lua API access
+static Game *g_game_instance = nullptr;
+
+// Global accessor for Lua API - check if chat HUD is visible
+bool isChatConsoleOpen()
+{
+	return g_game_instance && g_game_instance->isChatOpen();
+}
+#endif
+
 Game::Game() :
 	m_chat_log_buf(g_logger),
 	m_game_ui(new GameUI())
@@ -971,6 +991,11 @@ bool Game::startup(volatile std::sig_atomic_t *kill,
 void Game::run()
 {
 	ZoneScoped;
+
+#if IS_VOPI_ENGINE
+	// Set global instance for Lua API access
+	g_game_instance = this;
+#endif
 
 	ProfilerGraph graph;
 	RunStats stats = {};
@@ -1095,6 +1120,11 @@ void Game::run()
 
 void Game::shutdown()
 {
+#if IS_VOPI_ENGINE
+	// Clear global instance pointer
+	g_game_instance = nullptr;
+#endif
+
 	// Delete text and menus first
 	m_game_ui->clearText();
 	m_game_formspec.reset();

@@ -43,3 +43,9 @@ void the_game(volatile std::sig_atomic_t *kill,
 		std::string &error_message,
 		ChatBackend &chat_backend,
 		bool *reconnect_requested);
+
+#if IS_VOPI_ENGINE
+// Global accessor for Lua API - check if chat HUD is visible
+// Returns false if game is not running
+bool isChatConsoleOpen();
+#endif

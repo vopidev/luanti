@@ -706,6 +706,21 @@ int ModApiUtil::l_strip_escapes(lua_State *L)
 	return 1;
 }
 
+#if IS_VOPI_ENGINE
+// is_chat_open()
+// Returns true if chat HUD is visible on screen
+int ModApiUtil::l_is_chat_open(lua_State *L)
+{
+	NO_MAP_LOCK_REQUIRED;
+
+	// Import the global accessor from game.cpp
+	extern bool isChatConsoleOpen();
+
+	lua_pushboolean(L, isChatConsoleOpen());
+	return 1;
+}
+#endif
+
 void ModApiUtil::Initialize(lua_State *L, int top)
 {
 	API_FCT(log);
@@ -759,6 +774,11 @@ void ModApiUtil::Initialize(lua_State *L, int top)
 	API_FCT(is_valid_player_name);
 	API_FCT(strip_escapes);
 
+#if IS_VOPI_ENGINE
+	// Chat HUD visibility API (available on all platforms)
+	API_FCT(is_chat_open);
+#endif
+
 	LuaSettings::create(L, g_settings, g_settings_path);
 	lua_setfield(L, top, "settings");
 }
@@ -793,6 +813,11 @@ void ModApiUtil::InitializeClient(lua_State *L, int top)
 
 	API_FCT(urlencode);
 	API_FCT(strip_escapes);
+
+#if IS_VOPI_ENGINE
+	// Chat HUD visibility API (available on all platforms)
+	API_FCT(is_chat_open);
+#endif
 
 	LuaSettings::create(L, g_settings, g_settings_path);
 	lua_setfield(L, top, "settings");
