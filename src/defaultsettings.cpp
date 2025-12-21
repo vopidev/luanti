@@ -580,6 +580,7 @@ void set_default_settings()
 	settings->setDefault("chat_font_scale", "1.0");
 	settings->setDefault("info_font_scale", "1.0");
 	settings->setDefault("status_font_scale", "1.0");
+	settings->setDefault("status_text_bottom_offset", "0.3");
 
 	// Text backgrounds
 	settings->setDefault("show_chat_background", "true");

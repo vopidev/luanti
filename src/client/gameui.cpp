@@ -282,6 +282,7 @@ void GameUI::init()
 	m_guiimage_status_down_right->setVisible(false);
 
 	m_show_status_background = g_settings->getBool("show_status_background");
+	m_status_text_bottom_offset = g_settings->getFloat("status_text_bottom_offset");
 #endif
 
 	// Profiler text (size is updated when text is updated)
@@ -549,11 +550,7 @@ void GameUI::update(const RunStats &stats, Client *client, MapDrawControl *draw_
 		// Ensure the width doesn't exceed the screen width
 		total_width = std::min(total_width, (s32)screensize.X);
 		// Calculate positions
-#if defined(__ANDROID__) || defined(__IOS__)
-		s32 status_y = screensize.Y - (s32)screensize.Y / 4;
-#else
-		s32 status_y = screensize.Y - (s32)screensize.Y / 6;
-#endif
+		s32 status_y = screensize.Y - (s32)(screensize.Y * m_status_text_bottom_offset);
 		s32 status_x = (screensize.X - total_width) / 2;
 		// Position the text
 		m_guitext_status->setRelativePosition(

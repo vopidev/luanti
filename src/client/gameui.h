@@ -140,6 +140,7 @@ private:
 	gui::IGUIImage *m_guiimage_status_down_right = nullptr;
 
 	bool m_show_status_background = true;
+	f32 m_status_text_bottom_offset = 0.25f;
 #endif
 
 	gui::IGUIStaticText *m_guitext_chat = nullptr; // Chat text
