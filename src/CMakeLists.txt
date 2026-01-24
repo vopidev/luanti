@@ -399,7 +399,7 @@ add_subdirectory(threading)
 add_subdirectory(content)
 add_subdirectory(database)
 add_subdirectory(mapgen)
-add_subdirectory(network)
+add_subdirectory(netcode)
 add_subdirectory(script)
 add_subdirectory(util)
 add_subdirectory(server)
@@ -490,6 +490,12 @@ set(common_SRCS
 
 if(ANDROID)
 	list(APPEND common_SRCS porting_android.cpp)
+	if(IS_VOPI_ENGINE)
+		# Add include path for auto-generated headers and VOPI Engine sources
+		include_directories(BEFORE ${CMAKE_SOURCE_DIR}/../src)
+		# Add VOPI Engine Android-specific settings
+		list(APPEND common_SRCS ${CMAKE_SOURCE_DIR}/../src/default_android_settings.cpp)
+	endif()
 endif()
 
 if(BUILD_UNITTESTS)
@@ -559,8 +565,15 @@ set(server_SRCS
 # Avoid source_group on broken CMake version.
 # see issue #7074 #7075
 if (CMAKE_VERSION VERSION_GREATER 3.8.1)
-	source_group(TREE ${PROJECT_SOURCE_DIR} PREFIX "Source Files" FILES ${client_SRCS})
-	source_group(TREE ${PROJECT_SOURCE_DIR} PREFIX "Source Files" FILES ${server_SRCS})
+	# Filter out external source files (outside PROJECT_SOURCE_DIR) for TREE grouping
+	set(client_SRCS_filtered ${client_SRCS})
+	set(server_SRCS_filtered ${server_SRCS})
+	if(IS_VOPI_ENGINE AND ANDROID)
+		list(FILTER client_SRCS_filtered EXCLUDE REGEX "^${CMAKE_SOURCE_DIR}/\\.\\./")
+		list(FILTER server_SRCS_filtered EXCLUDE REGEX "^${CMAKE_SOURCE_DIR}/\\.\\./")
+	endif()
+	source_group(TREE ${PROJECT_SOURCE_DIR} PREFIX "Source Files" FILES ${client_SRCS_filtered})
+	source_group(TREE ${PROJECT_SOURCE_DIR} PREFIX "Source Files" FILES ${server_SRCS_filtered})
 endif()
 
 include_directories(

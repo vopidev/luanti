@@ -1,4 +1,11 @@
-set(DEPS "${CMAKE_SOURCE_DIR}/android/native/deps/${ANDROID_ABI}")
+# Set path to native dependencies based on build configuration
+# IS_VOPI_ENGINE: deps are in parent directory (kawaii_craft/android/native/deps/)
+# Standard Luanti: deps are in luanti/android/native/deps/
+if(IS_VOPI_ENGINE)
+    set(DEPS "${CMAKE_SOURCE_DIR}/../android/native/deps/${ANDROID_ABI}")
+else()
+    set(DEPS "${CMAKE_SOURCE_DIR}/android/native/deps/${ANDROID_ABI}")
+endif()
 
 set(CURL_INCLUDE_DIR ${DEPS}/Curl/include)
 set(CURL_LIBRARY ${DEPS}/Curl/libcurl.a;${DEPS}/Curl/libmbedcrypto.a;${DEPS}/Curl/libmbedtls.a;${DEPS}/Curl/libmbedx509.a)
