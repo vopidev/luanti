@@ -14,6 +14,10 @@
 	#include <SDL_video.h>
 	#include <SDL_opengl.h>
 #endif
+#ifdef _IRR_IOS_PLATFORM_
+#include <OpenGLES/ES3/gl.h>
+#include <OpenGLES/ES3/glext.h>
+#endif
 #else
 #include "vendor/gl.h"
 #endif

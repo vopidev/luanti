@@ -179,7 +179,16 @@ public:
 							textarget = GL_TEXTURE_2D;
 							break;
 						case ETT_2D_MS:
+#ifndef _IRR_IOS_PLATFORM_
 							textarget = GL_TEXTURE_2D_MULTISAMPLE;
+#else
+							// iOS supports only OpenGL ES 3.0, and GL_TEXTURE_2D_MULTISAMPLE appeared in ES 3.1
+							os::Printer::log("GL_TEXTURE_2D_MULTISAMPLE is not supported on iOS (requires OpenGL ES 3.1+)", ELL_WARNING);
+							os::Printer::log("MSAA disabled for this texture", ELL_WARNING);
+							
+							// Fallback to a regular 2D texture
+							textarget = GL_TEXTURE_2D;
+#endif
 							break;
 						case ETT_CUBEMAP:
 							textarget = GL_TEXTURE_CUBE_MAP_POSITIVE_X + (int)CubeSurfaces[i];
@@ -221,7 +230,15 @@ public:
 						textarget = GL_TEXTURE_2D;
 						break;
 					case ETT_2D_MS:
+#ifndef _IRR_IOS_PLATFORM_
 						textarget = GL_TEXTURE_2D_MULTISAMPLE;
+#else
+						// iOS does not support GL_TEXTURE_2D_MULTISAMPLE (requires OpenGL ES 3.1+)
+						os::Printer::log("ETT_2D_MS: Multisample textures not supported on iOS, using regular 2D texture", ELL_WARNING);
+
+						// Fallback to a regular 2D texture
+						textarget = GL_TEXTURE_2D;
+#endif
 						break;
 					default:
 						// ETT_CUBEMAP is rejected for depth/stencil by setTextures
@@ -325,18 +342,22 @@ protected:
 		switch (status) {
 		case GL_FRAMEBUFFER_COMPLETE:
 			return true;
+#ifndef _IRR_IOS_PLATFORM_
 		case GL_FRAMEBUFFER_INCOMPLETE_READ_BUFFER:
 			os::Printer::log("FBO has invalid read buffer", ELL_ERROR);
 			break;
 		case GL_FRAMEBUFFER_INCOMPLETE_DRAW_BUFFER:
 			os::Printer::log("FBO has invalid draw buffer", ELL_ERROR);
 			break;
+#endif
 		case GL_FRAMEBUFFER_INCOMPLETE_ATTACHMENT:
 			os::Printer::log("FBO has one or several incomplete image attachments", ELL_ERROR);
 			break;
+#ifndef _IRR_IOS_PLATFORM_
 		case GL_FRAMEBUFFER_INCOMPLETE_FORMATS:
 			os::Printer::log("FBO has one or several image attachments with different internal formats", ELL_ERROR);
 			break;
+#endif
 		case GL_FRAMEBUFFER_INCOMPLETE_DIMENSIONS:
 			os::Printer::log("FBO has one or several image attachments with different dimensions", ELL_ERROR);
 			break;

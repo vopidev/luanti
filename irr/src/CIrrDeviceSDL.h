@@ -24,6 +24,12 @@
 #include <SDL.h>
 #endif
 
+// DirectFB is removed in SDL3, thou distribution as Alpine currently ships SDL2
+// with enabled DirectFB, but requiring another fix at a top of SDL2.
+// We don't need DirectFB in Irrlicht/Minetest, so simply disable it here to prevent issues.
+#undef SDL_VIDEO_DRIVER_DIRECTFB
+#include <SDL_syswm.h>
+
 #include <memory>
 #include <unordered_map>
 
@@ -109,6 +115,10 @@ public:
 
 	//! Get the display density in dots per inch.
 	float getDisplayDensity() const override;
+	
+#ifdef _IRR_IOS_PLATFORM_
+	void *getViewController();
+#endif
 
 	void SwapWindow();
 

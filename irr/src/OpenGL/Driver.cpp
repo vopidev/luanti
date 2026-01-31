@@ -125,6 +125,7 @@ static const VertexType vtPrimitive = {
 		},
 };
 
+#ifndef _IRR_IOS_PLATFORM_
 void APIENTRY COpenGL3DriverBase::debugCb(GLenum source, GLenum type, GLuint id, GLenum severity, GLsizei length, const GLchar *message, const void *userParam)
 {
 	((COpenGL3DriverBase *)userParam)->debugCb(source, type, id, severity, length, message);
@@ -145,6 +146,7 @@ void COpenGL3DriverBase::debugCb(GLenum source, GLenum type, GLuint id, GLenum s
 	snprintf_irr(buf, sizeof(buf), "%04x %04x %.*s", source, type, length, message);
 	os::Printer::log("GL", buf, ll);
 }
+#endif
 
 COpenGL3DriverBase::COpenGL3DriverBase(const SIrrlichtCreationParameters &params, io::IFileSystem *io, IContextManager *contextManager) :
 		CNullDriver(io, params.WindowSize), COpenGL3ExtensionHandler(), CacheHandler(0),
@@ -162,7 +164,11 @@ COpenGL3DriverBase::COpenGL3DriverBase(const SIrrlichtCreationParameters &params
 	ContextManager->generateContext();
 	ExposedData = ContextManager->getContext();
 	ContextManager->activateContext(ExposedData, false);
+#ifdef _IRR_IOS_PLATFORM_
+	GL.LoadAllProcedures();
+#else
 	GL.LoadAllProcedures(ContextManager);
+#endif
 
 	TEST_GL_ERROR(this);
 }
@@ -243,8 +249,12 @@ bool COpenGL3DriverBase::genericDriverInit(const core::dimension2d<u32> &screenS
 
 	if (EnableErrorTest) {
 		if (KHRDebugSupported) {
+#ifdef _IRR_IOS_PLATFORM_
+			os::Printer::log("GL debug extension not available");
+#else
 			GL.Enable(GL_DEBUG_OUTPUT);
 			GL.DebugMessageCallback(debugCb, this);
+#endif
 		} else {
 			os::Printer::log("GL debug extension not available");
 		}
@@ -1110,12 +1120,14 @@ bool COpenGL3DriverBase::testGLError(const char *file, int line)
 	case GL_INVALID_OPERATION:
 		err = "GL_INVALID_OPERATION";
 		break;
+#ifndef _IRR_IOS_PLATFORM_
 	case GL_STACK_OVERFLOW:
 		err = "GL_STACK_OVERFLOW";
 		break;
 	case GL_STACK_UNDERFLOW:
 		err = "GL_STACK_UNDERFLOW";
 		break;
+#endif
 	case GL_OUT_OF_MEMORY:
 		err = "GL_OUT_OF_MEMORY";
 		break;
@@ -1307,6 +1319,7 @@ void COpenGL3DriverBase::setBasicRenderStates(const SMaterial &material, const S
 				getGLBlend(srcAlphaFact), getGLBlend(dstAlphaFact));
 	}
 
+#ifndef _IRR_IOS_PLATFORM_
 	// fillmode
 	if (Version.Spec != OpenGLSpec::ES && // not supported in gles
 			(resetAllRenderStates ||
@@ -1317,6 +1330,7 @@ void COpenGL3DriverBase::setBasicRenderStates(const SMaterial &material, const S
 				material.PointCloud ? GL_POINT :
 				GL_FILL);
 	}
+#endif
 
 	// Polygon Offset
 	if (resetAllRenderStates ||
@@ -1660,7 +1674,11 @@ ITexture *COpenGL3DriverBase::addRenderTargetTexture(const core::dimension2d<u32
 ITexture *COpenGL3DriverBase::addRenderTargetTextureMs(const core::dimension2d<u32> &size, u8 msaa,
 		const io::path &name, const ECOLOR_FORMAT format)
 {
+#ifdef _IRR_IOS_PLATFORM_
+	COpenGL3Texture *renderTargetTexture = new COpenGL3Texture(name, size, ETT_2D, format, this, 0);
+#else
 	COpenGL3Texture *renderTargetTexture = new COpenGL3Texture(name, size, msaa > 0 ? ETT_2D_MS : ETT_2D, format, this, msaa);
+#endif
 	addTexture(renderTargetTexture);
 	renderTargetTexture->drop();
 
