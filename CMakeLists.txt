@@ -5,12 +5,24 @@ endif()
 
 # This can be read from ${PROJECT_NAME} after project() is called
 project(luanti)
-set(PROJECT_NAME_CAPITALIZED "Luanti")
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED TRUE)
 set(GCC_MINIMUM_VERSION "7.5")
 set(CLANG_MINIMUM_VERSION "7.0.1")
+
+# VOPI Engine options
+option(IS_VOPI_ENGINE "Enable VOPI Engine features" OFF)
+
+if(IS_VOPI_ENGINE)
+    add_definitions(-DIS_VOPI_ENGINE=1)
+    set(PROJECT_NAME_CAPITALIZED "Luanti (VOPI Engine)")
+    message(STATUS "IS_VOPI_ENGINE is enabled")
+else()
+    add_definitions(-DIS_VOPI_ENGINE=0)
+    set(PROJECT_NAME_CAPITALIZED "Luanti")
+    message(STATUS "IS_VOPI_ENGINE is disabled")
+endif()
 
 # You should not need to edit these manually, use util/bump_version.sh
 set(VERSION_MAJOR 5)
@@ -18,10 +30,17 @@ set(VERSION_MINOR 15)
 set(VERSION_PATCH 0)
 set(VERSION_EXTRA "" CACHE STRING "Stuff to append to version string")
 
+# ENGINE REVISION: VOPI Engine modifications revision (ve1, ve2, ve3...)
+set(ENGINE_REVISION "ve1" CACHE STRING "VOPI Engine revision")
+
 # Change to false for releases
 set(DEVELOPMENT_BUILD FALSE)
 
 set(VERSION_STRING "${VERSION_MAJOR}.${VERSION_MINOR}.${VERSION_PATCH}")
+if(IS_VOPI_ENGINE)
+	# VOPI Engine: append engine revision (5.14.0-ve1)
+	set(VERSION_STRING "${VERSION_STRING}-${ENGINE_REVISION}")
+endif()
 if(VERSION_EXTRA)
 	set(VERSION_STRING "${VERSION_STRING}-${VERSION_EXTRA}")
 elseif(DEVELOPMENT_BUILD)
