@@ -7,7 +7,7 @@
 #include <iostream>
 #include <cstring>
 #include <cerrno>
-#include "network/networkexceptions.h"
+#include "netcode/networkexceptions.h"
 #include "settings.h"
 
 #ifdef _WIN32

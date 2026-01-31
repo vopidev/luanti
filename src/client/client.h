@@ -9,9 +9,9 @@
 #include "gameparams.h" // ELoginRegister
 #include "inventorymanager.h"
 #include "irrlichttypes.h"
-#include "network/address.h"
-#include "network/networkprotocol.h" // multiple enums
-#include "network/peerhandler.h"
+#include "netcode/address.h"
+#include "netcode/networkprotocol.h" // multiple enums
+#include "netcode/peerhandler.h"
 #include "util/numeric.h"
 #include "util/string.h" // StringMap
 

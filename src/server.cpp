@@ -53,11 +53,11 @@
 #include "server/mods.h" // ServerModManager
 
 // Network
-#include "network/connection.h"
-#include "network/networkexceptions.h"
-#include "network/networkpacket.h"
-#include "network/networkprotocol.h"
-#include "network/serveropcodes.h"
+#include "netcode/connection.h"
+#include "netcode/networkexceptions.h"
+#include "netcode/networkpacket.h"
+#include "netcode/networkprotocol.h"
+#include "netcode/serveropcodes.h"
 #include "serialization.h" // SER_FMT_VER_INVALID
 
 // Database

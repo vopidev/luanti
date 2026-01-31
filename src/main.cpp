@@ -27,8 +27,8 @@
 #include "serverenvironment.h"
 #include "servermap.h"
 #include "settings.h"
-#include "network/socket.h"
-#include "network/networkexceptions.h"
+#include "netcode/socket.h"
+#include "netcode/networkexceptions.h"
 #include "mapblock.h"
 #if USE_CURSES
 	#include "terminal_chat_console.h"

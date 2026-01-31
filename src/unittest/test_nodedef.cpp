@@ -4,7 +4,7 @@
 
 #include "gamedef.h"
 #include "nodedef.h"
-#include "network/networkprotocol.h"
+#include "netcode/networkprotocol.h"
 
 #include <catch.h>
 
