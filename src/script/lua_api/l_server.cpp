@@ -13,7 +13,7 @@
 #include "filesys.h"
 #include "log.h"
 #include "lua_api/l_internal.h"
-#include "network/connection.h"
+#include "netcode/connection.h"
 #include "remoteplayer.h"
 #include "scripting_server.h"
 #include "server.h"

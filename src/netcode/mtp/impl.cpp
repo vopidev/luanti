@@ -4,13 +4,13 @@
 
 #include <algorithm>
 #include <cmath>
-#include "network/mtp/internal.h"
+#include "netcode/mtp/internal.h"
 #include "log.h"
 #include "porting.h"
-#include "network/mtp/threads.h"
-#include "network/peerhandler.h"
-#include "network/networkexceptions.h"
-#include "network/networkpacket.h"
+#include "netcode/mtp/threads.h"
+#include "netcode/peerhandler.h"
+#include "netcode/networkexceptions.h"
+#include "netcode/networkpacket.h"
 #include "util/serialize.h"
 #include "util/numeric.h"
 #include "util/string.h"

@@ -8,10 +8,10 @@
 #include "porting.h"
 #include "settings.h"
 #include "util/serialize.h"
-#include "network/peerhandler.h"
-#include "network/mtp/internal.h"
-#include "network/networkexceptions.h"
-#include "network/networkpacket.h"
+#include "netcode/peerhandler.h"
+#include "netcode/mtp/internal.h"
+#include "netcode/networkexceptions.h"
+#include "netcode/networkpacket.h"
 
 class TestConnection : public TestBase {
 public:

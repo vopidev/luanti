@@ -9,7 +9,7 @@
 #include "hud_element.h" // HudElementStat
 #include "gamedef.h"
 #include "content/subgames.h"
-#include "network/peerhandler.h"
+#include "netcode/peerhandler.h"
 #include "util/thread.h"
 #include "util/basic_macros.h"
 #include "util/metricsbackend.h"

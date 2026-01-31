@@ -3,12 +3,12 @@
 // Copyright (C) 2013-2017 celeron55, Perttu Ahola <celeron55@gmail.com>
 // Copyright (C) 2017 celeron55, Loic Blot <loic.blot@unix-experience.fr>
 
-#include "network/mtp/threads.h"
+#include "netcode/mtp/threads.h"
 #include "log.h"
 #include "profiler.h"
 #include "settings.h"
-#include "network/networkexceptions.h"
-#include "network/networkpacket.h"
+#include "netcode/networkexceptions.h"
+#include "netcode/networkpacket.h"
 #include "util/serialize.h"
 
 namespace con

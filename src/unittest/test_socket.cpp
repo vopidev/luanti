@@ -7,9 +7,9 @@
 #include "constants.h"
 #include "log.h"
 #include "settings.h"
-#include "network/address.h"
-#include "network/networkexceptions.h"
-#include "network/socket.h"
+#include "netcode/address.h"
+#include "netcode/networkexceptions.h"
+#include "netcode/socket.h"
 
 class TestSocket : public TestBase {
 public:

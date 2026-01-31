@@ -9,7 +9,7 @@
 #include "player.h"
 #include "skyparams.h"
 #include "lighting.h"
-#include "network/networkprotocol.h" // session_t
+#include "netcode/networkprotocol.h" // session_t
 
 class PlayerSAO;
 

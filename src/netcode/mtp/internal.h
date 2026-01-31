@@ -4,7 +4,7 @@
 
 #pragma once
 
-#include "network/mtp/impl.h"
+#include "netcode/mtp/impl.h"
 
 #include "util/numeric.h"
 
