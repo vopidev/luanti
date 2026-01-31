@@ -1,0 +1,23 @@
+#!/bin/bash
+
+# Pre-commit hook for Luanti submodule
+# Prevents committing files with applied VOPI Engine patches
+
+echo "🔍 Checking for applied patches..."
+
+# Check if there are any unstaged changes (patches)
+if ! git diff --quiet; then
+    echo "❌ ERROR: Luanti has applied patches!"
+    echo ""
+    echo "Before committing to luanti, revert patches:"
+    echo "  cd .."
+    echo "  ./scripts/revert_luanti_patches.sh"
+    echo "  cd luanti"
+    echo "  git add <files>"
+    echo "  git commit -m \"your message\""
+    echo ""
+    exit 1
+fi
+
+echo "✅ No patches detected, proceeding with commit..."
+exit 0
