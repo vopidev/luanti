@@ -376,7 +376,7 @@ void GUIEngine::run()
 		sound_volume_control(m_sound_manager.get(), device->isWindowActive());
 		m_sound_manager->step(dtime);
 
-#ifdef __ANDROID__
+#if defined(__ANDROID__) || defined(__IOS__)
 		m_menu->getAndroidUIInput();
 #endif
 	}

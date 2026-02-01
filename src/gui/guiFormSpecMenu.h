@@ -279,7 +279,7 @@ public:
 	// This will only return a meaningful value if called after drawMenu().
 	core::rect<s32> getAbsoluteRect();
 
-#ifdef __ANDROID__
+#if defined(__ANDROID__) || defined(__IOS__)
 	void getAndroidUIInput();
 #endif
 

@@ -242,7 +242,7 @@ protected:
 		return input->wasKeyReleased(k);
 	}
 
-#ifdef __ANDROID__
+#if defined(__ANDROID__) || defined(__IOS__)
 	void handleAndroidChatInput();
 #endif
 
@@ -381,7 +381,7 @@ private:
 
 	bool m_touch_simulate_aux1 = false;
 	bool isTouchShootlineUsed() const;
-#ifdef __ANDROID__
+#if defined(__ANDROID__) || defined(__IOS__)
 	bool m_android_chat_open;
 #endif
 

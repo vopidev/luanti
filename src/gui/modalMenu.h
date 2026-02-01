@@ -11,6 +11,9 @@
 #ifdef __ANDROID__
 	#include <porting_android.h>
 #endif
+#ifdef __IOS__
+	#include "porting_ios.h"
+#endif
 
 struct PointerAction {
 	v2s32 pos;
@@ -50,7 +53,7 @@ public:
 	virtual bool preprocessEvent(const SEvent &event);
 	virtual bool OnEvent(const SEvent &event) { return false; };
 	virtual bool pausesGame() { return false; } // Used for pause menu
-#ifdef __ANDROID__
+#if defined(__ANDROID__) || defined(__IOS__)
 	virtual void getAndroidUIInput() {};
 	porting::AndroidDialogState getAndroidUIInputState();
 #endif
@@ -67,7 +70,7 @@ protected:
 
 	v2u32 m_screensize_old;
 	float m_gui_scale;
-#ifdef __ANDROID__
+#if defined(__ANDROID__) || defined(__IOS__)
 	std::string m_jni_field_name;
 #endif
 
