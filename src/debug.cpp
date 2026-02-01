@@ -42,8 +42,15 @@ void sanity_check_fn(const char *assertion, const char *file,
 		<< std::this_thread::get_id() << ":\n" << std::dec;
 	errorstream << file << ":" << line << ": " << function
 		<< ": An engine assumption '" << assertion << "' failed." << std::endl;
-
+#if defined(__IOS__) //|| defined(__ANDROID__) CHECK_ANDROID
+	std::string capture = "An engine assumption failed: \"" + std::string(assertion) +
+		"\" in file: " + std::string(file) + ":" + std::to_string(line) +
+		" (" + std::string(function) + ")";
+	porting::finishGame(capture);
+	//std::terminate(); // Add this line to ensure the function doesn't return CHECK
+#else
 	abort();
+#endif
 }
 
 void fatal_error_fn(const char *msg, const char *file,
@@ -58,7 +65,15 @@ void fatal_error_fn(const char *msg, const char *file,
 	errorstream << file << ":" << line << ": " << function
 		<< ": A fatal error occurred: " << msg << std::endl;
 
+#if defined(__IOS__) //|| defined(__ANDROID__) CHECK_ANDROID
+	std::string capture = "A fatal error occurred: \"" + std::string(msg) +
+	"\" in file: " + std::string(file) + ":" + std::to_string(line) +
+	" (" + std::string(function) + ")";
+	porting::finishGame(capture);
+	//std::terminate(); // Add this line to ensure the function doesn't return
+#else
 	abort();
+#endif
 }
 
 std::string debug_describe_exc(const std::exception &e)

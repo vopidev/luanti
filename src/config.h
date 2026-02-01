@@ -3,7 +3,27 @@
 #if defined USE_CMAKE_CONFIG_H
 	#include "cmake_config.h" // IWYU pragma: export
 #else
+#ifdef __IOS__
+	/*
+	 * iOS Configuration
+	 * =================
+	 * Engine version (VERSION_MAJOR, VERSION_MINOR, VERSION_PATCH, ENGINE_REVISION)
+	 * is auto-generated from CMakeLists.txt via Run Script Phase.
+	 *
+	 * The generated header (config_ios_generated.h) is created before compilation
+	 * and contains all engine version macros.
+	 *
+	 * GAME_VERSION is (MARKETING_VERSION)
+	 *
+	 * To update engine revision: edit CMakeLists.txt and change ENGINE_REVISION
+	 */
+
+	// Auto-generated from CMakeLists.txt
+	// All configuration macros including VERSION_STRING are in this file
+	#include "config_ios_generated.h"
+#else
 	#warning Missing configuration
+#endif
 #endif
 
 /*
