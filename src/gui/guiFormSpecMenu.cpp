@@ -3389,7 +3389,7 @@ void GUIFormSpecMenu::legacySortElements(std::list<IGUIElement *>::iterator from
 	reorderChildren(from, to, elements);
 }
 
-#ifdef __ANDROID__
+#if defined(__ANDROID__) || defined(__IOS__)
 void GUIFormSpecMenu::getAndroidUIInput()
 {
 	porting::AndroidDialogState dialogState = getAndroidUIInputState();

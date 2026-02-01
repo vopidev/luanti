@@ -153,7 +153,7 @@ void GUIPasswordChange::drawMenu()
 	driver->draw2DRectangle(bgcolor, AbsoluteRect, &AbsoluteClippingRect);
 
 	gui::IGUIElement::draw();
-#ifdef __ANDROID__
+#if defined(__ANDROID__) || defined(__IOS__)
 	getAndroidUIInput();
 #endif
 }
@@ -249,7 +249,7 @@ std::string GUIPasswordChange::getNameByID(s32 id)
 	return "";
 }
 
-#ifdef __ANDROID__
+#if defined(__ANDROID__) || defined(__IOS__)
 void GUIPasswordChange::getAndroidUIInput()
 {
 	porting::AndroidDialogState dialogState = getAndroidUIInputState();
@@ -278,6 +278,5 @@ void GUIPasswordChange::getAndroidUIInput()
 
 	std::string text = porting::getInputDialogMessage();
 	e->setText(utf8_to_wide(text).c_str());
-	return;
 }
 #endif

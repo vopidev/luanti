@@ -1407,7 +1407,7 @@ void Game::processUserInput(f32 dtime)
 	// Input handler step() (used by the random input generator)
 	input->step(dtime);
 
-#ifdef __ANDROID__
+#if defined(__ANDROID__) || defined(__IOS__)
 	if (!m_game_formspec.handleAndroidUIInput())
 		handleAndroidChatInput();
 #endif
@@ -1435,7 +1435,7 @@ void Game::processKeyInput()
 	} else if (wasKeyDown(KeyType::INVENTORY)) {
 		m_game_formspec.showPlayerInventory(nullptr);
 	} else if (input->cancelPressed()) {
-#ifdef __ANDROID__
+#if defined(__ANDROID__) || defined(__IOS__)
 		m_android_chat_open = false;
 #endif
 		if (!gui_chat_console->isOpenInhibited()) {
@@ -1602,7 +1602,7 @@ void Game::openConsole(float scale, const wchar_t *line)
 {
 	assert(scale > 0.0f && scale <= 1.0f);
 
-#ifdef __ANDROID__
+#if defined(__ANDROID__) || defined(__IOS__)
 	if (!porting::hasPhysicalKeyboardAndroid()) {
 		porting::showTextInputDialog("", "", 2);
 		m_android_chat_open = true;
@@ -1615,12 +1615,12 @@ void Game::openConsole(float scale, const wchar_t *line)
 		gui_chat_console->setCloseOnEnter(true);
 		gui_chat_console->replaceAndAddToHistory(line);
 	}
-#ifdef __ANDROID__
+#if defined(__ANDROID__) || defined(__IOS__)
 	} // else
 #endif
 }
 
-#ifdef __ANDROID__
+#if defined(__ANDROID__) || defined(__IOS__)
 void Game::handleAndroidChatInput()
 {
 	// It has to be a text input

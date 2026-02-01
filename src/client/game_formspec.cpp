@@ -103,7 +103,7 @@ struct HardcodedPauseFormspecHandler : public TextDest
 
 		if (fields.find("btn_exit_os") != fields.end()) {
 			g_gamecallback->exitToOS();
-#ifndef __ANDROID__
+#if !defined(__ANDROID__) && !defined(__IOS__)
 			RenderingEngine::get_raw_device()->closeDevice();
 #endif
 			return;
@@ -397,7 +397,7 @@ void GameFormSpec::showPauseMenu()
 		// TRANSLATORS: Try to keep the translation short
 		<< strgettext("Settings") << "]";
 
-#ifndef __ANDROID__
+#if !defined(__ANDROID__) && !defined(__IOS__)
 #if USE_SOUND
 	os << "button[4," << (ypos++) << ";3,0.5;btn_sound;"
 		// TRANSLATORS: Pause menu button, try to keep the translation short
@@ -408,9 +408,11 @@ void GameFormSpec::showPauseMenu()
 	os		<< "button_exit[4," << (ypos++) << ";3,0.5;btn_exit_menu;"
 		// TRANSLATORS: Pause menu button, try to keep the translation short
 		<< strgettext("Exit to Menu") << "]";
+#if !defined(__IOS__)
 	os		<< "button_exit[4," << (ypos++) << ";3,0.5;btn_exit_os;"
 		// TRANSLATORS: Pause menu button, try to keep the translation short (OS = Operating System)
 		<< strgettext("Exit to OS")   << "]";
+#endif
 	if (!control_text.empty()) {
 	os		<< "textarea[7.5,0.25;3.9,6.25;;" << control_text << ";]";
 	}
@@ -568,7 +570,7 @@ bool GameFormSpec::handleCallbacks()
 	return true;
 }
 
-#ifdef __ANDROID__
+#if defined(__ANDROID__) || defined(__IOS__)
 bool GameFormSpec::handleAndroidUIInput()
 {
 	// FIXME: m_formspec and this value are not in sync at all times.

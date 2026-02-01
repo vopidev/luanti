@@ -43,7 +43,7 @@ public:
 	bool processInput();
 
 	bool OnEvent(const SEvent &event);
-#ifdef __ANDROID__
+#if defined(__ANDROID__) || defined(__IOS__)
 	void getAndroidUIInput();
 #endif
 
