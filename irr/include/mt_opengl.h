@@ -8,9 +8,6 @@
 #include "IContextManager.h"
 #include <KHR/khrplatform.h>
 
-#ifdef _IRR_IOS_PLATFORM_
-	#include <SDL.h>
-#endif
 
 #ifndef APIENTRY
 	#define APIENTRY KHRONOS_APIENTRY
@@ -786,20 +783,12 @@ private:
 
 public:
 	// Call this once after creating the context.
-#ifdef _IRR_IOS_PLATFORM_
-	void LoadAllProcedures(void);
-#else
 	void LoadAllProcedures(video::IContextManager *cmgr);
-#endif
 	/// Check if an extension is supported.
 	/// @param ext full extension name e.g. "GL_KHR_no_error"
 	inline bool IsExtensionPresent(const std::string &ext) const
 	{
-#ifdef _IRR_IOS_PLATFORM_
-		return SDL_GL_ExtensionSupported(ext.c_str()) == SDL_TRUE;
-#else
 		return extensions.count(ext) > 0;
-#endif
 	}
 
 	PFNGLCULLFACEPROC_MT CullFace = NULL;

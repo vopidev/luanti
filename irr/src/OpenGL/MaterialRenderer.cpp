@@ -121,7 +121,7 @@ void COpenGL3MaterialRenderer::init(s32 &outMaterialTypeNr,
 	if (!linkProgram())
 		return;
 
-#ifndef _IRR_IOS_PLATFORM_
+#ifdef GL_PROGRAM
 	if (debugName)
 		Driver->irrGlObjectLabel(GL_PROGRAM, Program, debugName);
 #endif

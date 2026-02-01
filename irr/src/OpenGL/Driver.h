@@ -307,6 +307,12 @@ protected:
 	void endDraw(const VertexType &vertexType);
 
 	COpenGL3CacheHandler *CacheHandler;
+
+	// The default screen framebuffer ID, cached at driver init.
+	// On most platforms this is 0, but on iOS it's a non-zero ID
+	// created by CAEAGLLayer.
+	GLuint m_defaultScreenFBO = 0;
+
 	core::stringc Name;
 	core::stringc VendorName;
 	SIrrlichtCreationParameters Params;

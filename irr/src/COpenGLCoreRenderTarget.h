@@ -7,7 +7,7 @@
 #include "IRenderTarget.h"
 #include <stdexcept>
 
-#ifndef GL_FRAMEBUFFER_INCOMPLETE_FORMATS
+#if !defined(GL_FRAMEBUFFER_INCOMPLETE_FORMATS) && defined(GL_FRAMEBUFFER_INCOMPLETE_FORMATS_EXT)
 #define GL_FRAMEBUFFER_INCOMPLETE_FORMATS GL_FRAMEBUFFER_INCOMPLETE_FORMATS_EXT
 #endif
 
@@ -342,7 +342,7 @@ protected:
 		switch (status) {
 		case GL_FRAMEBUFFER_COMPLETE:
 			return true;
-#ifndef _IRR_IOS_PLATFORM_
+#ifdef GL_FRAMEBUFFER_INCOMPLETE_READ_BUFFER
 		case GL_FRAMEBUFFER_INCOMPLETE_READ_BUFFER:
 			os::Printer::log("FBO has invalid read buffer", ELL_ERROR);
 			break;
@@ -353,7 +353,7 @@ protected:
 		case GL_FRAMEBUFFER_INCOMPLETE_ATTACHMENT:
 			os::Printer::log("FBO has one or several incomplete image attachments", ELL_ERROR);
 			break;
-#ifndef _IRR_IOS_PLATFORM_
+#ifdef GL_FRAMEBUFFER_INCOMPLETE_FORMATS
 		case GL_FRAMEBUFFER_INCOMPLETE_FORMATS:
 			os::Printer::log("FBO has one or several image attachments with different internal formats", ELL_ERROR);
 			break;

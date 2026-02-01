@@ -164,11 +164,16 @@ COpenGL3DriverBase::COpenGL3DriverBase(const SIrrlichtCreationParameters &params
 	ContextManager->generateContext();
 	ExposedData = ContextManager->getContext();
 	ContextManager->activateContext(ExposedData, false);
-#ifdef _IRR_IOS_PLATFORM_
-	GL.LoadAllProcedures();
-#else
 	GL.LoadAllProcedures(ContextManager);
-#endif
+
+	// Cache the default screen framebuffer ID.
+	// On most platforms this is 0, but on iOS the screen framebuffer
+	// is created by CAEAGLLayer and has a non-zero ID.
+	{
+		GLint fbo = 0;
+		GL.GetIntegerv(GL_FRAMEBUFFER_BINDING, &fbo);
+		m_defaultScreenFBO = static_cast<GLuint>(fbo);
+	}
 
 	TEST_GL_ERROR(this);
 }
@@ -1120,7 +1125,7 @@ bool COpenGL3DriverBase::testGLError(const char *file, int line)
 	case GL_INVALID_OPERATION:
 		err = "GL_INVALID_OPERATION";
 		break;
-#ifndef _IRR_IOS_PLATFORM_
+#ifdef GL_STACK_OVERFLOW
 	case GL_STACK_OVERFLOW:
 		err = "GL_STACK_OVERFLOW";
 		break;
@@ -1319,9 +1324,9 @@ void COpenGL3DriverBase::setBasicRenderStates(const SMaterial &material, const S
 				getGLBlend(srcAlphaFact), getGLBlend(dstAlphaFact));
 	}
 
-#ifndef _IRR_IOS_PLATFORM_
+#ifdef GL_FILL // not available in OpenGL ES
 	// fillmode
-	if (Version.Spec != OpenGLSpec::ES && // not supported in gles
+	if (Version.Spec != OpenGLSpec::ES &&
 			(resetAllRenderStates ||
 			lastmaterial.Wireframe != material.Wireframe ||
 			lastmaterial.PointCloud != material.PointCloud)) {
@@ -1742,7 +1747,7 @@ bool COpenGL3DriverBase::setRenderTargetEx(IRenderTarget *target, u16 clearFlag,
 
 		setViewPortRaw(destRenderTargetSize.Width, destRenderTargetSize.Height);
 	} else {
-		CacheHandler->setFBO(0);
+		CacheHandler->setFBO(m_defaultScreenFBO);
 
 		destRenderTargetSize = core::dimension2d<u32>(0, 0);
 
