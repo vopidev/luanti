@@ -64,10 +64,15 @@ void COpenGLES2Driver::initFeatures()
 		// NOTE a recent (2024) revision of EXT_texture_format_BGRA8888 also
 		// adds a sized format GL_BGRA8_EXT. Because we can't rely on that we
 		// have stupid workarounds in place on texture creation...
-		// In ES 3.0+, the internal format must be a sized format (GL_RGBA8),
-		// not GL_BGRA. The pixel format can still be GL_BGRA for upload.
 		if (FeatureAvailable[IRR_GL_EXT_texture_format_BGRA8888] || FeatureAvailable[IRR_GL_APPLE_texture_format_BGRA8888])
+			TextureFormats[ECF_A8R8G8B8] = {GL_BGRA, GL_BGRA, GL_UNSIGNED_BYTE};
+#ifdef _IRR_IOS_PLATFORM_
+		// APPLE_texture_format_BGRA8888 allows GL_RGBA8 as internal format
+		// with GL_BGRA pixel format. In ES 3.0+ the internal format must be
+		// sized, and GL_BGRA as internal format causes issues on iOS.
+		if (FeatureAvailable[IRR_GL_APPLE_texture_format_BGRA8888])
 			TextureFormats[ECF_A8R8G8B8] = {GL_RGBA8, GL_BGRA, GL_UNSIGNED_BYTE};
+#endif
 
 		// OpenGL ES 3 doesn't include a GL_DEPTH_COMPONENT32, so still use
 		// OES_depth_texture for 32-bit depth texture support.

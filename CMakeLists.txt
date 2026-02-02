@@ -33,6 +33,14 @@ set(VERSION_EXTRA "" CACHE STRING "Stuff to append to version string")
 # ENGINE REVISION: VOPI Engine modifications revision (ve1, ve2, ve3...)
 set(ENGINE_REVISION "ve1" CACHE STRING "VOPI Engine revision")
 
+# GAME_VERSION: Application version (passed from Gradle for Android, Xcode for iOS)
+# This is the marketing version displayed to users
+set(GAME_VERSION "" CACHE STRING "Game/application version string")
+if(GAME_VERSION)
+    add_definitions(-DGAME_VERSION="${GAME_VERSION}")
+    message(STATUS "GAME_VERSION: ${GAME_VERSION}")
+endif()
+
 # Change to false for releases
 set(DEVELOPMENT_BUILD FALSE)
 
