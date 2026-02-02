@@ -16,7 +16,7 @@
 #ifdef __IOS__
 #include "default_ios_settings.h"
 #endif
-#ifdef __ANDROID__
+#if defined(__ANDROID__) && VOPI_ANDROID_PROJECT
 #include "default_android_settings.h"
 #endif
 
@@ -612,7 +612,7 @@ void set_default_settings()
 #ifdef __IOS__
 	vopi::set_ios_settings(settings);
 #endif
-#ifdef __ANDROID__
+#if defined(__ANDROID__) && VOPI_ANDROID_PROJECT
 	vopi::set_android_settings(settings);
 #endif
 }

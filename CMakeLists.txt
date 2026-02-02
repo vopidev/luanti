@@ -46,7 +46,7 @@ set(DEVELOPMENT_BUILD FALSE)
 
 set(VERSION_STRING "${VERSION_MAJOR}.${VERSION_MINOR}.${VERSION_PATCH}")
 if(IS_VOPI_ENGINE)
-	# VOPI Engine: append engine revision (5.14.0-ve1)
+	# VOPI Engine: append engine revision
 	set(VERSION_STRING "${VERSION_STRING}-${ENGINE_REVISION}")
 endif()
 if(VERSION_EXTRA)

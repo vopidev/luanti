@@ -492,6 +492,7 @@ set(common_SRCS
 if(ANDROID)
 	list(APPEND common_SRCS porting_android.cpp)
 	if(VOPI_ANDROID_PROJECT)
+		add_definitions(-DVOPI_ANDROID_PROJECT=1)
 		# Add include path for auto-generated headers and VOPI Engine sources
 		include_directories(BEFORE ${CMAKE_SOURCE_DIR}/../src)
 		# Add Android-specific settings
