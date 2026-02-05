@@ -127,6 +127,36 @@ void Camera::notifyFovChange()
 	}
 }
 
+#if IS_VOPI_ENGINE
+void Camera::notifyViewBobbingChange()
+{
+	LocalPlayer *player = m_client->getEnv().getLocalPlayer();
+	assert(player);
+
+	PlayerViewBobbingSpec spec = player->getViewBobbing();
+
+	// Remember old view bobbing amount in case a transition is wanted
+	m_old_view_bobbing_amount = m_view_bobbing_transition_active
+		? m_curr_view_bobbing_amount // View bobbing is overridden with transition
+		: m_server_sent_view_bobbing
+			? m_target_view_bobbing_amount // View bobbing is overridden without transition
+			: m_cache_view_bobbing_amount; // View bobbing is not overridden
+
+	m_server_sent_view_bobbing = spec.amount > 0.0f;
+	m_target_view_bobbing_amount = m_server_sent_view_bobbing
+		? spec.is_multiplier
+			? m_cache_view_bobbing_amount * spec.amount // apply multiplier to client-set view bobbing
+			: spec.amount // absolute override
+		: m_cache_view_bobbing_amount; // reset to client-set view bobbing
+
+	m_view_bobbing_transition_active = spec.transition_time > 0.0f;
+	if (m_view_bobbing_transition_active) {
+		m_view_bobbing_transition_time = spec.transition_time;
+		m_view_bobbing_diff = m_target_view_bobbing_amount - m_old_view_bobbing_amount;
+	}
+}
+#endif
+
 // Returns the fractional part of x
 inline f32 my_modf(f32 x)
 {
@@ -148,7 +178,19 @@ void Camera::step(f32 dtime)
 	if (m_view_bobbing_state != 0)
 	{
 		//f32 offset = dtime * m_view_bobbing_speed * 0.035;
+#if IS_VOPI_ENGINE
+		LocalPlayer *player = m_client->getEnv().getLocalPlayer();
+		f32 bobbing_multiplier = 0.030;
+
+		// Check if player is sneaking/crouching
+		if (player && player->getPlayerControl().sneak) {
+			bobbing_multiplier = 0.075; // Slower bobbing when crouching
+		}
+
+		f32 offset = dtime * m_view_bobbing_speed * bobbing_multiplier;
+#else
 		f32 offset = dtime * m_view_bobbing_speed * 0.030;
+#endif
 		if (m_view_bobbing_state == 2) {
 			// Animation is getting turned off
 			if (m_view_bobbing_anim < 0.25) {
@@ -385,7 +427,11 @@ void Camera::update(LocalPlayer* player, f32 frametime, f32 tool_reload_ratio)
 	v3f rel_cam_target = v3f(0,0,1);
 	v3f rel_cam_up = v3f(0,1,0);
 
+#if IS_VOPI_ENGINE
+	if (m_curr_view_bobbing_amount != 0.0f && m_view_bobbing_anim != 0.0f &&
+#else
 	if (m_cache_view_bobbing_amount != 0.0f && m_view_bobbing_anim != 0.0f &&
+#endif
 		m_camera_mode < CAMERA_MODE_THIRD) {
 		f32 bobfrac = my_modf(m_view_bobbing_anim * 2);
 		f32 bobdir = (m_view_bobbing_anim < 0.5) ? 1.0 : -1.0;
@@ -398,9 +444,15 @@ void Camera::update(LocalPlayer* player, f32 frametime, f32 tool_reload_ratio)
 			-0.28 * bobtmp * bobtmp,
 			0.);
 
+#if IS_VOPI_ENGINE
+		rel_cam_pos += bobvec * m_curr_view_bobbing_amount;
+		rel_cam_target += bobvec * m_curr_view_bobbing_amount;
+		rel_cam_up.rotateXYBy(-0.03 * bobdir * bobtmp * M_PI * m_curr_view_bobbing_amount);
+#else
 		rel_cam_pos += bobvec * m_cache_view_bobbing_amount;
 		rel_cam_target += bobvec * m_cache_view_bobbing_amount;
 		rel_cam_up.rotateXYBy(-0.03 * bobdir * bobtmp * M_PI * m_cache_view_bobbing_amount);
+#endif
 	}
 
 	// Compute absolute camera position and target
@@ -489,6 +541,33 @@ void Camera::update(LocalPlayer* player, f32 frametime, f32 tool_reload_ratio)
 		m_curr_fov_degrees = m_cache_fov;
 	}
 	m_curr_fov_degrees = rangelim(m_curr_fov_degrees, 1.0f, 160.0f);
+		
+#if IS_VOPI_ENGINE
+	/*
+	 * Apply server-sent view bobbing amount, instantaneous or smooth transition.
+	 * Otherwise, default to m_cache_view_bobbing_amount.
+	 */
+	if (m_view_bobbing_transition_active) {
+		// Smooth view bobbing transition
+		// Dynamically calculate view bobbing delta based on frametimes
+		f32 delta = (frametime / m_view_bobbing_transition_time) * m_view_bobbing_diff;
+		m_curr_view_bobbing_amount += delta;
+
+		// Mark transition as complete if target view bobbing has been reached
+		if ((m_view_bobbing_diff > 0.0f && m_curr_view_bobbing_amount >= m_target_view_bobbing_amount) ||
+				(m_view_bobbing_diff < 0.0f && m_curr_view_bobbing_amount <= m_target_view_bobbing_amount)) {
+			m_view_bobbing_transition_active = false;
+			m_curr_view_bobbing_amount = m_target_view_bobbing_amount;
+		}
+	} else if (m_server_sent_view_bobbing) {
+		// Instantaneous view bobbing change
+		m_curr_view_bobbing_amount = m_target_view_bobbing_amount;
+	} else {
+		// Set to client's selected view bobbing amount
+		m_curr_view_bobbing_amount = m_cache_view_bobbing_amount;
+	}
+	m_curr_view_bobbing_amount = rangelim(m_curr_view_bobbing_amount, 0.0f, 7.9f);
+#endif
 
 	// FOV and aspect ratio
 	const v2u32 &window_size = RenderingEngine::getWindowSize();

@@ -213,4 +213,7 @@ const ClientCommandFactory clientCommandFactoryTable[TOCLIENT_NUM_MSG_TYPES] =
 	{ "TOCLIENT_MINIMAP_MODES",            0, true }, // 0x62
 	{ "TOCLIENT_SET_LIGHTING",             0, true }, // 0x63
 	{ "TOCLIENT_SPAWN_PARTICLE_BATCH",     0, true }, // 0x64
+#if IS_VOPI_ENGINE
+	{ "TOCLIENT_VIEW_BOBBING",             0, true }, // 0x65
+#endif
 };
