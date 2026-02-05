@@ -611,11 +611,17 @@ void LocalPlayer::applyControl(float dtime, Environment *env)
 				else
 					speedV.Y = -speed_walk;
 			} else if ((in_liquid || in_liquid_stable) && !m_disable_descend) {
+#if IS_VOPI_ENGINE
+				if (!physics_override.disable_swim_down) {
+#endif
 				if (fast_climb)
 					speedV.Y = -speed_fast;
 				else
 					speedV.Y = -speed_walk;
 				swimming_vertical = true;
+#if IS_VOPI_ENGINE
+				}
+#endif
 			} else if (is_climbing && !m_disable_descend) {
 				if (fast_climb)
 					speedV.Y = -speed_fast;
@@ -651,7 +657,12 @@ void LocalPlayer::applyControl(float dtime, Environment *env)
 						speedV.Y = speed_walk;
 				}
 			}
+#if IS_VOPI_ENGINE
+		// VOPI: Don't allow ground jump in liquid when swim_up is disabled
+		} else if (m_can_jump && !(in_liquid && physics_override.disable_swim_up)) {
+#else
 		} else if (m_can_jump) {
+#endif
 			/*
 				NOTE: The d value in move() affects jump height by
 				raising the height at which the jump speed is kept
@@ -664,11 +675,17 @@ void LocalPlayer::applyControl(float dtime, Environment *env)
 				m_client->getEventManager()->put(new SimpleTriggerEvent(MtEvent::PLAYER_JUMP));
 			}
 		} else if (in_liquid && !m_disable_jump && !control.sneak) {
+#if IS_VOPI_ENGINE
+			if (!physics_override.disable_swim_up) {
+#endif
 			if (fast_climb)
 				speedV.Y = speed_fast;
 			else
 				speedV.Y = speed_walk;
 			swimming_vertical = true;
+#if IS_VOPI_ENGINE
+			}
+#endif
 		} else if (is_climbing && !m_disable_jump && !control.sneak) {
 			if (fast_climb)
 				speedV.Y = speed_fast;
