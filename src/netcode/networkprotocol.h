@@ -709,7 +709,20 @@ enum ToClientCommand : u16
 			u8[len] serialized ParticleParameters
 	*/
 
+#if IS_VOPI_ENGINE
+	TOCLIENT_VIEW_BOBBING = 0x65,
+	/*
+		Sends a view bobbing override/multiplier to client.
+
+		f32 amount
+		bool is_multiplier
+		f32 transition_time
+	*/
+
+	TOCLIENT_NUM_MSG_TYPES = 0x66,
+#else
 	TOCLIENT_NUM_MSG_TYPES = 0x65,
+#endif
 };
 
 enum ToServerCommand : u16

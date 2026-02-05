@@ -421,6 +421,9 @@ public:
 	void SendMovePlayerRel(session_t peer_id, const v3f &added_pos);
 	void SendPlayerSpeed(session_t peer_id, const v3f &added_vel);
 	void SendPlayerFov(session_t peer_id);
+#if IS_VOPI_ENGINE
+	void SendPlayerViewBobbing(session_t peer_id);
+#endif
 	void SendCamera(session_t peer_id, Player *player);
 
 	void SendMinimapModes(session_t peer_id,

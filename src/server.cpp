@@ -2126,6 +2126,22 @@ void Server::SendPlayerFov(session_t peer_id)
 	Send(&pkt);
 }
 
+#if IS_VOPI_ENGINE
+void Server::SendPlayerViewBobbing(session_t peer_id)
+{
+	RemotePlayer *player = m_env->getPlayer(peer_id);
+	if (!player)
+		return;
+
+	NetworkPacket pkt(TOCLIENT_VIEW_BOBBING, 4 + 1 + 4, peer_id);
+
+	PlayerViewBobbingSpec bobbing_spec = player->getViewBobbing();
+	pkt << bobbing_spec.amount << bobbing_spec.is_multiplier << bobbing_spec.transition_time;
+
+	Send(&pkt);
+}
+#endif
+
 void Server::SendLocalPlayerAnimations(session_t peer_id, v2f animation_frames[4],
 		f32 animation_speed)
 {

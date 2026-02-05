@@ -39,6 +39,28 @@ struct PlayerFovSpec
 	}
 };
 
+#if IS_VOPI_ENGINE
+struct PlayerViewBobbingSpec
+{
+	f32 amount;
+
+	// Whether to multiply the client's view bobbing amount or to override it
+	bool is_multiplier;
+
+	// The time to be take to transition to the new view bobbing value.
+	// Transition is instantaneous if omitted. Omitted by default.
+	f32 transition_time = 0;
+
+	inline bool operator==(const PlayerViewBobbingSpec &other) const {
+		return amount == other.amount && is_multiplier == other.is_multiplier &&
+			transition_time == other.transition_time;
+	}
+	inline bool operator!=(const PlayerViewBobbingSpec &other) const {
+		return !(*this == other);
+	}
+};
+#endif
+
 struct PlayerControl
 {
 	PlayerControl() = default;
@@ -226,6 +248,21 @@ public:
 	{
 		return m_fov_override_spec;
 	}
+	
+#if IS_VOPI_ENGINE
+	bool setViewBobbing(const PlayerViewBobbingSpec &spec)
+	{
+		if (m_view_bobbing_override_spec == spec)
+			return false;
+		m_view_bobbing_override_spec = spec;
+		return true;
+	}
+
+	const PlayerViewBobbingSpec &getViewBobbing() const
+	{
+		return m_view_bobbing_override_spec;
+	}
+#endif
 
 	const auto &getHudElements() const { return hud; }
 	HudElement* getHud(u32 id);
@@ -244,6 +281,9 @@ protected:
 	v3f m_speed; // velocity; in BS-space
 	u16 m_wield_index = 0;
 	PlayerFovSpec m_fov_override_spec = { 0.0f, false, 0.0f };
+#if IS_VOPI_ENGINE
+	PlayerViewBobbingSpec m_view_bobbing_override_spec = { 0.0f, false, 0.0f };
+#endif
 
 private:
 	std::vector<HudElement *> hud;

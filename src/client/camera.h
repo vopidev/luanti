@@ -133,6 +133,11 @@ public:
 
 	// Notify about new server-sent FOV and initialize smooth FOV transition
 	void notifyFovChange();
+	
+#if IS_VOPI_ENGINE
+	// Notify about new server-sent view bobbing settings
+	void notifyViewBobbingChange();
+#endif
 
 	// Step the camera: updates the viewing range and view bobbing.
 	void step(f32 dtime);
@@ -256,6 +261,19 @@ private:
 
 	f32 m_cache_view_bobbing_amount;
 	bool m_arm_inertia;
+	
+#if IS_VOPI_ENGINE
+	// Server-sent view bobbing override
+	bool m_server_sent_view_bobbing = false;
+	f32 m_target_view_bobbing_amount = 0.0f;
+	f32 m_curr_view_bobbing_amount = 0.0f;
+	f32 m_old_view_bobbing_amount = 0.0f;
+	
+	// View bobbing transition
+	bool m_view_bobbing_transition_active = false;
+	f32 m_view_bobbing_transition_time = 0.0f;
+	f32 m_view_bobbing_diff = 0.0f;
+#endif
 
 	std::vector<Nametag*> m_nametags;
 	bool m_show_nametag_backgrounds;
