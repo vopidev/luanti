@@ -7,6 +7,9 @@
 
 #include "irrlichttypes.h"
 #include <IGUIEnvironment.h>
+#if IS_VOPI_ENGINE
+#include <IGUIImage.h>
+#endif
 #include "game.h"
 
 
@@ -88,17 +91,78 @@ private:
 	gui::IGUIStaticText *m_guitext = nullptr;  // First line of debug text
 	gui::IGUIStaticText *m_guitext2 = nullptr; // Second line of debug text
 
+#if IS_VOPI_ENGINE && (defined(__ANDROID__) || defined(__IOS__))
+	gui::IGUIStaticText *m_guitext3 = nullptr; // Third line of debug text
+	gui::IGUIStaticText *m_guitext4 = nullptr; // Fourth line of debug text
+#endif
+
 	gui::IGUIStaticText *m_guitext_info = nullptr; // At the middle of the screen
 	std::wstring m_infotext;
+
+#if IS_VOPI_ENGINE
+	f32 round_screen = 0;
+	s32 button_size = 0;
+
+	s32 m_info_text_margin_right;
+	s32 m_info_text_margin_top;
+
+	// Info text background
+	gui::IGUIImage *m_guiimage_info_up_left = nullptr;
+	gui::IGUIImage *m_guiimage_info_up = nullptr;
+	gui::IGUIImage *m_guiimage_info_up_right = nullptr;
+
+	gui::IGUIImage *m_guiimage_info_left = nullptr;
+	gui::IGUIImage *m_guiimage_info_center = nullptr;
+	gui::IGUIImage *m_guiimage_info_right = nullptr;
+
+	gui::IGUIImage *m_guiimage_info_down_left = nullptr;
+	gui::IGUIImage *m_guiimage_info_down = nullptr;
+	gui::IGUIImage *m_guiimage_info_down_right = nullptr;
+#endif
 
 	gui::IGUIStaticText *m_guitext_status = nullptr;
 	std::wstring m_statustext;
 	float m_statustext_time = 0.0f;
 	video::SColor m_statustext_initial_color;
 
+#if IS_VOPI_ENGINE
+	// Status text background
+	gui::IGUIImage *m_guiimage_status_up_left = nullptr;
+	gui::IGUIImage *m_guiimage_status_up = nullptr;
+	gui::IGUIImage *m_guiimage_status_up_right = nullptr;
+
+	gui::IGUIImage *m_guiimage_status_left = nullptr;
+	gui::IGUIImage *m_guiimage_status_center = nullptr;
+	gui::IGUIImage *m_guiimage_status_right = nullptr;
+
+	gui::IGUIImage *m_guiimage_status_down_left = nullptr;
+	gui::IGUIImage *m_guiimage_status_down = nullptr;
+	gui::IGUIImage *m_guiimage_status_down_right = nullptr;
+
+	bool m_show_status_background = true;
+	f32 m_status_text_bottom_offset = 0.25f;
+#endif
+
 	gui::IGUIStaticText *m_guitext_chat = nullptr; // Chat text
 	u32 m_recent_chat_count = 0;
 	core::rect<s32> m_current_chat_size{0, 0, 0, 0};
+
+#if IS_VOPI_ENGINE
+	// Chat text background
+	gui::IGUIImage *m_guiimage_chat_up_left = nullptr;
+	gui::IGUIImage *m_guiimage_chat_up = nullptr;
+	gui::IGUIImage *m_guiimage_chat_up_right = nullptr;
+
+	gui::IGUIImage *m_guiimage_chat_left = nullptr;
+	gui::IGUIImage *m_guiimage_chat_center = nullptr;
+	gui::IGUIImage *m_guiimage_chat_right = nullptr;
+
+	gui::IGUIImage *m_guiimage_chat_down_left = nullptr;
+	gui::IGUIImage *m_guiimage_chat_down = nullptr;
+	gui::IGUIImage *m_guiimage_chat_down_right = nullptr;
+
+	bool m_show_chat_background = true;
+#endif
 
 	gui::IGUIStaticText *m_guitext_profiler = nullptr; // Profiler text
 	u8 m_profiler_current_page = 0;

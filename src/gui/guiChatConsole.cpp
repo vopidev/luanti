@@ -66,7 +66,14 @@ GUIChatConsole::GUIChatConsole(
 		m_background_color.setBlue(clamp_u8(myround(console_color.Z)));
 	}
 
+#if IS_VOPI_ENGINE
+	const f32 chat_font_scale = g_settings->getFloat("chat_font_scale");
+	const u16 base_font_size = g_fontengine->getDefaultFontSize();
+	// Calculate the new font size and round it to the nearest integer
+	const u16 chat_font_size = std::round(base_font_size * chat_font_scale);
+#else
 	const u16 chat_font_size = g_settings->getU16("chat_font_size");
+#endif
 	m_font.grab(g_fontengine->getFont(chat_font_size != 0 ?
 		rangelim(chat_font_size, 5, 72) : FONT_SIZE_UNSPECIFIED, FM_Mono));
 

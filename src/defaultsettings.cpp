@@ -574,7 +574,22 @@ void set_default_settings()
 	settings->setDefault("mute_ui_sound", "false");
 
 	// HUD settings
-	settings->setDefault("hud_hotbar_padding", "5");
+	settings->setDefault("hud_hotbar_bottom_margin", "5");
+	settings->setDefault("round_screen", "0");
+
+	// Icon padding
+	settings->setDefault("mesh_icon_padding_percent", "0.0");
+	settings->setDefault("image_icon_padding_percent", "0.0");
+
+	// Text appearance
+	settings->setDefault("chat_font_scale", "1.0");
+	settings->setDefault("info_font_scale", "1.0");
+	settings->setDefault("status_font_scale", "1.0");
+	settings->setDefault("status_text_bottom_offset", "0.3");
+
+	// Text backgrounds
+	settings->setDefault("show_chat_background", "true");
+	settings->setDefault("show_status_background", "true");
 
 	// Chat behavior
 	settings->setDefault("chat_message_max_age", "60.0");
