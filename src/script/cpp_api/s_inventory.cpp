@@ -79,13 +79,27 @@ int ScriptApiDetached::detached_inventory_AllowTake(
 	if (!getDetachedInventoryCallback(ma.from_inv.name, "allow_take"))
 		return stack.count; // All will be accepted
 
+#if IS_VOPI_ENGINE
+	// VOPI: Call function(inv, listname, index, stack, player, to_inv, to_list, to_index)
+	// Extended signature with destination info for better control in Lua callbacks
+	InvRef::create(L, ma.from_inv);          // inv
+	lua_pushstring(L, ma.from_list.c_str()); // listname
+	lua_pushinteger(L, ma.from_i + 1);       // index
+	LuaItemStack::create(L, stack);          // stack
+	objectrefGetOrCreate(L, player);         // player
+	InvRef::create(L, ma.to_inv);            // to_inv
+	lua_pushstring(L, ma.to_list.c_str());   // to_list
+	lua_pushinteger(L, ma.to_i + 1);         // to_index (1-based for Lua)
+	PCALL_RES(lua_pcall(L, 8, 1, error_handler));
+#else
 	// Call function(inv, listname, index, stack, player)
 	InvRef::create(L, ma.from_inv);          // inv
 	lua_pushstring(L, ma.from_list.c_str()); // listname
 	lua_pushinteger(L, ma.from_i + 1);       // index
-	LuaItemStack::create(L, stack);      // stack
-	objectrefGetOrCreate(L, player);     // player
+	LuaItemStack::create(L, stack);          // stack
+	objectrefGetOrCreate(L, player);         // player
 	PCALL_RES(lua_pcall(L, 5, 1, error_handler));
+#endif
 	if (!lua_isnumber(L, -1))
 		throw LuaError("allow_take should return a number. name=" + ma.from_inv.name);
 	int ret = luaL_checkinteger(L, -1);
@@ -156,6 +170,19 @@ void ScriptApiDetached::detached_inventory_OnTake(
 	if (!getDetachedInventoryCallback(ma.from_inv.name, "on_take"))
 		return;
 
+#if IS_VOPI_ENGINE
+	// VOPI: Call function(inv, listname, index, stack, player, to_inv, to_list, to_index)
+	// Extended signature with destination info for placing items in correct slot
+	InvRef::create(L, ma.from_inv);          // inv
+	lua_pushstring(L, ma.from_list.c_str()); // listname
+	lua_pushinteger(L, ma.from_i + 1);       // index
+	LuaItemStack::create(L, stack);          // stack
+	objectrefGetOrCreate(L, player);         // player
+	InvRef::create(L, ma.to_inv);            // to_inv
+	lua_pushstring(L, ma.to_list.c_str());   // to_list
+	lua_pushinteger(L, ma.to_i + 1);         // to_index (1-based for Lua)
+	PCALL_RES(lua_pcall(L, 8, 0, error_handler));
+#else
 	// Call function(inv, listname, index, stack, player)
 	// inv
 	InvRef::create(L, ma.from_inv);
@@ -164,6 +191,7 @@ void ScriptApiDetached::detached_inventory_OnTake(
 	LuaItemStack::create(L, stack);          // stack
 	objectrefGetOrCreate(L, player);         // player
 	PCALL_RES(lua_pcall(L, 5, 0, error_handler));
+#endif
 	lua_pop(L, 1);  // Pop error handler
 }
 

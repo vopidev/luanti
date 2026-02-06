@@ -4884,10 +4884,21 @@ bool GUIFormSpecMenu::OnEvent(const SEvent& event)
 			// Only move if the items are exactly the same,
 			// we shouldn't attempt to pickup different items
 			if (matching) {
-				// Check how many items can be moved
-				pickup_amount = stack_from.count = MYMIN(pickup_amount, stack_from.count);
-				ItemStack leftover = stack_to.addItem(stack_from, m_client->idef());
-				pickup_amount -= leftover.count;
+#if IS_VOPI_ENGINE
+				// VOPI: Don't allow pickup from detached inventories (like phone)
+				// This prevents exploit where player holds item and clicks on same
+				// item in phone tab to get free items
+				if (s.inventoryloc.type == InventoryLocation::DETACHED) {
+					pickup_amount = 0;
+				} else {
+#endif
+					// Check how many items can be moved
+					pickup_amount = stack_from.count = MYMIN(pickup_amount, stack_from.count);
+					ItemStack leftover = stack_to.addItem(stack_from, m_client->idef());
+					pickup_amount -= leftover.count;
+#if IS_VOPI_ENGINE
+				}
+#endif
 			} else {
 				pickup_amount = 0;
 			}
