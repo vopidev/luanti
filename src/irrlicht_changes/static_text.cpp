@@ -27,6 +27,9 @@ StaticText::StaticText(const EnrichedString &text, bool border,
 	RestrainTextInside(true), RightToLeft(false),
 	OverrideFont(0), LastBreakFont(0)
 {
+#if IS_VOPI_ENGINE
+	AutoCenterMultiline = false;
+#endif
 	setText(text);
 }
 
@@ -72,7 +75,33 @@ void StaticText::draw()
 
 		core::rect<s32> r = frameRect;
 		s32 height_line = font->getDimension(L"A").Height + font->getKerning(L'A').Y;
+
+#if IS_VOPI_ENGINE
+		// VOPI_ENGINE: Check if we should apply multi-line auto-centering
+		bool is_multiline = BrokenText.size() >= 2;
+		bool apply_auto_center = AutoCenterMultiline && is_multiline && WordWrap;
+
+		// VOPI_ENGINE: Reduce line spacing by 15% for multi-line auto-centered labels
+		s32 height_line_spacing = height_line;
+		if (apply_auto_center) {
+			height_line_spacing = height_line * 85 / 100;
+		}
+
+		s32 height_total = height_line_spacing * BrokenText.size();
+
+		// VOPI_ENGINE: Auto-center multi-line labels vertically
+		// Center around the position where a single line's center would be
+		if (apply_auto_center)
+		{
+			// Calculate where the center of a single line would be (at UPPERLEFT alignment)
+			s32 single_line_center_y = frameRect.UpperLeftCorner.Y + height_line / 2;
+			// Center the multi-line text around that point
+			r.UpperLeftCorner.Y = single_line_center_y - (height_total / 2);
+		}
+		else
+#else
 		s32 height_total = height_line * BrokenText.size();
+#endif
 		if (VAlign == EGUIA_CENTER && WordWrap)
 		{
 			r.UpperLeftCorner.Y = r.getCenter().Y - (height_total / 2);
@@ -87,6 +116,12 @@ void StaticText::draw()
 				getTextWidth();
 		}
 
+#if IS_VOPI_ENGINE
+		// VOPI_ENGINE: Determine clipping rect
+		// Disable vertical clipping for auto-centered multi-line labels to prevent top/bottom cutoff
+		const core::rect<s32>* clip_rect = (RestrainTextInside && !apply_auto_center) ? &AbsoluteClippingRect : NULL;
+#endif
+
 		for (const EnrichedString &str : BrokenText) {
 			if (HAlign == EGUIA_LOWERRIGHT)
 			{
@@ -98,19 +133,33 @@ void StaticText::draw()
 				CGUITTFont *tmp = static_cast<CGUITTFont*>(font);
 				tmp->draw(str,
 					r, HAlign == EGUIA_CENTER, VAlign == EGUIA_CENTER,
+#if IS_VOPI_ENGINE
+					clip_rect);
+#else
 					(RestrainTextInside ? &AbsoluteClippingRect : NULL));
+#endif
 			} else
 			{
 				// Draw non-colored text
 				font->draw(str.c_str(),
 					r, str.getDefaultColor(), // TODO: Implement colorization
 					HAlign == EGUIA_CENTER, VAlign == EGUIA_CENTER,
+#if IS_VOPI_ENGINE
+					clip_rect);
+#else
 					(RestrainTextInside ? &AbsoluteClippingRect : NULL));
+#endif
 			}
 
 
+#if IS_VOPI_ENGINE
+			// VOPI_ENGINE: Use reduced line spacing for multi-line auto-centered labels
+			r.LowerRightCorner.Y += height_line_spacing;
+			r.UpperLeftCorner.Y += height_line_spacing;
+#else
 			r.LowerRightCorner.Y += height_line;
 			r.UpperLeftCorner.Y += height_line;
+#endif
 		}
 	}
 
@@ -262,6 +311,15 @@ bool StaticText::isWordWrapEnabled() const
 {
 	return WordWrap;
 }
+
+
+#if IS_VOPI_ENGINE
+// VOPI_ENGINE: Enable auto-centering and reduced line spacing for multi-line text
+void StaticText::setAutoCenterMultiline(bool enable)
+{
+	AutoCenterMultiline = enable;
+}
+#endif
 
 
 void StaticText::setRightToLeft(bool rtl)

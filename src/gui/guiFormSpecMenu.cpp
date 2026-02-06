@@ -1766,13 +1766,32 @@ void GUIFormSpecMenu::parseHyperText(parserData *data, const std::string &elemen
 void GUIFormSpecMenu::parseLabel(parserData* data, const std::string &element)
 {
 	std::vector<std::string> parts;
+#if IS_VOPI_ENGINE
+	// For IS_VOPI_ENGINE: support multiple formats:
+	// - label[x,y;text]
+	// - label[x,y;text;alignment]
+	// - label[x,y;w,h;text]
+	// - label[x,y;w,h;text;alignment]
+	if (!precheckElement("label", element, 2, 4, parts))
+#else
+	// Original logic: [pos], [size], [text] or [pos], [text]
 	if (!precheckElement("label", element, 2, data->real_coordinates ? 3 : 2, parts))
+#endif
 		return;
 
 	std::vector<std::string> v_pos = split(parts[0], ',');
 	MY_CHECKPOS("label", 0);
 
-	bool has_size = parts.size() >= 3;
+	bool has_size = false;
+#if IS_VOPI_ENGINE
+	// Check if parts[1] contains a comma - if so, it's size
+	if (parts.size() >= 3 && parts[1].find(',') != std::string::npos) {
+		has_size = true;
+	}
+#else
+	// Original logic
+	has_size = parts.size() >= 3;
+#endif
 	v2s32 geom;
 	if (has_size) {
 		std::vector<std::string> v_geom = split(parts[1], ',');
@@ -1783,11 +1802,59 @@ void GUIFormSpecMenu::parseLabel(parserData* data, const std::string &element)
 	if(!data->explicit_size)
 		warningstream << "invalid use of label without a size[] element" << std::endl;
 
+#if IS_VOPI_ENGINE
+	// Determine alignment based on has_size
+	std::string align = "left";
+	if (has_size) {
+		// Format: label[x,y;w,h;text] or label[x,y;w,h;text;alignment]
+		if (parts.size() > 3) {
+			align = parts[3];
+		}
+	} else {
+		// Format: label[x,y;text] or label[x,y;text;alignment]
+		if (parts.size() > 2) {
+			align = parts[2];
+		}
+	}
+#endif
+
 	auto style = getDefaultStyleForElement("label", "");
 	gui::IGUIFont *font = style.getFont();
 	if (!font)
 		font = m_font;
 
+#if IS_VOPI_ENGINE
+	auto add_label = [&](core::rect<s32> rect, const EnrichedString &text,
+			EGUI_ALIGNMENT align_h, EGUI_ALIGNMENT align_v, bool word_wrap,
+			bool auto_center_multiline = false) {
+		FieldSpec spec(
+			"",
+			L"",
+			L"",
+			258 + m_fields.size(),
+			4
+		);
+		gui::StaticText *e = new gui::StaticText(text, false, Environment,
+				data->current_parent, spec.fid, rect, false);
+		e->setTextAlignment(align_h, align_v);
+		e->setWordWrap(word_wrap);
+		// VOPI_ENGINE: Enable auto-centering for multi-line word-wrapped labels
+		if (auto_center_multiline && word_wrap) {
+			e->setAutoCenterMultiline(true);
+		}
+
+		e->setNotClipped(style.getBool(StyleSpec::NOCLIP, false));
+		e->setOverrideColor(style.getColor(StyleSpec::TEXTCOLOR, video::SColor(0xFFFFFFFF)));
+		e->setOverrideFont(font);
+		e->drop();
+
+		m_fields.push_back(spec);
+
+		// labels should let events through
+		e->grab();
+		m_clickthrough_elements.push_back(e);
+	};
+#else
 	auto add_label = [&](core::rect<s32> rect, const EnrichedString &text,
 			EGUI_ALIGNMENT align_h, EGUI_ALIGNMENT align_v, bool word_wrap) {
 		FieldSpec spec(
@@ -1813,14 +1880,27 @@ void GUIFormSpecMenu::parseLabel(parserData* data, const std::string &element)
 		e->grab();
 		m_clickthrough_elements.push_back(e);
 	};
+#endif
 
-	EnrichedString str(unescape_string(utf8_to_wide(parts[has_size ? 2 : 1])));
+	// Text position depends on whether size is specified
+	std::string text_param = parts[has_size ? 2 : 1];
+	EnrichedString str(unescape_string(utf8_to_wide(text_param)));
 
 	if (geom == v2s32()) {
 		size_t str_pos = 0;
 
 		for (size_t i = 0; str_pos < str.size(); ++i) {
 			EnrichedString line = str.getNextLine(&str_pos);
+
+#if IS_VOPI_ENGINE
+			s32 text_width = font->getDimension(line.c_str()).Width;
+			gui::EGUI_ALIGNMENT e_align = gui::EGUIA_UPPERLEFT;
+			if (align == "center") {
+				e_align = gui::EGUIA_CENTER;
+			} else if (align == "right") {
+				e_align = gui::EGUIA_LOWERRIGHT;
+			}
+#endif
 
 			core::rect<s32> rect;
 
@@ -1839,9 +1919,22 @@ void GUIFormSpecMenu::parseLabel(parserData* data, const std::string &element)
 				pos.Y += (((float) imgsize.Y) / -2) + (((float) imgsize.Y) * i / 2);
 #endif
 
+#if IS_VOPI_ENGINE
+				// Modify the X coordinate based on alignment
+				if (align == "center") {
+					pos.X -= text_width / 2;
+				} else if (align == "right") {
+					pos.X -= text_width;
+				}
+#endif
+
 				rect = core::rect<s32>(
 					pos.X, pos.Y,
+#if IS_VOPI_ENGINE
+					pos.X + text_width,
+#else
 					pos.X + font->getDimension(line.c_str()).Width,
+#endif
 					pos.Y + imgsize.Y);
 
 			} else {
@@ -1861,22 +1954,67 @@ void GUIFormSpecMenu::parseLabel(parserData* data, const std::string &element)
 
 				pos.Y += ((float) i) * spacing.Y * 2.0 / 5.0;
 
+#if IS_VOPI_ENGINE
+				// Modify the X coordinate based on alignment
+				if (align == "center") {
+					pos.X -= text_width / 2;
+				} else if (align == "right") {
+					pos.X -= text_width;
+				}
+#endif
+
 				rect = core::rect<s32>(
 					pos.X, pos.Y - m_btn_height,
+#if IS_VOPI_ENGINE
+					pos.X + text_width,
+#else
 					pos.X + font->getDimension(line.c_str()).Width,
+#endif
 					pos.Y + m_btn_height);
 			}
 
+#if IS_VOPI_ENGINE
+			add_label(rect, line, e_align, gui::EGUIA_CENTER, false);
+#else
 			add_label(rect, line, gui::EGUIA_UPPERLEFT, gui::EGUIA_CENTER, false);
+#endif
 		}
 	} else {
 		v2s32 pos = getRealCoordinateBasePos(v_pos);
+
+#if IS_VOPI_ENGINE
+		gui::EGUI_ALIGNMENT e_align = gui::EGUIA_UPPERLEFT;
+		core::rect<s32> rect;
+
+		if (align == "center") {
+			e_align = gui::EGUIA_CENTER;
+			// Center alignment: rect centered around pos.X
+			rect = core::rect<s32>(
+				pos.X - geom.X / 2, pos.Y,
+				pos.X + geom.X / 2, pos.Y + geom.Y);
+		} else if (align == "right") {
+			e_align = gui::EGUIA_LOWERRIGHT;
+			// Right alignment: pos.X is the right edge, text goes left
+			rect = core::rect<s32>(
+				pos.X - geom.X, pos.Y,
+				pos.X, pos.Y + geom.Y);
+		} else {
+			// Left alignment (default): pos.X is the left edge, text goes right
+			rect = core::rect<s32>(
+				pos.X, pos.Y,
+				pos.X + geom.X, pos.Y + geom.Y);
+		}
+
+		// VOPI_ENGINE: Use UPPERLEFT vertical alignment, but enable auto-centering
+		// for multi-line labels (centers only when 2+ lines, with reduced spacing)
+		add_label(rect, str, e_align, gui::EGUIA_UPPERLEFT, true, true);
+#else
 		core::rect<s32> rect(
 				pos.X, pos.Y,
 				pos.X + geom.X,
 				pos.Y + geom.Y);
-
 		add_label(rect, str, gui::EGUIA_UPPERLEFT, gui::EGUIA_UPPERLEFT, true);
+#endif
 	}
 }
 
