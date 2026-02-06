@@ -106,6 +106,12 @@ public:
 	void run();
 	void shutdown();
 
+#if IS_VOPI_ENGINE
+	// Check if chat HUD is visible (for Lua API)
+	// Returns true when chat messages are displayed on screen (top-left area)
+	bool isChatOpen() const;
+#endif
+
 	Client *getClient() { return client; }
 
 	// Pre-calculated value

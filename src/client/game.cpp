@@ -370,6 +370,22 @@ public:
 	}
 };
 
+#if IS_VOPI_ENGINE
+bool Game::isChatOpen() const
+{
+	return m_game_ui && m_game_ui->isChatVisible();
+}
+
+// Global Game instance pointer for Lua API access
+static Game *g_game_instance = nullptr;
+
+// Global accessor for Lua API - check if chat HUD is visible
+bool isChatConsoleOpen()
+{
+	return g_game_instance && g_game_instance->isChatOpen();
+}
+#endif
+
 /****************************************************************************
  ****************************************************************************/
 
@@ -477,6 +493,11 @@ bool Game::startup(volatile std::sig_atomic_t *kill,
 void Game::run()
 {
 	ZoneScoped;
+
+#if IS_VOPI_ENGINE
+	// Set global instance for Lua API access
+	g_game_instance = this;
+#endif
 
 	ProfilerGraph graph;
 	RunStats stats = {};
@@ -613,6 +634,11 @@ void Game::run()
 
 void Game::shutdown()
 {
+#if IS_VOPI_ENGINE
+	// Clear global instance pointer
+	g_game_instance = nullptr;
+#endif
+
 	// Delete text and menus first
 	m_game_ui->clearText();
 	m_game_formspec.reset();
