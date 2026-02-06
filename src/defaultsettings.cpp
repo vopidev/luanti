@@ -564,6 +564,25 @@ void set_default_settings()
 	settings->setDefault("touch_punch_gesture", "short_tap");
 	settings->setDefault("clickable_chat_weblinks", "true");
 
+#if IS_VOPI_ENGINE
+	// Main menu appearance
+	settings->setDefault("main_menu_bg", "bg_1080.png");
+
+	// Audio settings
+	settings->setDefault("mute_music", "false");
+	settings->setDefault("mute_sound", "false");
+	settings->setDefault("mute_ui_sound", "false");
+
+	// HUD settings
+	settings->setDefault("hud_hotbar_padding", "5");
+
+	// Chat behavior
+	settings->setDefault("chat_message_max_age", "60.0");
+
+	// Player settings
+	settings->setDefault("default_player_name", "Player");
+#endif
+
 	// Altered settings for Android
 #ifdef __ANDROID__
 	settings->setDefault("screen_w", "0");

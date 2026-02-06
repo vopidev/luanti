@@ -862,12 +862,24 @@ void ChatBackend::applySettings()
 	u32 recent_lines = g_settings->getU32("recent_chat_messages");
 	recent_lines = rangelim(recent_lines, 2, 20);
 	m_recent_buffer.resize(recent_lines);
+
+#if IS_VOPI_ENGINE
+	// Read and cache chat message max age setting
+	m_recent_chat_max_age = g_settings->getFloat("chat_message_max_age");
+	m_recent_chat_max_age = rangelim(m_recent_chat_max_age, 5.0f, 300.0f);
+#endif
 }
 
 void ChatBackend::step(float dtime)
 {
 	m_recent_buffer.step(dtime);
+
+#if IS_VOPI_ENGINE
+	// Use cached max age from settings (updated via applySettings)
+	m_recent_buffer.deleteByAge(m_recent_chat_max_age);
+#else
 	m_recent_buffer.deleteByAge(60.0);
+#endif
 
 	// no need to age messages in anything but m_recent_buffer
 }

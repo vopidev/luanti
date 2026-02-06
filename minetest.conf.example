@@ -1273,6 +1273,11 @@
 #    type: int min: 1 max: 65535
 # chat_message_limit_trigger_kick = 50
 
+#    [VOPI Engine] Default player name for singleplayer mode.
+#    This name will be used automatically when starting a singleplayer game.
+#    type: string
+# default_player_name = Player
+
 ## Server Gameplay
 
 #    Controls length of day/night cycle.
