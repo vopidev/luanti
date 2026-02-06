@@ -502,8 +502,10 @@ void GameUI::update(const RunStats &stats, Client *client, MapDrawControl *draw_
 		m_guitext_status->setVisible(false);
 	} else {
 		guitext_status = m_guitext_status;
+#if !IS_VOPI_ENGINE
 		if (g_touchcontrols)
 			g_touchcontrols->getStatusText()->setVisible(false);
+#endif
 	}
 
 	setStaticText(guitext_status, m_statustext.c_str());

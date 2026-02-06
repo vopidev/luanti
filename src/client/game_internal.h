@@ -381,6 +381,11 @@ private:
 
 	bool m_does_lost_focus_pause_game = false;
 
+#if defined(__ANDROID__) || defined(__IOS__)
+	// Track focus loss to show pause menu
+	bool m_lost_focus_needs_pause = false;
+#endif
+
 	// if true, (almost) the whole game is paused
 	// this happens in pause menu in singleplayer
 	bool m_is_paused = false;

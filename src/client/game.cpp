@@ -1393,6 +1393,12 @@ void Game::processUserInput(f32 dtime)
 			m_game_focused = false;
 			infostream << "Game lost focus" << std::endl;
 			input->releaseAllKeys();
+#if defined(__ANDROID__) || defined(__IOS__)
+			// Mark that we need to show pause when focus returns
+			if (!device->isWindowActive()) {
+				m_lost_focus_needs_pause = true;
+			}
+#endif
 		} else {
 			input->clear();
 		}
@@ -1401,6 +1407,15 @@ void Game::processUserInput(f32 dtime)
 			g_touchcontrols->hide();
 
 	} else {
+#if defined(__ANDROID__) || defined(__IOS__)
+		// On mobile, show pause menu immediately when regaining focus
+		if (!m_game_focused && m_lost_focus_needs_pause && !isMenuActive()) {
+			m_lost_focus_needs_pause = false;
+			infostream << "Showing pause menu immediately on focus regain" << std::endl;
+			m_game_formspec.showPauseMenu();
+			// Don't process touch controls this frame - pause menu will handle input
+		} else
+#endif
 		if (g_touchcontrols) {
 			/* on touchcontrols step may generate own input events which ain't
 			 * what we want in case we just did clear them */
@@ -1938,9 +1953,11 @@ void Game::toggleFullViewRange()
 
 void Game::checkZoomEnabled()
 {
+#if !IS_VOPI_ENGINE
 	LocalPlayer *player = client->getEnv().getLocalPlayer();
 	if (player->getZoomFOV() < 0.001f || player->getFov().fov > 0.0f)
 		m_game_ui->showTranslatedStatusText("Zoom currently disabled by game or mod");
+#endif
 }
 
 void Game::updateCameraDirection(CameraOrientation *cam, float dtime)
@@ -2716,6 +2733,17 @@ void Game::processPlayerInteraction(f32 dtime, bool show_hud)
 
 	if (pointed != runData.pointed_old)
 		infostream << "Pointing at " << pointed.dump() << std::endl;
+
+#if IS_VOPI_ENGINE
+	// Reset tap state when wielded item changes (prevents dig after eating food)
+	{
+		static std::string prev_wielded_item_name;
+		if (g_touchcontrols && tool_item.name != prev_wielded_item_name) {
+			g_touchcontrols->resetTapState();
+			prev_wielded_item_name = tool_item.name;
+		}
+	}
+#endif
 
 	if (g_touchcontrols) {
 		auto mode = selected_def.touch_interaction.getMode(selected_def, pointed.type);
