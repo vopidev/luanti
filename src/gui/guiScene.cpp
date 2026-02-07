@@ -43,6 +43,28 @@ scene::AnimatedMeshSceneNode *GUIScene::setMesh(scene::IAnimatedMesh *mesh)
 	m_mesh->setPosition(-m_mesh->getBoundingBox().getCenter());
 	m_mesh->animateJoints();
 
+#if IS_VOPI_ENGINE
+	// Fix vertex colors: ensure all vertices are white so textures
+	// display at full brightness instead of being darkened.
+	// Applied to scene node's mesh copy, not the shared source mesh.
+	{
+		scene::IMesh *node_mesh = m_mesh->getMesh();
+		if (node_mesh) {
+			video::SColor white(255, 255, 255, 255);
+			for (u32 i = 0; i < node_mesh->getMeshBufferCount(); ++i) {
+				scene::IMeshBuffer *buf = node_mesh->getMeshBuffer(i);
+				if (!buf)
+					continue;
+				const u32 stride = getVertexPitchFromType(buf->getVertexType());
+				u8 *vertices = (u8 *)buf->getVertices();
+				for (u32 j = 0; j < buf->getVertexCount(); ++j)
+					((video::S3DVertex *)(vertices + j * stride))->Color = white;
+				buf->setDirty(scene::EBT_VERTEX);
+			}
+		}
+	}
+#endif
+
 	return m_mesh;
 }
 
@@ -89,6 +111,17 @@ void GUIScene::draw()
 		m_cam->bindTargetAndRotation(true);
 	}
 
+#if IS_VOPI_ENGINE
+	// Apply initial rotation and distance before drawing so the first frame is correct.
+	// VOPI calcOptimalDistance() uses FOV math instead of view frustum,
+	// so it can be called before drawAll().
+	if (m_initial_rotation && m_mesh) {
+		rotateCamera(v3f(m_custom_rot.X, m_custom_rot.Y, 0.f));
+		calcOptimalDistance();
+		m_initial_rotation = false;
+	}
+#endif
+
 	cameraLoop();
 
 	// Continuous rotation
@@ -97,12 +130,13 @@ void GUIScene::draw()
 
 	m_smgr->drawAll();
 
+#if !IS_VOPI_ENGINE
 	if (m_initial_rotation && m_mesh) {
 		rotateCamera(v3f(m_custom_rot.X, m_custom_rot.Y, 0.f));
 		calcOptimalDistance();
-
 		m_initial_rotation = false;
 	}
+#endif
 
 	m_driver->setViewPort(oldViewPort);
 }
@@ -158,6 +192,35 @@ void GUIScene::setAnimationSpeed(f32 speed)
 
 /* Camera control functions */
 
+#if IS_VOPI_ENGINE
+inline void GUIScene::calcOptimalDistance()
+{
+	core::aabbox3df box = m_mesh->getBoundingBox();
+	f32 width  = box.MaxEdge.X - box.MinEdge.X;
+	f32 height = box.MaxEdge.Y - box.MinEdge.Y;
+	f32 depth  = box.MaxEdge.Z - box.MinEdge.Z;
+	f32 max_width = width > depth ? width : depth;
+
+	// Calculate frustum slopes from FOV and aspect ratio directly,
+	// avoiding dependency on view frustum which requires a prior drawAll().
+	f32 fov = m_cam->getFOV();
+	f32 v_slope = 2.0f * tanf(fov * 0.5f);
+	core::recti rect = getAbsolutePosition();
+	f32 aspect = (f32)rect.getWidth() / (f32)rect.getHeight();
+	f32 h_slope = v_slope * aspect;
+
+	f32 zoomX = rect.getWidth() / max_width;
+	f32 zoomY = rect.getHeight() / height;
+	f32 dist;
+
+	if (zoomX < zoomY)
+		dist = (max_width / h_slope) + (0.5f * max_width);
+	else
+		dist = (height / v_slope) + (0.5f * max_width);
+
+	m_cam_distance = dist;
+	m_update_cam = true;
+#else
 inline void GUIScene::calcOptimalDistance()
 {
 	core::aabbox3df box = m_mesh->getBoundingBox();
@@ -183,6 +246,7 @@ inline void GUIScene::calcOptimalDistance()
 
 	m_cam_distance = dist;
 	m_update_cam = true;
+#endif
 }
 
 void GUIScene::updateCamera(scene::ISceneNode *target)
