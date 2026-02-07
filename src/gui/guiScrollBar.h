@@ -12,6 +12,12 @@ the arrow buttons where there is insufficient space.
 
 #pragma once
 
+#if IS_VOPI_ENGINE
+#include "guiAnimatedImage.h"
+#include "StyleSpec.h"
+#include <vector>
+#endif
+
 #include <optional>
 #include <IGUIEnvironment.h>
 #include <IGUIScrollBar.h>
@@ -46,6 +52,9 @@ public:
 	s32 getSmallStep() const override { return small_step; }
 	s32 getPos() const override;
 	s32 getTargetPos() const override;
+#if IS_VOPI_ENGINE
+	s32 getPageSize() const { return page_size; }
+#endif
 	bool isHorizontal() const { return is_horizontal; }
 
 	void setMax(s32 max) override;
@@ -64,14 +73,32 @@ public:
 	void setPosInterpolated(s32 pos) override;
 	void setPageSize(s32 size) override;
 	void setArrowsVisible(ArrowVisibility visible);
+#if IS_VOPI_ENGINE
+	void setArrowsVisible(bool visible);
+	void setTextures(const std::vector<video::ITexture *> &textures);
+	void setStyle(const StyleSpec &style, ISimpleTextureSource *tsrc);
+#endif
 
 private:
 	void refreshControls();
 	s32 getPosFromMousePos(const core::position2di &p) const;
 	f32 range() const { return f32(max_pos - min_pos); }
+#if IS_VOPI_ENGINE
+	gui::IGUIImage *addImage(const core::rect<s32> &rect, video::ITexture *texture);
+#endif
 
 	IGUIButton *up_button;
 	IGUIButton *down_button;
+#if IS_VOPI_ENGINE
+	gui::IGUIImage *m_bg_image;
+	gui::IGUIImage *m_bg_top_image;
+	gui::IGUIImage *m_bg_bottom_image;
+	gui::IGUIImage *m_slider_image;
+	gui::IGUIImage *m_slider_top_image;
+	gui::IGUIImage *m_slider_bottom_image;
+	s32 m_slider_top_size;
+	s32 m_slider_bottom_size;
+#endif
 	ArrowVisibility arrow_visibility = DEFAULT;
 	bool is_dragging;
 	bool is_horizontal;
@@ -88,6 +115,10 @@ private:
 	s32 drag_offset;
 	s32 page_size;
 	s32 border_size;
+
+#if IS_VOPI_ENGINE
+	std::vector<video::ITexture *> m_textures;
+#endif
 
 	core::rect<s32> slider_rect;
 	video::SColor current_icon_color;
