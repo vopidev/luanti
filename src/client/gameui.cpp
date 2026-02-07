@@ -89,55 +89,7 @@ void GameUI::init()
 	}
 
 #if IS_VOPI_ENGINE
-	//Chat text background
-	std::string m_guiimage_chat_up_left_path = textures_path + "gui_chat_bg_up_left.png";
-	std::string m_guiimage_chat_up_path = textures_path + "gui_chat_bg_up.png";
-	std::string m_guiimage_chat_up_right_path = textures_path + "gui_chat_bg_up_right.png";
-	std::string m_guiimage_chat_left_path = textures_path + "gui_chat_bg_left.png";
-	std::string m_guiimage_chat_center_path = textures_path + "gui_chat_bg_center.png";
-	std::string m_guiimage_chat_right_path = textures_path + "gui_chat_bg_right.png";
-	std::string m_guiimage_chat_down_left_path = textures_path + "gui_chat_bg_down_left.png";
-	std::string m_guiimage_chat_down_path = textures_path + "gui_chat_bg_down.png";
-	std::string m_guiimage_chat_down_right_path = textures_path + "gui_chat_bg_down_right.png";
-
-	m_guiimage_chat_up_left = guienv->addImage(core::rect<s32>(0, 0, 1, 1), guiroot, -1, nullptr, true);
-	m_guiimage_chat_up = guienv->addImage(core::rect<s32>(0, 0, 1, 1), guiroot, -1, nullptr, true);
-	m_guiimage_chat_up_right = guienv->addImage(core::rect<s32>(0, 0, 1, 1), guiroot, -1, nullptr, true);
-	m_guiimage_chat_left = guienv->addImage(core::rect<s32>(0, 0, 1, 1), guiroot, -1, nullptr, true);
-	m_guiimage_chat_center = guienv->addImage(core::rect<s32>(0, 0, 1, 1), guiroot, -1, nullptr, true);
-	m_guiimage_chat_right = guienv->addImage(core::rect<s32>(0, 0, 1, 1), guiroot, -1, nullptr, true);
-	m_guiimage_chat_down_left = guienv->addImage(core::rect<s32>(0, 0, 1, 1), guiroot, -1, nullptr, true);
-	m_guiimage_chat_down = guienv->addImage(core::rect<s32>(0, 0, 1, 1), guiroot, -1, nullptr, true);
-	m_guiimage_chat_down_right = guienv->addImage(core::rect<s32>(0, 0, 1, 1), guiroot, -1, nullptr, true);
-
-	m_guiimage_chat_up_left->setImage(driver->getTexture(m_guiimage_chat_up_left_path.c_str()));
-	m_guiimage_chat_up->setImage(driver->getTexture(m_guiimage_chat_up_path.c_str()));
-	m_guiimage_chat_up_right->setImage(driver->getTexture(m_guiimage_chat_up_right_path.c_str()));
-	m_guiimage_chat_left->setImage(driver->getTexture(m_guiimage_chat_left_path.c_str()));
-	m_guiimage_chat_center->setImage(driver->getTexture(m_guiimage_chat_center_path.c_str()));
-	m_guiimage_chat_right->setImage(driver->getTexture(m_guiimage_chat_right_path.c_str()));
-	m_guiimage_chat_down_left->setImage(driver->getTexture(m_guiimage_chat_down_left_path.c_str()));
-	m_guiimage_chat_down->setImage(driver->getTexture(m_guiimage_chat_down_path.c_str()));
-	m_guiimage_chat_down_right->setImage(driver->getTexture(m_guiimage_chat_down_right_path.c_str()));
-
-	m_guiimage_chat_up_left->setScaleImage(true);
-	m_guiimage_chat_up->setScaleImage(true);
-	m_guiimage_chat_up_right->setScaleImage(true);
-	m_guiimage_chat_left->setScaleImage(true);
-	m_guiimage_chat_center->setScaleImage(true);
-	m_guiimage_chat_right->setScaleImage(true);
-	m_guiimage_chat_down_left->setScaleImage(true);
-	m_guiimage_chat_down->setScaleImage(true);
-	m_guiimage_chat_down_right->setScaleImage(true);
-	m_guiimage_chat_up_left->setVisible(false);
-	m_guiimage_chat_up->setVisible(false);
-	m_guiimage_chat_up_right->setVisible(false);
-	m_guiimage_chat_left->setVisible(false);
-	m_guiimage_chat_center->setVisible(false);
-	m_guiimage_chat_right->setVisible(false);
-	m_guiimage_chat_down_left->setVisible(false);
-	m_guiimage_chat_down->setVisible(false);
-	m_guiimage_chat_down_right->setVisible(false);
+	m_chat_bg.init(guienv, driver, guiroot, textures_path, "gui_chat_bg");
 	m_show_chat_background = g_settings->getBool("show_chat_background");
 #endif
 
@@ -162,43 +114,6 @@ void GameUI::init()
 	m_info_text_margin_right = 10;
 	m_info_text_margin_top = 0;
 #endif
-	//Info text background
-	m_guiimage_info_up_left = guienv->addImage(core::rect<s32>(0, 0, 1, 1), guiroot, -1, nullptr, true);
-	m_guiimage_info_up = guienv->addImage(core::rect<s32>(0, 0, 1, 1), guiroot, -1, nullptr, true);
-	m_guiimage_info_up_right = guienv->addImage(core::rect<s32>(0, 0, 1, 1), guiroot, -1, nullptr, true);
-	m_guiimage_info_left = guienv->addImage(core::rect<s32>(0, 0, 1, 1), guiroot, -1, nullptr, true);
-	m_guiimage_info_center = guienv->addImage(core::rect<s32>(0, 0, 1, 1), guiroot, -1, nullptr, true);
-	m_guiimage_info_right = guienv->addImage(core::rect<s32>(0, 0, 1, 1), guiroot, -1, nullptr, true);
-	m_guiimage_info_down_left = guienv->addImage(core::rect<s32>(0, 0, 1, 1), guiroot, -1, nullptr, true);
-	m_guiimage_info_down = guienv->addImage(core::rect<s32>(0, 0, 1, 1), guiroot, -1, nullptr, true);
-	m_guiimage_info_down_right = guienv->addImage(core::rect<s32>(0, 0, 1, 1), guiroot, -1, nullptr, true);
-	m_guiimage_info_up_left->setImage(driver->getTexture(m_guiimage_chat_up_left_path.c_str()));
-	m_guiimage_info_up->setImage(driver->getTexture(m_guiimage_chat_up_path.c_str()));
-	m_guiimage_info_up_right->setImage(driver->getTexture(m_guiimage_chat_up_right_path.c_str()));
-	m_guiimage_info_left->setImage(driver->getTexture(m_guiimage_chat_left_path.c_str()));
-	m_guiimage_info_center->setImage(driver->getTexture(m_guiimage_chat_center_path.c_str()));
-	m_guiimage_info_right->setImage(driver->getTexture(m_guiimage_chat_right_path.c_str()));
-	m_guiimage_info_down_left->setImage(driver->getTexture(m_guiimage_chat_down_left_path.c_str()));
-	m_guiimage_info_down->setImage(driver->getTexture(m_guiimage_chat_down_path.c_str()));
-	m_guiimage_info_down_right->setImage(driver->getTexture(m_guiimage_chat_down_right_path.c_str()));
-	m_guiimage_info_up_left->setScaleImage(true);
-	m_guiimage_info_up->setScaleImage(true);
-	m_guiimage_info_up_right->setScaleImage(true);
-	m_guiimage_info_left->setScaleImage(true);
-	m_guiimage_info_center->setScaleImage(true);
-	m_guiimage_info_right->setScaleImage(true);
-	m_guiimage_info_down_left->setScaleImage(true);
-	m_guiimage_info_down->setScaleImage(true);
-	m_guiimage_info_down_right->setScaleImage(true);
-	m_guiimage_info_up_left->setVisible(false);
-	m_guiimage_info_up->setVisible(false);
-	m_guiimage_info_up_right->setVisible(false);
-	m_guiimage_info_left->setVisible(false);
-	m_guiimage_info_center->setVisible(false);
-	m_guiimage_info_right->setVisible(false);
-	m_guiimage_info_down_left->setVisible(false);
-	m_guiimage_info_down->setVisible(false);
-	m_guiimage_info_down_right->setVisible(false);
 #else
 	// If in debug mode, object debug infos shown here, too.
 	// Located on the left on the screen, below chat.
@@ -230,57 +145,7 @@ void GameUI::init()
 	m_guitext_status->setVisible(false);
 
 #if IS_VOPI_ENGINE
-	//Status text background
-	std::string m_guiimage_status_up_left_path = textures_path + "gui_status_bg_up_left.png";
-	std::string m_guiimage_status_up_path = textures_path + "gui_status_bg_up.png";
-	std::string m_guiimage_status_up_right_path = textures_path + "gui_status_bg_up_right.png";
-	std::string m_guiimage_status_left_path = textures_path + "gui_status_bg_left.png";
-	std::string m_guiimage_status_center_path = textures_path + "gui_status_bg_center.png";
-	std::string m_guiimage_status_right_path = textures_path + "gui_status_bg_right.png";
-	std::string m_guiimage_status_down_left_path = textures_path + "gui_status_bg_down_left.png";
-	std::string m_guiimage_status_down_path = textures_path + "gui_status_bg_down.png";
-	std::string m_guiimage_status_down_right_path = textures_path + "gui_status_bg_down_right.png";
-
-	m_guiimage_status_up_left = guienv->addImage(core::rect<s32>(0, 0, 1, 1), guiroot, -1, nullptr, true);
-	m_guiimage_status_up = guienv->addImage(core::rect<s32>(0, 0, 1, 1), guiroot, -1, nullptr, true);
-	m_guiimage_status_up_right = guienv->addImage(core::rect<s32>(0, 0, 1, 1), guiroot, -1, nullptr, true);
-	m_guiimage_status_left = guienv->addImage(core::rect<s32>(0, 0, 1, 1), guiroot, -1, nullptr, true);
-	m_guiimage_status_center = guienv->addImage(core::rect<s32>(0, 0, 1, 1), guiroot, -1, nullptr, true);
-	m_guiimage_status_right = guienv->addImage(core::rect<s32>(0, 0, 1, 1), guiroot, -1, nullptr, true);
-	m_guiimage_status_down_left = guienv->addImage(core::rect<s32>(0, 0, 1, 1), guiroot, -1, nullptr, true);
-	m_guiimage_status_down = guienv->addImage(core::rect<s32>(0, 0, 1, 1), guiroot, -1, nullptr, true);
-	m_guiimage_status_down_right = guienv->addImage(core::rect<s32>(0, 0, 1, 1), guiroot, -1, nullptr, true);
-
-	m_guiimage_status_up_left->setImage(driver->getTexture(m_guiimage_status_up_left_path.c_str()));
-	m_guiimage_status_up->setImage(driver->getTexture(m_guiimage_status_up_path.c_str()));
-	m_guiimage_status_up_right->setImage(driver->getTexture(m_guiimage_status_up_right_path.c_str()));
-	m_guiimage_status_left->setImage(driver->getTexture(m_guiimage_status_left_path.c_str()));
-	m_guiimage_status_center->setImage(driver->getTexture(m_guiimage_status_center_path.c_str()));
-	m_guiimage_status_right->setImage(driver->getTexture(m_guiimage_status_right_path.c_str()));
-	m_guiimage_status_down_left->setImage(driver->getTexture(m_guiimage_status_down_left_path.c_str()));
-	m_guiimage_status_down->setImage(driver->getTexture(m_guiimage_status_down_path.c_str()));
-	m_guiimage_status_down_right->setImage(driver->getTexture(m_guiimage_status_down_right_path.c_str()));
-
-	m_guiimage_status_up_left->setScaleImage(true);
-	m_guiimage_status_up->setScaleImage(true);
-	m_guiimage_status_up_right->setScaleImage(true);
-	m_guiimage_status_left->setScaleImage(true);
-	m_guiimage_status_center->setScaleImage(true);
-	m_guiimage_status_right->setScaleImage(true);
-	m_guiimage_status_down_left->setScaleImage(true);
-	m_guiimage_status_down->setScaleImage(true);
-	m_guiimage_status_down_right->setScaleImage(true);
-
-	m_guiimage_status_up_left->setVisible(false);
-	m_guiimage_status_up->setVisible(false);
-	m_guiimage_status_up_right->setVisible(false);
-	m_guiimage_status_left->setVisible(false);
-	m_guiimage_status_center->setVisible(false);
-	m_guiimage_status_right->setVisible(false);
-	m_guiimage_status_down_left->setVisible(false);
-	m_guiimage_status_down->setVisible(false);
-	m_guiimage_status_down_right->setVisible(false);
-
+	m_status_bg.init(guienv, driver, guiroot, textures_path, "gui_status_bg");
 	m_show_status_background = g_settings->getBool("show_status_background");
 	m_status_text_bottom_offset = g_settings->getFloat("status_text_bottom_offset");
 #endif
@@ -512,16 +377,7 @@ void GameUI::update(const RunStats &stats, Client *client, MapDrawControl *draw_
 	guitext_status->setVisible(!m_statustext.empty());
 
 #if IS_VOPI_ENGINE
-	bool show_status_bg = m_show_status_background && !m_statustext.empty();
-	m_guiimage_status_up_left->setVisible(show_status_bg);
-	m_guiimage_status_up->setVisible(show_status_bg);
-	m_guiimage_status_up_right->setVisible(show_status_bg);
-	m_guiimage_status_left->setVisible(show_status_bg);
-	m_guiimage_status_center->setVisible(show_status_bg);
-	m_guiimage_status_right->setVisible(show_status_bg);
-	m_guiimage_status_down_left->setVisible(show_status_bg);
-	m_guiimage_status_down->setVisible(show_status_bg);
-	m_guiimage_status_down_right->setVisible(show_status_bg);
+	m_status_bg.setVisible(m_show_status_background && !m_statustext.empty());
 #endif
 
 	if (!m_statustext.empty()) {
@@ -561,20 +417,9 @@ void GameUI::update(const RunStats &stats, Client *client, MapDrawControl *draw_
 				status_y + total_height - padding
 			)
 		);
-		// Calculate middle width
-		s32 middle_width = total_width - (side_width * 2);
-		// Left column
-		m_guiimage_status_up_left->setRelativePosition(core::rect<s32>(status_x, status_y, status_x + side_width, status_y + side_width));
-		m_guiimage_status_left->setRelativePosition(core::rect<s32>(status_x, status_y + side_width, status_x + side_width, status_y + total_height - side_width));
-		m_guiimage_status_down_left->setRelativePosition(core::rect<s32>(status_x, status_y + total_height - side_width, status_x + side_width, status_y + total_height));
-		// Middle column
-		m_guiimage_status_up->setRelativePosition(core::rect<s32>(status_x + side_width, status_y, status_x + total_width - side_width, status_y + side_width));
-		m_guiimage_status_center->setRelativePosition(core::rect<s32>(status_x + side_width, status_y + side_width, status_x + total_width - side_width, status_y + total_height - side_width));
-		m_guiimage_status_down->setRelativePosition(core::rect<s32>(status_x + side_width, status_y + total_height - side_width, status_x + total_width - side_width, status_y + total_height));
-		// Right column
-		m_guiimage_status_up_right->setRelativePosition(core::rect<s32>(status_x + total_width - side_width, status_y, status_x + total_width, status_y + side_width));
-		m_guiimage_status_right->setRelativePosition(core::rect<s32>(status_x + total_width - side_width, status_y + side_width, status_x + total_width, status_y + total_height - side_width));
-		m_guiimage_status_down_right->setRelativePosition(core::rect<s32>(status_x + total_width - side_width, status_y + total_height - side_width, status_x + total_width, status_y + total_height));
+		m_status_bg.setPosition(
+			core::rect<s32>(status_x, status_y, status_x + total_width, status_y + total_height),
+			side_width);
 	}
 #else
 		s32 status_width  = guitext_status->getTextWidth();
@@ -611,15 +456,7 @@ void GameUI::update(const RunStats &stats, Client *client, MapDrawControl *draw_
 	m_guitext_chat->setVisible(isChatVisible() && !chat_console->isVisible() && (player->hud_flags & HUD_FLAG_CHAT_VISIBLE));
 
 #if IS_VOPI_ENGINE
-	m_guiimage_chat_up_left->setVisible(isChatVisible() && !chat_console->isVisible() && m_show_chat_background);
-	m_guiimage_chat_up->setVisible(isChatVisible() && !chat_console->isVisible() && m_show_chat_background);
-	m_guiimage_chat_up_right->setVisible(isChatVisible() && !chat_console->isVisible() && m_show_chat_background);
-	m_guiimage_chat_left->setVisible(isChatVisible() && !chat_console->isVisible() && m_show_chat_background);
-	m_guiimage_chat_center->setVisible(isChatVisible() && !chat_console->isVisible() && m_show_chat_background);
-	m_guiimage_chat_right->setVisible(isChatVisible() && !chat_console->isVisible() && m_show_chat_background);
-	m_guiimage_chat_down_left->setVisible(isChatVisible() && !chat_console->isVisible() && m_show_chat_background);
-	m_guiimage_chat_down->setVisible(isChatVisible() && !chat_console->isVisible() && m_show_chat_background);
-	m_guiimage_chat_down_right->setVisible(isChatVisible() && !chat_console->isVisible() && m_show_chat_background);
+	m_chat_bg.setVisible(isChatVisible() && !chat_console->isVisible() && m_show_chat_background);
 #endif
 }
 
@@ -728,16 +565,7 @@ void GameUI::updateChatSize()
 	m_guitext_chat->setRelativePosition(chat_size);
 
 #if IS_VOPI_ENGINE
-	// Set the positions and sizes of the 9 background images
-	m_guiimage_chat_up_left->setRelativePosition(core::rect<s32>(bg_size.UpperLeftCorner.X, bg_size.UpperLeftCorner.Y, bg_size.UpperLeftCorner.X + corner_size, bg_size.UpperLeftCorner.Y + corner_size));
-	m_guiimage_chat_up_right->setRelativePosition(core::rect<s32>(bg_size.LowerRightCorner.X - corner_size, bg_size.UpperLeftCorner.Y, bg_size.LowerRightCorner.X, bg_size.UpperLeftCorner.Y + corner_size));
-	m_guiimage_chat_down_left->setRelativePosition(core::rect<s32>(bg_size.UpperLeftCorner.X, bg_size.LowerRightCorner.Y - corner_size, bg_size.UpperLeftCorner.X + corner_size, bg_size.LowerRightCorner.Y));
-	m_guiimage_chat_down_right->setRelativePosition(core::rect<s32>(bg_size.LowerRightCorner.X - corner_size, bg_size.LowerRightCorner.Y - corner_size, bg_size.LowerRightCorner.X, bg_size.LowerRightCorner.Y));
-	m_guiimage_chat_up->setRelativePosition(core::rect<s32>(bg_size.UpperLeftCorner.X + corner_size, bg_size.UpperLeftCorner.Y, bg_size.LowerRightCorner.X - corner_size, bg_size.UpperLeftCorner.Y + corner_size));
-	m_guiimage_chat_down->setRelativePosition(core::rect<s32>(bg_size.UpperLeftCorner.X + corner_size, bg_size.LowerRightCorner.Y - corner_size, bg_size.LowerRightCorner.X - corner_size, bg_size.LowerRightCorner.Y));
-	m_guiimage_chat_left->setRelativePosition(core::rect<s32>(bg_size.UpperLeftCorner.X, bg_size.UpperLeftCorner.Y + corner_size, bg_size.UpperLeftCorner.X + corner_size, bg_size.LowerRightCorner.Y - corner_size));
-	m_guiimage_chat_right->setRelativePosition(core::rect<s32>(bg_size.LowerRightCorner.X - corner_size, bg_size.UpperLeftCorner.Y + corner_size, bg_size.LowerRightCorner.X, bg_size.LowerRightCorner.Y - corner_size));
-	m_guiimage_chat_center->setRelativePosition(core::rect<s32>(bg_size.UpperLeftCorner.X + corner_size, bg_size.UpperLeftCorner.Y + corner_size, bg_size.LowerRightCorner.X - corner_size, bg_size.LowerRightCorner.Y - corner_size));
+	m_chat_bg.setPosition(bg_size, corner_size);
 #endif
 }
 
@@ -825,15 +653,7 @@ void GameUI::clearText()
 		m_guitext_chat->remove();
 		m_guitext_chat = nullptr;
 #if IS_VOPI_ENGINE
-		m_guiimage_chat_up_left->setVisible(false);
-		m_guiimage_chat_up->setVisible(false);
-		m_guiimage_chat_up_right->setVisible(false);
-		m_guiimage_chat_left->setVisible(false);
-		m_guiimage_chat_center->setVisible(false);
-		m_guiimage_chat_right->setVisible(false);
-		m_guiimage_chat_down_left->setVisible(false);
-		m_guiimage_chat_down->setVisible(false);
-		m_guiimage_chat_down_right->setVisible(false);
+		m_chat_bg.setVisible(false);
 #endif
 	}
 
@@ -862,32 +682,13 @@ void GameUI::clearText()
 	if (m_guitext_info) {
 		m_guitext_info->remove();
 		m_guitext_info = nullptr;
-#if IS_VOPI_ENGINE
-		m_guiimage_info_up_left->setVisible(false);
-		m_guiimage_info_up->setVisible(false);
-		m_guiimage_info_up_right->setVisible(false);
-		m_guiimage_info_left->setVisible(false);
-		m_guiimage_info_center->setVisible(false);
-		m_guiimage_info_right->setVisible(false);
-		m_guiimage_info_down_left->setVisible(false);
-		m_guiimage_info_down->setVisible(false);
-		m_guiimage_info_down_right->setVisible(false);
-#endif
 	}
 
 	if (m_guitext_status) {
 		m_guitext_status->remove();
 		m_guitext_status = nullptr;
 #if IS_VOPI_ENGINE
-		m_guiimage_status_up_left->setVisible(false);
-		m_guiimage_status_up->setVisible(false);
-		m_guiimage_status_up_right->setVisible(false);
-		m_guiimage_status_left->setVisible(false);
-		m_guiimage_status_center->setVisible(false);
-		m_guiimage_status_right->setVisible(false);
-		m_guiimage_status_down_left->setVisible(false);
-		m_guiimage_status_down->setVisible(false);
-		m_guiimage_status_down_right->setVisible(false);
+		m_status_bg.setVisible(false);
 #endif
 	}
 

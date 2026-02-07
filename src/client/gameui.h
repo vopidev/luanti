@@ -8,7 +8,7 @@
 #include "irrlichttypes.h"
 #include <IGUIEnvironment.h>
 #if IS_VOPI_ENGINE
-#include <IGUIImage.h>
+#include "gui/guiNineSliceBackground.h"
 #endif
 #include "game.h"
 
@@ -105,19 +105,6 @@ private:
 
 	s32 m_info_text_margin_right;
 	s32 m_info_text_margin_top;
-
-	// Info text background
-	gui::IGUIImage *m_guiimage_info_up_left = nullptr;
-	gui::IGUIImage *m_guiimage_info_up = nullptr;
-	gui::IGUIImage *m_guiimage_info_up_right = nullptr;
-
-	gui::IGUIImage *m_guiimage_info_left = nullptr;
-	gui::IGUIImage *m_guiimage_info_center = nullptr;
-	gui::IGUIImage *m_guiimage_info_right = nullptr;
-
-	gui::IGUIImage *m_guiimage_info_down_left = nullptr;
-	gui::IGUIImage *m_guiimage_info_down = nullptr;
-	gui::IGUIImage *m_guiimage_info_down_right = nullptr;
 #endif
 
 	gui::IGUIStaticText *m_guitext_status = nullptr;
@@ -126,19 +113,7 @@ private:
 	video::SColor m_statustext_initial_color;
 
 #if IS_VOPI_ENGINE
-	// Status text background
-	gui::IGUIImage *m_guiimage_status_up_left = nullptr;
-	gui::IGUIImage *m_guiimage_status_up = nullptr;
-	gui::IGUIImage *m_guiimage_status_up_right = nullptr;
-
-	gui::IGUIImage *m_guiimage_status_left = nullptr;
-	gui::IGUIImage *m_guiimage_status_center = nullptr;
-	gui::IGUIImage *m_guiimage_status_right = nullptr;
-
-	gui::IGUIImage *m_guiimage_status_down_left = nullptr;
-	gui::IGUIImage *m_guiimage_status_down = nullptr;
-	gui::IGUIImage *m_guiimage_status_down_right = nullptr;
-
+	NineSliceBackground m_status_bg;
 	bool m_show_status_background = true;
 	f32 m_status_text_bottom_offset = 0.25f;
 #endif
@@ -148,19 +123,7 @@ private:
 	core::rect<s32> m_current_chat_size{0, 0, 0, 0};
 
 #if IS_VOPI_ENGINE
-	// Chat text background
-	gui::IGUIImage *m_guiimage_chat_up_left = nullptr;
-	gui::IGUIImage *m_guiimage_chat_up = nullptr;
-	gui::IGUIImage *m_guiimage_chat_up_right = nullptr;
-
-	gui::IGUIImage *m_guiimage_chat_left = nullptr;
-	gui::IGUIImage *m_guiimage_chat_center = nullptr;
-	gui::IGUIImage *m_guiimage_chat_right = nullptr;
-
-	gui::IGUIImage *m_guiimage_chat_down_left = nullptr;
-	gui::IGUIImage *m_guiimage_chat_down = nullptr;
-	gui::IGUIImage *m_guiimage_chat_down_right = nullptr;
-
+	NineSliceBackground m_chat_bg;
 	bool m_show_chat_background = true;
 #endif
 

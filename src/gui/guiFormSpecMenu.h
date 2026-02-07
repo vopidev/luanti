@@ -21,6 +21,9 @@
 #include "StyleSpec.h"
 #include <ICursorControl.h> // gui::ECURSOR_ICON
 #include <IGUIStaticText.h>
+#if IS_VOPI_ENGINE
+#include "guiNineSliceBackground.h"
+#endif
 
 class InventoryManager;
 class ISimpleTextureSource;
@@ -354,18 +357,7 @@ protected:
 	std::vector<std::pair<std::string, GUIScrollContainer *>> m_scroll_containers;
 
 #if IS_VOPI_ENGINE && (defined(__ANDROID__) || defined(__IOS__))
-	//Selected item background
-	gui::IGUIImage *m_selected_item_background_up_left = nullptr;
-	gui::IGUIImage *m_selected_item_background_up = nullptr;
-	gui::IGUIImage *m_selected_item_background_up_right = nullptr;
-	gui::IGUIImage *m_selected_item_background_left = nullptr;
-	gui::IGUIImage *m_selected_item_background_center = nullptr;
-	gui::IGUIImage *m_selected_item_background_right = nullptr;
-
-	gui::IGUIImage *m_selected_item_background_down_left = nullptr;
-	gui::IGUIImage *m_selected_item_background_down = nullptr;
-	gui::IGUIImage *m_selected_item_background_down_right = nullptr;
-
+	NineSliceBackground m_selected_item_bg;
 	bool m_selected_active = false;
 #endif
 
@@ -384,17 +376,7 @@ protected:
 	gui::IGUIStaticText *m_tooltip_element = nullptr;
 
 #if IS_VOPI_ENGINE
-	//Tooltip background
-	gui::IGUIImage *m_tooltip_background_up_left = nullptr;
-	gui::IGUIImage *m_tooltip_background_up = nullptr;
-	gui::IGUIImage *m_tooltip_background_up_right = nullptr;
-	gui::IGUIImage *m_tooltip_background_left = nullptr;
-	gui::IGUIImage *m_tooltip_background_center = nullptr;
-	gui::IGUIImage *m_tooltip_background_right = nullptr;
-
-	gui::IGUIImage *m_tooltip_background_down_left = nullptr;
-	gui::IGUIImage *m_tooltip_background_down = nullptr;
-	gui::IGUIImage *m_tooltip_background_down_right = nullptr;
+	NineSliceBackground m_tooltip_bg;
 #endif
 
 	u64 m_tooltip_show_delay;
