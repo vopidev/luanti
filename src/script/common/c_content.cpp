@@ -2415,6 +2415,19 @@ void read_hud_element(lua_State *L, HudElement *elem)
 
 	elem->style = getintfield_default(L, 2, "style", 0);
 
+#if IS_VOPI_ENGINE
+	lua_getfield(L, 2, "middle");
+	if (lua_istable(L, -1)) {
+		lua_rawgeti(L, -1, 1); s32 mx = lua_tointeger(L, -1); lua_pop(L, 1);
+		lua_rawgeti(L, -1, 2); s32 my = lua_tointeger(L, -1); lua_pop(L, 1);
+		lua_rawgeti(L, -1, 3); s32 mw = lua_tointeger(L, -1); lua_pop(L, 1);
+		lua_rawgeti(L, -1, 4); s32 mh = lua_tointeger(L, -1); lua_pop(L, 1);
+		elem->middle = core::rect<s32>(mx, my, mw, mh);
+	}
+	lua_pop(L, 1);
+	elem->middle_scale = getfloatfield_default(L, 2, "middle_scale", 1.0f);
+#endif
+
 	/* check for known deprecated element usage */
 	if ((elem->type  == HUD_ELEM_STATBAR) && (elem->size == v2s32()))
 		log_deprecated(L,"Deprecated usage of statbar without size!");
@@ -2480,6 +2493,22 @@ void push_hud_element(lua_State *L, HudElement *elem)
 
 	lua_pushinteger(L, elem->style);
 	lua_setfield(L, -2, "style");
+
+#if IS_VOPI_ENGINE
+	lua_newtable(L);
+	lua_pushinteger(L, elem->middle.UpperLeftCorner.X);
+	lua_rawseti(L, -2, 1);
+	lua_pushinteger(L, elem->middle.UpperLeftCorner.Y);
+	lua_rawseti(L, -2, 2);
+	lua_pushinteger(L, elem->middle.LowerRightCorner.X);
+	lua_rawseti(L, -2, 3);
+	lua_pushinteger(L, elem->middle.LowerRightCorner.Y);
+	lua_rawseti(L, -2, 4);
+	lua_setfield(L, -2, "middle");
+
+	lua_pushnumber(L, elem->middle_scale);
+	lua_setfield(L, -2, "middle_scale");
+#endif
 }
 
 bool read_hud_change(lua_State *L, HudElementStat &stat, HudElement *elem, void **value)
@@ -2549,6 +2578,18 @@ bool read_hud_change(lua_State *L, HudElementStat &stat, HudElement *elem, void 
 			elem->style = luaL_checknumber(L, 4);
 			*value = &elem->style;
 			break;
+#if IS_VOPI_ENGINE
+		case HUD_STAT_MIDDLE:
+			if (lua_istable(L, 4)) {
+				lua_rawgeti(L, 4, 1); s32 mx = lua_tointeger(L, -1); lua_pop(L, 1);
+				lua_rawgeti(L, 4, 2); s32 my = lua_tointeger(L, -1); lua_pop(L, 1);
+				lua_rawgeti(L, 4, 3); s32 mw = lua_tointeger(L, -1); lua_pop(L, 1);
+				lua_rawgeti(L, 4, 4); s32 mh = lua_tointeger(L, -1); lua_pop(L, 1);
+				elem->middle = core::rect<s32>(mx, my, mw, mh);
+			}
+			*value = &elem->middle;
+			break;
+#endif
 		case HudElementStat_END:
 			return false;
 			break;

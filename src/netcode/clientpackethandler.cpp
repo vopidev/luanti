@@ -1193,6 +1193,16 @@ void Client::handleCommand_HudAdd(NetworkPacket* pkt)
 		*pkt >> style;
 	} catch(PacketError &e) {};
 
+#if IS_VOPI_ENGINE
+	core::rect<s32> middle;
+	f32 middle_scale = 1.0f;
+	try {
+		s32 mx, my, mw, mh;
+		*pkt >> mx >> my >> mw >> mh >> middle_scale;
+		middle = core::rect<s32>(mx, my, mw, mh);
+	} catch(PacketError &e) {};
+#endif
+
 	ClientEvent *event = new ClientEvent();
 	event->type              = CE_HUDADD;
 	event->hudadd            = new ClientEventHudAdd();
@@ -1212,6 +1222,10 @@ void Client::handleCommand_HudAdd(NetworkPacket* pkt)
 	event->hudadd->z_index   = z_index;
 	event->hudadd->text2     = text2;
 	event->hudadd->style     = style;
+#if IS_VOPI_ENGINE
+	event->hudadd->middle       = middle;
+	event->hudadd->middle_scale = middle_scale;
+#endif
 	m_client_event_queue.push(event);
 }
 
@@ -1234,6 +1248,9 @@ void Client::handleCommand_HudChange(NetworkPacket* pkt)
 	v3f v3fdata;
 	u32 intdata = 0;
 	v2s32 v2s32data;
+#if IS_VOPI_ENGINE
+	core::rect<s32> rectdata;
+#endif
 	u32 server_id;
 	u8 stat;
 
@@ -1263,6 +1280,14 @@ void Client::handleCommand_HudChange(NetworkPacket* pkt)
 		case HUD_STAT_SIZE:
 			*pkt >> v2s32data;
 			break;
+#if IS_VOPI_ENGINE
+		case HUD_STAT_MIDDLE: {
+			s32 mx, my, mw, mh;
+			*pkt >> mx >> my >> mw >> mh;
+			rectdata = core::rect<s32>(mx, my, mw, mh);
+			break;
+		}
+#endif
 		default:
 			*pkt >> intdata;
 			break;
@@ -1278,6 +1303,9 @@ void Client::handleCommand_HudChange(NetworkPacket* pkt)
 	event->hudchange->sdata     = sdata;
 	event->hudchange->data      = intdata;
 	event->hudchange->v2s32data = v2s32data;
+#if IS_VOPI_ENGINE
+	event->hudchange->rectdata  = rectdata;
+#endif
 	m_client_event_queue.push(event);
 }
 

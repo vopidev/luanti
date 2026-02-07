@@ -24,6 +24,9 @@
 #include "filesys.h"
 #include "irrlicht_changes/static_text.h"
 #include "irr_ptr.h"
+#if IS_VOPI_ENGINE
+#include "gettext.h"
+#endif
 
 #ifdef __IOS__
 #include "CIrrDeviceSDL.h"
@@ -310,6 +313,146 @@ void RenderingEngine::draw_load_screen(const std::wstring &text,
 		gui::IGUIEnvironment *guienv, ITextureSource *tsrc, float dtime,
 		int percent, float *indef_pos)
 {
+#if IS_VOPI_ENGINE
+	// Loading screen layout constants
+	const float LOADING_SCREEN_FORMSPEC_WIDTH = 10.24f;
+	const float LOADING_SCREEN_FORMSPEC_HEIGHT = 5.12f;
+	const float LOADING_TEXT_PADDING_LEFT_PCT = 14.0f;
+	const float LOADING_TEXT_PADDING_BOTTOM_PCT = 11.0f;
+	const float LOADING_SCREEN_PADDING_FACTOR = 0.05f;
+	const video::SColor LOADING_TEXT_COLOR(255, 255, 139, 178);
+
+	auto* driver = get_video_driver();
+	if (!driver)
+		return;
+
+	v2u32 screensize = driver->getScreenSize();
+	const std::wstring loading_text = fwgettext("LOADING...");
+	v2s32 textsize(g_fontengine->getTextWidth(loading_text), g_fontengine->getLineHeight());
+
+	driver->beginScene(true, true, video::SColor(255, 0, 0, 0));
+
+	// Draw background image with proper aspect ratio preservation
+	video::ITexture* bg = tsrc->getTexture(g_settings->get("main_menu_bg"));
+	if (bg) {
+		v2u32 sourcesize = bg->getOriginalSize();
+		f32 scale_x = (f32)screensize.X / sourcesize.X;
+		f32 scale_y = (f32)screensize.Y / sourcesize.Y;
+		f32 scale_factor = std::max(scale_x, scale_y);
+		v2u32 bg_size((u32)(scale_factor * sourcesize.X), (u32)(scale_factor * sourcesize.Y));
+		v2s32 offset(((s32)screensize.X - (s32)bg_size.X) / 2, ((s32)screensize.Y - (s32)bg_size.Y) / 2);
+		draw2DImageFilterScaled(driver, bg,
+			core::rect<s32>(offset.X, offset.Y, offset.X + bg_size.X, offset.Y + bg_size.Y),
+			core::rect<s32>(0, 0, sourcesize.X, sourcesize.Y),
+			NULL, NULL, true);
+	}
+
+	int percent_min = 0;
+	int percent_max = percent;
+	if (indef_pos) {
+		*indef_pos = fmodf(*indef_pos + (dtime * 50.0f), 140.0f);
+		percent_max = std::min((int)*indef_pos, 100);
+		percent_min = std::max((int)*indef_pos - 40, 0);
+	}
+
+	if ((percent_min >= 0) && (percent_max <= 100)) {
+		video::ITexture *progress_img = tsrc->getTexture("gui_progress_bar.png");
+		video::ITexture *progress_img_bg = tsrc->getTexture("gui_progress_bar_bg.png");
+
+		if (progress_img && progress_img_bg) {
+			v2u32 sourcesize = progress_img_bg->getOriginalSize();
+			v2f32 padded_screensize(
+				screensize.X * (1.0f - LOADING_SCREEN_PADDING_FACTOR * 2.0f),
+				screensize.Y * (1.0f - LOADING_SCREEN_PADDING_FACTOR * 2.0f)
+			);
+			double fitx_factor = padded_screensize.X / LOADING_SCREEN_FORMSPEC_WIDTH;
+			double fity_factor = padded_screensize.Y / LOADING_SCREEN_FORMSPEC_HEIGHT;
+			const double screen_dpi = RenderingEngine::getDisplayDensity() * 96;
+			const double gui_scaling = g_settings->getFloat("gui_scaling", 0.5f, 42.0f);
+			double fixed_imgsize = 0.5555 * screen_dpi * gui_scaling;
+			s32 min_screen_dim = std::min(padded_screensize.X, padded_screensize.Y);
+			double dynamic_imgsize = min_screen_dim / 15.0 * gui_scaling;
+			double prefer_imgsize = std::max(dynamic_imgsize, fixed_imgsize);
+			double actual_imgsize = std::min(prefer_imgsize, std::min(fitx_factor, fity_factor));
+
+			v2s32 progress_bar_dimensions(
+				LOADING_SCREEN_FORMSPEC_WIDTH * actual_imgsize,
+				LOADING_SCREEN_FORMSPEC_HEIGHT * actual_imgsize
+			);
+			v2s32 progress_bar_pos(
+				(screensize.X - progress_bar_dimensions.X) / 2,
+				(screensize.Y - progress_bar_dimensions.Y) / 2
+			);
+
+			s32 text_padding_left = progress_bar_dimensions.X * (LOADING_TEXT_PADDING_LEFT_PCT / 100.0f);
+			s32 text_padding_bottom = progress_bar_dimensions.Y * (LOADING_TEXT_PADDING_BOTTOM_PCT / 100.0f);
+			s32 text_x = progress_bar_pos.X + text_padding_left;
+			s32 text_y = progress_bar_pos.Y + progress_bar_dimensions.Y - text_padding_bottom - textsize.Y;
+			core::rect<s32> textrect(text_x, text_y, text_x + textsize.X, text_y + textsize.Y);
+
+			gui::IGUIStaticText *guitext = guienv->addStaticText(
+				loading_text.c_str(), textrect, false, false);
+			if (guitext) {
+				guitext->setTextAlignment(gui::EGUIA_UPPERLEFT, gui::EGUIA_UPPERLEFT);
+				guitext->setOverrideColor(LOADING_TEXT_COLOR);
+			}
+
+			draw2DImageFilterScaled(driver, progress_img_bg,
+				core::rect<s32>(progress_bar_pos.X, progress_bar_pos.Y,
+					progress_bar_pos.X + progress_bar_dimensions.X,
+					progress_bar_pos.Y + progress_bar_dimensions.Y),
+				core::rect<s32>(0, 0, sourcesize.X, sourcesize.Y),
+				NULL, NULL, true);
+
+			draw2DImageFilterScaled(driver, progress_img,
+				core::rect<s32>(
+					progress_bar_pos.X + (percent_min * progress_bar_dimensions.X) / 100,
+					progress_bar_pos.Y,
+					progress_bar_pos.X + (percent_max * progress_bar_dimensions.X) / 100,
+					progress_bar_pos.Y + progress_bar_dimensions.Y
+				),
+				core::rect<s32>(
+					percent_min * sourcesize.X / 100,
+					0,
+					percent_max * sourcesize.X / 100,
+					sourcesize.Y
+				),
+				NULL, NULL, true);
+
+			guienv->drawAll();
+			driver->endScene();
+			if (guitext)
+				guitext->remove();
+		} else {
+			// Fallback: Simple progress bar if custom textures not found
+			v2s32 center(screensize.X / 2, screensize.Y / 2);
+			core::rect<s32> textrect(center - textsize / 2, center + textsize / 2);
+			gui::IGUIStaticText *guitext = gui::StaticText::add(guienv,
+				loading_text.c_str(), textrect, false, false);
+			if (guitext) {
+				guitext->setTextAlignment(gui::EGUIA_CENTER, gui::EGUIA_UPPERLEFT);
+				guitext->setOverrideColor(LOADING_TEXT_COLOR);
+			}
+			s32 bar_width = screensize.X / 2;
+			s32 bar_height = 20;
+			v2s32 bar_pos(screensize.X / 4, center.Y + textsize.Y);
+			driver->draw2DRectangle(video::SColor(255, 50, 50, 50),
+				core::rect<s32>(bar_pos.X, bar_pos.Y,
+					bar_pos.X + bar_width, bar_pos.Y + bar_height));
+			s32 fill_width = (bar_width * percent_max) / 100;
+			driver->draw2DRectangle(video::SColor(255, 255, 139, 178),
+				core::rect<s32>(bar_pos.X, bar_pos.Y,
+					bar_pos.X + fill_width, bar_pos.Y + bar_height));
+			guienv->drawAll();
+			driver->endScene();
+			if (guitext)
+				guitext->remove();
+		}
+	} else {
+		guienv->drawAll();
+		driver->endScene();
+	}
+#else
 	v2u32 screensize = getWindowSize();
 
 	v2s32 textsize(g_fontengine->getTextWidth(text), g_fontengine->getLineHeight());
@@ -382,6 +525,7 @@ void RenderingEngine::draw_load_screen(const std::wstring &text,
 	guienv->drawAll();
 	driver->endScene();
 	guitext->remove();
+#endif
 }
 
 std::vector<video::E_DRIVER_TYPE> RenderingEngine::getSupportedVideoDrivers()

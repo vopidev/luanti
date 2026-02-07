@@ -47,8 +47,13 @@ void draw2DImageFilterScaled(video::IVideoDriver *driver, video::ITexture *txr,
 
 /*
  * 9-slice / segment drawing
+ * border_scale: scale factor for border size on screen (1.0 = same as texture, 2.0 = twice as large)
  */
 void draw2DImage9Slice(video::IVideoDriver *driver, video::ITexture *texture,
 		const core::rect<s32> &destrect, const core::rect<s32> &srcrect,
 		const core::rect<s32> &middlerect, const core::rect<s32> *cliprect = nullptr,
+#if IS_VOPI_ENGINE
+		const video::SColor *const colors = nullptr, f32 border_scale = 1.0f);
+#else
 		const video::SColor *const colors = nullptr);
+#endif
