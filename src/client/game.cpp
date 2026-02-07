@@ -3832,17 +3832,29 @@ void the_game(volatile std::sig_atomic_t *kill,
 	} catch (ServerError &e) {
 		error_message = e.what();
 		errorstream << "ServerError: " << error_message << std::endl;
+#if IS_VOPI_ENGINE && (defined(__ANDROID__) || defined(__IOS__))
+		porting::handleError("ServerError", error_message);
+#endif
 	} catch (ModError &e) {
 		// DO NOT TRANSLATE the `ModError`, it's used by `ui.lua`
 		error_message = std::string("ModError: ") + e.what() +
 				strgettext("\nCheck debug.txt for details.");
 		errorstream << error_message << std::endl;
+#if IS_VOPI_ENGINE && (defined(__ANDROID__) || defined(__IOS__))
+		porting::handleError("ModError", error_message);
+#endif
 	} catch (con::PeerNotFoundException &e) {
 		error_message = gettext("Connection error (timed out?)");
 		errorstream << error_message << std::endl;
+#if IS_VOPI_ENGINE && (defined(__ANDROID__) || defined(__IOS__))
+		porting::handleError("PeerNotFoundException: ", error_message);
+#endif
 	} catch (ShaderException &e) {
 		error_message = e.what();
 		errorstream << error_message << std::endl;
+#if IS_VOPI_ENGINE && (defined(__ANDROID__) || defined(__IOS__))
+		porting::handleError("ShaderException: ", error_message);
+#endif
 	}
 
 	game.shutdown();
