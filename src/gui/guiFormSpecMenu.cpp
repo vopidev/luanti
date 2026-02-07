@@ -156,6 +156,57 @@ void GUIFormSpecMenu::create(GUIFormSpecMenu *&cur_formspec, Client *client,
 	cur_formspec->doPause = false;
 }
 
+#if IS_VOPI_ENGINE && (defined(__ANDROID__) || defined(__IOS__))
+void GUIFormSpecMenu::removeItemSelectBackground()
+{
+	if (m_selected_item_background_up_left) {
+		m_selected_item_background_up_left->remove();
+		m_selected_item_background_up_left->drop();
+		m_selected_item_background_up_left = nullptr;
+	}
+	if (m_selected_item_background_up) {
+		m_selected_item_background_up->remove();
+		m_selected_item_background_up->drop();
+		m_selected_item_background_up = nullptr;
+	}
+	if (m_selected_item_background_up_right) {
+		m_selected_item_background_up_right->remove();
+		m_selected_item_background_up_right->drop();
+		m_selected_item_background_up_right = nullptr;
+	}
+	if (m_selected_item_background_left) {
+		m_selected_item_background_left->remove();
+		m_selected_item_background_left->drop();
+		m_selected_item_background_left = nullptr;
+	}
+	if (m_selected_item_background_center) {
+		m_selected_item_background_center->remove();
+		m_selected_item_background_center->drop();
+		m_selected_item_background_center = nullptr;
+	}
+	if (m_selected_item_background_right) {
+		m_selected_item_background_right->remove();
+		m_selected_item_background_right->drop();
+		m_selected_item_background_right = nullptr;
+	}
+	if (m_selected_item_background_down_left) {
+		m_selected_item_background_down_left->remove();
+		m_selected_item_background_down_left->drop();
+		m_selected_item_background_down_left = nullptr;
+	}
+	if (m_selected_item_background_down) {
+		m_selected_item_background_down->remove();
+		m_selected_item_background_down->drop();
+		m_selected_item_background_down = nullptr;
+	}
+	if (m_selected_item_background_down_right) {
+		m_selected_item_background_down_right->remove();
+		m_selected_item_background_down_right->drop();
+		m_selected_item_background_down_right = nullptr;
+	}
+}
+#endif
+
 void GUIFormSpecMenu::removeTooltip()
 {
 	if (m_tooltip_element) {
@@ -163,6 +214,54 @@ void GUIFormSpecMenu::removeTooltip()
 		m_tooltip_element->drop();
 		m_tooltip_element = nullptr;
 	}
+
+#if IS_VOPI_ENGINE
+	if (m_tooltip_background_up_left) {
+		m_tooltip_background_up_left->remove();
+		m_tooltip_background_up_left->drop();
+		m_tooltip_background_up_left = nullptr;
+	}
+	if (m_tooltip_background_up) {
+		m_tooltip_background_up->remove();
+		m_tooltip_background_up->drop();
+		m_tooltip_background_up = nullptr;
+	}
+	if (m_tooltip_background_up_right) {
+		m_tooltip_background_up_right->remove();
+		m_tooltip_background_up_right->drop();
+		m_tooltip_background_up_right = nullptr;
+	}
+	if (m_tooltip_background_left) {
+		m_tooltip_background_left->remove();
+		m_tooltip_background_left->drop();
+		m_tooltip_background_left = nullptr;
+	}
+	if (m_tooltip_background_center) {
+		m_tooltip_background_center->remove();
+		m_tooltip_background_center->drop();
+		m_tooltip_background_center = nullptr;
+	}
+	if (m_tooltip_background_right) {
+		m_tooltip_background_right->remove();
+		m_tooltip_background_right->drop();
+		m_tooltip_background_right = nullptr;
+	}
+	if (m_tooltip_background_down_left) {
+		m_tooltip_background_down_left->remove();
+		m_tooltip_background_down_left->drop();
+		m_tooltip_background_down_left = nullptr;
+	}
+	if (m_tooltip_background_down) {
+		m_tooltip_background_down->remove();
+		m_tooltip_background_down->drop();
+		m_tooltip_background_down = nullptr;
+	}
+	if (m_tooltip_background_down_right) {
+		m_tooltip_background_down_right->remove();
+		m_tooltip_background_down_right->drop();
+		m_tooltip_background_down_right = nullptr;
+	}
+#endif
 }
 
 void GUIFormSpecMenu::setInitialFocus()
@@ -3131,6 +3230,10 @@ void GUIFormSpecMenu::removeAll()
 	removeAllChildren();
 	removeTooltip();
 
+#if IS_VOPI_ENGINE && (defined(__ANDROID__) || defined(__IOS__))
+	removeItemSelectBackground();
+#endif
+
 	for (auto &table_it : m_tables)
 		table_it.second->drop();
 	for (auto &inventorylist_it : m_inventorylists)
@@ -3318,21 +3421,174 @@ void GUIFormSpecMenu::regenerateGui(v2u32 screensize)
 	m_default_tooltip_bgcolor = video::SColor(255,110,130,60);
 	m_default_tooltip_color = video::SColor(255,255,255,255);
 
+#if IS_VOPI_ENGINE
+	video::IVideoDriver *driver = RenderingEngine::get_video_driver();
+	std::string textures_path = porting::path_share + "/textures/base/pack/gui_pop_up/";
+#if defined(__ANDROID__) || defined(__IOS__)
+	// Add selected item background
+	{
+		assert(!m_selected_item_background_up_left);
+		assert(!m_selected_item_background_up);
+		assert(!m_selected_item_background_up_right);
+		assert(!m_selected_item_background_left);
+		assert(!m_selected_item_background_center);
+		assert(!m_selected_item_background_right);
+		assert(!m_selected_item_background_down_left);
+		assert(!m_selected_item_background_down);
+		assert(!m_selected_item_background_down_right);
+
+		//selected item background
+		std::string m_selected_item_background_up_left_path = textures_path + "gui_tooltip_bg_up_left.png";
+		std::string m_selected_item_background_up_path = textures_path + "gui_tooltip_bg_up.png";
+		std::string m_selected_item_background_up_right_path = textures_path + "gui_tooltip_bg_up_right.png";
+		std::string m_selected_item_background_left_path = textures_path + "gui_tooltip_bg_left.png";
+		std::string m_selected_item_background_center_path = textures_path + "gui_tooltip_bg_center.png";
+		std::string m_selected_item_background_right_path = textures_path + "gui_tooltip_bg_right.png";
+		std::string m_selected_item_background_down_left_path = textures_path + "gui_tooltip_bg_down_left.png";
+		std::string m_selected_item_background_down_path = textures_path + "gui_tooltip_bg_down.png";
+		std::string m_selected_item_background_down_right_path = textures_path + "gui_tooltip_bg_down_right.png";
+		m_selected_item_background_up_left = guienv->addImage(core::rect<s32>(0, 0, 1, 1), guiroot, -1, nullptr, true);
+		m_selected_item_background_up = guienv->addImage(core::rect<s32>(0, 0, 1, 1), guiroot, -1, nullptr, true);
+		m_selected_item_background_up_right = guienv->addImage(core::rect<s32>(0, 0, 1, 1), guiroot, -1, nullptr, true);
+		m_selected_item_background_left = guienv->addImage(core::rect<s32>(0, 0, 1, 1), guiroot, -1, nullptr, true);
+		m_selected_item_background_center = guienv->addImage(core::rect<s32>(0, 0, 1, 1), guiroot, -1, nullptr, true);
+		m_selected_item_background_right = guienv->addImage(core::rect<s32>(0, 0, 1, 1), guiroot, -1, nullptr, true);
+
+		m_selected_item_background_down_left = guienv->addImage(core::rect<s32>(0, 0, 1, 1), guiroot, -1, nullptr, true);
+		m_selected_item_background_down = guienv->addImage(core::rect<s32>(0, 0, 1, 1), guiroot, -1, nullptr, true);
+		m_selected_item_background_down_right = guienv->addImage(core::rect<s32>(0, 0, 1, 1), guiroot, -1, nullptr, true);
+		m_selected_item_background_up_left->setImage(driver->getTexture(m_selected_item_background_up_left_path.c_str()));
+		m_selected_item_background_up->setImage(driver->getTexture(m_selected_item_background_up_path.c_str()));
+		m_selected_item_background_up_right->setImage(driver->getTexture(m_selected_item_background_up_right_path.c_str()));
+		m_selected_item_background_left->setImage(driver->getTexture(m_selected_item_background_left_path.c_str()));
+		m_selected_item_background_center->setImage(driver->getTexture(m_selected_item_background_center_path.c_str()));
+		m_selected_item_background_right->setImage(driver->getTexture(m_selected_item_background_right_path.c_str()));
+
+		m_selected_item_background_down_left->setImage(driver->getTexture(m_selected_item_background_down_left_path.c_str()));
+		m_selected_item_background_down->setImage(driver->getTexture(m_selected_item_background_down_path.c_str()));
+		m_selected_item_background_down_right->setImage(driver->getTexture(m_selected_item_background_down_right_path.c_str()));
+
+		m_selected_item_background_up_left->setScaleImage(true);
+		m_selected_item_background_up->setScaleImage(true);
+		m_selected_item_background_up_right->setScaleImage(true);
+		m_selected_item_background_left->setScaleImage(true);
+		m_selected_item_background_center->setScaleImage(true);
+		m_selected_item_background_right->setScaleImage(true);
+
+		m_selected_item_background_down_left->setScaleImage(true);
+		m_selected_item_background_down->setScaleImage(true);
+		m_selected_item_background_down_right->setScaleImage(true);
+
+		//we're not parent so no autograb for this!
+		m_selected_item_background_up_left->grab();
+		m_selected_item_background_up->grab();
+		m_selected_item_background_up_right->grab();
+
+		m_selected_item_background_left->grab();
+		m_selected_item_background_center->grab();
+		m_selected_item_background_right->grab();
+
+		m_selected_item_background_down_left->grab();
+		m_selected_item_background_down->grab();
+		m_selected_item_background_down_right->grab();
+	}
+#endif
+#endif
+
 	// Add tooltip
 	{
 		assert(!m_tooltip_element);
+
+#if IS_VOPI_ENGINE
+		assert(!m_tooltip_background_up_left);
+		assert(!m_tooltip_background_up);
+		assert(!m_tooltip_background_up_right);
+		assert(!m_tooltip_background_left);
+		assert(!m_tooltip_background_center);
+		assert(!m_tooltip_background_right);
+		assert(!m_tooltip_background_down_left);
+		assert(!m_tooltip_background_down);
+		assert(!m_tooltip_background_down_right);
+#endif
+
 		// Note: parent != this so that the tooltip isn't clipped by the menu rectangle
 		m_tooltip_element = gui::StaticText::add(Environment, L"",
 			core::rect<s32>(0, 0, 110, 18));
+#if IS_VOPI_ENGINE
+		m_tooltip_element->enableOverrideColor(false);
+#else
 		m_tooltip_element->enableOverrideColor(true);
+#endif
 		m_tooltip_element->setBackgroundColor(m_default_tooltip_bgcolor);
+#if IS_VOPI_ENGINE
+		m_tooltip_element->setDrawBackground(false);
+		m_tooltip_element->setDrawBorder(false);
+#else
 		m_tooltip_element->setDrawBackground(true);
 		m_tooltip_element->setDrawBorder(true);
+#endif
 		m_tooltip_element->setOverrideColor(m_default_tooltip_color);
 		m_tooltip_element->setTextAlignment(gui::EGUIA_CENTER, gui::EGUIA_CENTER);
 		m_tooltip_element->setWordWrap(false);
 		//we're not parent so no autograb for this one!
 		m_tooltip_element->grab();
+
+#if IS_VOPI_ENGINE
+		//Tooltip background
+		std::string m_tooltip_image_up_left_path = textures_path + "gui_tooltip_bg_up_left.png";
+		std::string m_tooltip_image_up_path = textures_path + "gui_tooltip_bg_up.png";
+		std::string m_tooltip_image_up_right_path = textures_path + "gui_tooltip_bg_up_right.png";
+		std::string m_tooltip_image_left_path = textures_path + "gui_tooltip_bg_left.png";
+		std::string m_tooltip_image_center_path = textures_path + "gui_tooltip_bg_center.png";
+		std::string m_tooltip_image_right_path = textures_path + "gui_tooltip_bg_right.png";
+		std::string m_tooltip_image_down_left_path = textures_path + "gui_tooltip_bg_down_left.png";
+		std::string m_tooltip_image_down_path = textures_path + "gui_tooltip_bg_down.png";
+		std::string m_tooltip_image_down_right_path = textures_path + "gui_tooltip_bg_down_right.png";
+		m_tooltip_background_up_left = guienv->addImage(core::rect<s32>(0, 0, 1, 1), guiroot, -1, nullptr, true);
+		m_tooltip_background_up = guienv->addImage(core::rect<s32>(0, 0, 1, 1), guiroot, -1, nullptr, true);
+		m_tooltip_background_up_right = guienv->addImage(core::rect<s32>(0, 0, 1, 1), guiroot, -1, nullptr, true);
+		m_tooltip_background_left = guienv->addImage(core::rect<s32>(0, 0, 1, 1), guiroot, -1, nullptr, true);
+		m_tooltip_background_center = guienv->addImage(core::rect<s32>(0, 0, 1, 1), guiroot, -1, nullptr, true);
+		m_tooltip_background_right = guienv->addImage(core::rect<s32>(0, 0, 1, 1), guiroot, -1, nullptr, true);
+
+		m_tooltip_background_down_left = guienv->addImage(core::rect<s32>(0, 0, 1, 1), guiroot, -1, nullptr, true);
+		m_tooltip_background_down = guienv->addImage(core::rect<s32>(0, 0, 1, 1), guiroot, -1, nullptr, true);
+		m_tooltip_background_down_right = guienv->addImage(core::rect<s32>(0, 0, 1, 1), guiroot, -1, nullptr, true);
+		m_tooltip_background_up_left->setImage(driver->getTexture(m_tooltip_image_up_left_path.c_str()));
+		m_tooltip_background_up->setImage(driver->getTexture(m_tooltip_image_up_path.c_str()));
+		m_tooltip_background_up_right->setImage(driver->getTexture(m_tooltip_image_up_right_path.c_str()));
+		m_tooltip_background_left->setImage(driver->getTexture(m_tooltip_image_left_path.c_str()));
+		m_tooltip_background_center->setImage(driver->getTexture(m_tooltip_image_center_path.c_str()));
+		m_tooltip_background_right->setImage(driver->getTexture(m_tooltip_image_right_path.c_str()));
+
+		m_tooltip_background_down_left->setImage(driver->getTexture(m_tooltip_image_down_left_path.c_str()));
+		m_tooltip_background_down->setImage(driver->getTexture(m_tooltip_image_down_path.c_str()));
+		m_tooltip_background_down_right->setImage(driver->getTexture(m_tooltip_image_down_right_path.c_str()));
+
+		m_tooltip_background_up_left->setScaleImage(true);
+		m_tooltip_background_up->setScaleImage(true);
+		m_tooltip_background_up_right->setScaleImage(true);
+		m_tooltip_background_left->setScaleImage(true);
+		m_tooltip_background_center->setScaleImage(true);
+		m_tooltip_background_right->setScaleImage(true);
+
+		m_tooltip_background_down_left->setScaleImage(true);
+		m_tooltip_background_down->setScaleImage(true);
+		m_tooltip_background_down_right->setScaleImage(true);
+
+		//we're not parent so no autograb for this!
+		m_tooltip_background_up_left->grab();
+		m_tooltip_background_up->grab();
+		m_tooltip_background_up_right->grab();
+
+		m_tooltip_background_left->grab();
+		m_tooltip_background_center->grab();
+		m_tooltip_background_right->grab();
+
+		m_tooltip_background_down_left->grab();
+		m_tooltip_background_down->grab();
+		m_tooltip_background_down_right->grab();
+#endif
 	}
 
 	std::vector<std::string> elements = split(m_formspec_string,']');
@@ -3684,12 +3940,31 @@ GUIInventoryList::ItemSpec GUIFormSpecMenu::getItemAtPos(v2s32 p) const
 {
 	for (const GUIInventoryList *e : m_inventorylists) {
 		s32 item_index = e->getItemIndexAtPos(p);
+#if IS_VOPI_ENGINE
+		if (item_index != -1) {
+			// We get the slot rectangle by index
+			core::rect<s32> slot_rect = e->getSlotRect(item_index);
+
+			return GUIInventoryList::ItemSpec(
+				e->getInventoryloc(),
+				e->getListname(),
+				item_index,
+				e->getSlotSize(),
+				slot_rect.UpperLeftCorner  // Add a slot position
+			);
+		}
+#else
 		if (item_index != -1)
 			return GUIInventoryList::ItemSpec(e->getInventoryloc(), e->getListname(),
 					item_index, e->getSlotSize());
+#endif
 	}
 
+#if IS_VOPI_ENGINE
+	return GUIInventoryList::ItemSpec(InventoryLocation(), "", -1, {0,0}, {0,0});
+#else
 	return GUIInventoryList::ItemSpec(InventoryLocation(), "", -1, {0,0});
+#endif
 }
 
 void GUIFormSpecMenu::drawSelectedItem()
@@ -3713,7 +3988,127 @@ void GUIFormSpecMenu::drawSelectedItem()
 
 	v2s32 slotsize = m_selected_item->slotsize;
 	core::rect<s32> imgrect(0, 0, slotsize.X, slotsize.Y);
+#if IS_VOPI_ENGINE && (defined(__ANDROID__) || defined(__IOS__))
+	core::rect<s32> rect;
+	if (!m_selected_dragging) {
+		// If you do not drag and drop, draw in the slot position
+		rect = core::rect<s32>(
+			m_selected_item->position.X,
+			m_selected_item->position.Y,
+			m_selected_item->position.X + slotsize.X,
+			m_selected_item->position.Y + slotsize.Y
+		);
+		if (m_selected_active) {
+			// Size of corner elements for rounding adjustment
+			s32 corner_size = 10;
+
+			// Additional background indentation from the slot
+			s32 bg_padding = 3; // Can be adjusted with this value
+
+			// Calculate the rectangle for the background with padding
+			core::rect<s32> bg_rect(
+				rect.UpperLeftCorner.X - bg_padding,
+				rect.UpperLeftCorner.Y - bg_padding,
+				rect.LowerRightCorner.X + bg_padding,
+				rect.LowerRightCorner.Y + bg_padding
+			);
+			// Set positions for 9 background images
+			// Corners - keep the size of corners regardless of padding
+			m_selected_item_background_up_left->setRelativePosition(
+				core::rect<s32>(bg_rect.UpperLeftCorner.X,
+							   bg_rect.UpperLeftCorner.Y,
+							   bg_rect.UpperLeftCorner.X + corner_size,
+							   bg_rect.UpperLeftCorner.Y + corner_size));
+
+			m_selected_item_background_up_right->setRelativePosition(
+				core::rect<s32>(bg_rect.LowerRightCorner.X - corner_size,
+							   bg_rect.UpperLeftCorner.Y,
+							   bg_rect.LowerRightCorner.X,
+							   bg_rect.UpperLeftCorner.Y + corner_size));
+
+			m_selected_item_background_down_left->setRelativePosition(
+				core::rect<s32>(bg_rect.UpperLeftCorner.X,
+							   bg_rect.LowerRightCorner.Y - corner_size,
+							   bg_rect.UpperLeftCorner.X + corner_size,
+							   bg_rect.LowerRightCorner.Y));
+
+			m_selected_item_background_down_right->setRelativePosition(
+				core::rect<s32>(bg_rect.LowerRightCorner.X - corner_size,
+							   bg_rect.LowerRightCorner.Y - corner_size,
+							   bg_rect.LowerRightCorner.X,
+							   bg_rect.LowerRightCorner.Y));
+			// Edges - stretch between the corners
+			m_selected_item_background_up->setRelativePosition(
+				core::rect<s32>(bg_rect.UpperLeftCorner.X + corner_size,
+							   bg_rect.UpperLeftCorner.Y,
+							   bg_rect.LowerRightCorner.X - corner_size,
+							   bg_rect.UpperLeftCorner.Y + corner_size));
+
+			m_selected_item_background_down->setRelativePosition(
+				core::rect<s32>(bg_rect.UpperLeftCorner.X + corner_size,
+							   bg_rect.LowerRightCorner.Y - corner_size,
+							   bg_rect.LowerRightCorner.X - corner_size,
+							   bg_rect.LowerRightCorner.Y));
+
+			m_selected_item_background_left->setRelativePosition(
+				core::rect<s32>(bg_rect.UpperLeftCorner.X,
+							   bg_rect.UpperLeftCorner.Y + corner_size,
+							   bg_rect.UpperLeftCorner.X + corner_size,
+							   bg_rect.LowerRightCorner.Y - corner_size));
+
+			m_selected_item_background_right->setRelativePosition(
+				core::rect<s32>(bg_rect.LowerRightCorner.X - corner_size,
+							   bg_rect.UpperLeftCorner.Y + corner_size,
+							   bg_rect.LowerRightCorner.X,
+							   bg_rect.LowerRightCorner.Y - corner_size));
+			// Center - fills the entire internal space
+			m_selected_item_background_center->setRelativePosition(
+				core::rect<s32>(bg_rect.UpperLeftCorner.X + corner_size,
+							   bg_rect.UpperLeftCorner.Y + corner_size,
+							   bg_rect.LowerRightCorner.X - corner_size,
+							   bg_rect.LowerRightCorner.Y - corner_size));
+			// Set visibility for all background elements to true
+			m_selected_item_background_up_left->setVisible(true);
+			m_selected_item_background_up->setVisible(true);
+			m_selected_item_background_up_right->setVisible(true);
+			m_selected_item_background_left->setVisible(true);
+			m_selected_item_background_center->setVisible(true);
+			m_selected_item_background_right->setVisible(true);
+			m_selected_item_background_down_left->setVisible(true);
+			m_selected_item_background_down->setVisible(true);
+			m_selected_item_background_down_right->setVisible(true);
+		} else {
+			m_selected_item_background_up_left->setVisible(false);
+			m_selected_item_background_up->setVisible(false);
+			m_selected_item_background_up_right->setVisible(false);
+			m_selected_item_background_left->setVisible(false);
+			m_selected_item_background_center->setVisible(false);
+			m_selected_item_background_right->setVisible(false);
+			m_selected_item_background_down_left->setVisible(false);
+			m_selected_item_background_down->setVisible(false);
+			m_selected_item_background_down_right->setVisible(false);
+		}
+
+		// Draw item slot background
+		m_selected_item_background_up_left->draw();
+		m_selected_item_background_up->draw();
+		m_selected_item_background_up_right->draw();
+
+		m_selected_item_background_left->draw();
+		m_selected_item_background_center->draw();
+		m_selected_item_background_right->draw();
+
+		m_selected_item_background_down_left->draw();
+		m_selected_item_background_down->draw();
+		m_selected_item_background_down_right->draw();
+	} else {
+		// When dragging, follow the cursor
+		rect = imgrect + (m_pointer - imgrect.getCenter());
+		rect.constrainTo(driver->getViewPort());
+	}
+#else
 	core::rect<s32> rect = imgrect + (m_pointer - imgrect.getCenter());
+#endif
 	rect.constrainTo(driver->getViewPort());
 	drawItemStack(driver, m_font, stack, rect, NULL, m_client, IT_ROT_DRAGGED);
 }
@@ -3759,6 +4154,20 @@ void GUIFormSpecMenu::drawMenu()
 	*/
 	m_tooltip_element->setVisible(false);
 
+#if IS_VOPI_ENGINE
+	m_tooltip_background_up_left->setVisible(false);
+	m_tooltip_background_up->setVisible(false);
+	m_tooltip_background_up_right->setVisible(false);
+
+	m_tooltip_background_left->setVisible(false);
+	m_tooltip_background_center->setVisible(false);
+	m_tooltip_background_right->setVisible(false);
+
+	m_tooltip_background_down_left->setVisible(false);
+	m_tooltip_background_down->setVisible(false);
+	m_tooltip_background_down_right->setVisible(false);
+#endif
+
 	for (const auto &pair : m_tooltip_rects) {
 		const core::rect<s32> &rect = pair.first->getAbsoluteClippingRect();
 		if (rect.getArea() > 0 && rect.isPointInside(m_pointer)) {
@@ -3788,8 +4197,12 @@ void GUIFormSpecMenu::drawMenu()
 
 	// Draw hovered item tooltips
 	for (const std::string &tooltip : m_hovered_item_tooltips) {
+#if IS_VOPI_ENGINE
+		showTooltip(utf8_to_wide(tooltip), m_default_tooltip_color, m_default_tooltip_bgcolor);
+#else
 		showTooltip(utf8_to_wide(tooltip), m_default_tooltip_color,
 				m_default_tooltip_bgcolor);
+#endif
 	}
 
 	if (m_hovered_item_tooltips.empty()) {
@@ -3893,12 +4306,25 @@ void GUIFormSpecMenu::drawMenu()
 				rect.LowerRightCorner.X, rect.LowerRightCorner.Y), nullptr);
 	}
 
+	// Draw dragged item stack
+	drawSelectedItem();
+
+	// Draw tooltip
 	m_tooltip_element->draw();
 
-	/*
-		Draw dragged item stack
-	*/
-	drawSelectedItem();
+#if IS_VOPI_ENGINE
+	m_tooltip_background_up_left->draw();
+	m_tooltip_background_up->draw();
+	m_tooltip_background_up_right->draw();
+
+	m_tooltip_background_left->draw();
+	m_tooltip_background_center->draw();
+	m_tooltip_background_right->draw();
+
+	m_tooltip_background_down_left->draw();
+	m_tooltip_background_down->draw();
+	m_tooltip_background_down_right->draw();
+#endif
 
 	skin->setFont(old_font);
 }
@@ -3907,17 +4333,43 @@ void GUIFormSpecMenu::drawMenu()
 void GUIFormSpecMenu::showTooltip(const std::wstring &text,
 	const video::SColor &color, const video::SColor &bgcolor)
 {
+#if IS_VOPI_ENGINE
+	setStaticText(m_tooltip_element, text);
+	m_tooltip_element->setOverrideFont(m_font);
+#else
 	EnrichedString ntext(text);
 	ntext.setDefaultColor(color);
 	if (!ntext.hasBackground())
 		ntext.setBackground(bgcolor);
+#endif
 
+#if IS_VOPI_ENGINE
+#if defined(__ANDROID__) || defined(__IOS__)
+	s32 corner_size = 15; // Size for corner images
+	s32 padding_width = 7; // Padding width
+	s32 padding_height = 20; // Padding height
+#else
+	s32 corner_size = 8; // Size for corner images
+	s32 padding_width = 2; // Padding width
+	s32 padding_height = 5; // Padding height
+#endif
+#else
 	setStaticText(m_tooltip_element, ntext);
+#endif
 
 	// Tooltip size and offset
+#if IS_VOPI_ENGINE
+	s32 tooltip_width = m_tooltip_element->getTextWidth() + m_btn_height + 15 + padding_width;
+	s32 tooltip_height = m_tooltip_element->getTextHeight() + 10 + padding_height;
+#else
 	s32 tooltip_width = m_tooltip_element->getTextWidth() + m_btn_height;
 	s32 tooltip_height = m_tooltip_element->getTextHeight() + 5;
+#endif
 
+#if IS_VOPI_ENGINE && (defined(__ANDROID__) || defined(__IOS__))
+	s32 tooltip_y = m_screensize_old.Y - ((m_screensize_old.Y - tooltip_height) / 5) - 25;
+	s32 tooltip_x = (m_screensize_old.X - tooltip_width) / 2;
+#else
 	v2u32 screenSize = Environment->getVideoDriver()->getScreenSize();
 	int tooltip_offset_x = m_btn_height;
 	int tooltip_offset_y = m_btn_height;
@@ -3951,6 +4403,7 @@ void GUIFormSpecMenu::showTooltip(const std::wstring &text,
 	default: // OK
 		break;
 	}
+#endif
 
 	m_tooltip_element->setRelativePosition(
 		core::rect<s32>(
@@ -3962,6 +4415,35 @@ void GUIFormSpecMenu::showTooltip(const std::wstring &text,
 	// Display the tooltip
 	m_tooltip_element->setVisible(true);
 	bringToFront(m_tooltip_element);
+
+#if IS_VOPI_ENGINE
+	// Define sizes for background elements
+	s32 vertical_size = tooltip_height - 2 * corner_size; // Vertical stretchable area size
+	s32 horizontal_size = tooltip_width - 2 * corner_size; // Horizontal stretchable area size
+	// Set positions and sizes for 9 background images
+	// Corners
+	m_tooltip_background_up_left->setRelativePosition(core::rect<s32>(tooltip_x, tooltip_y, tooltip_x + corner_size, tooltip_y + corner_size));
+	m_tooltip_background_up_right->setRelativePosition(core::rect<s32>(tooltip_x + tooltip_width - corner_size, tooltip_y, tooltip_x + tooltip_width, tooltip_y + corner_size));
+	m_tooltip_background_down_left->setRelativePosition(core::rect<s32>(tooltip_x, tooltip_y + tooltip_height - corner_size, tooltip_x + corner_size, tooltip_y + tooltip_height));
+	m_tooltip_background_down_right->setRelativePosition(core::rect<s32>(tooltip_x + tooltip_width - corner_size, tooltip_y + tooltip_height - corner_size, tooltip_x + tooltip_width, tooltip_y + tooltip_height));
+	// Edges
+	m_tooltip_background_up->setRelativePosition(core::rect<s32>(tooltip_x + corner_size, tooltip_y, tooltip_x + tooltip_width - corner_size, tooltip_y + corner_size));
+	m_tooltip_background_down->setRelativePosition(core::rect<s32>(tooltip_x + corner_size, tooltip_y + tooltip_height - corner_size, tooltip_x + tooltip_width - corner_size, tooltip_y + tooltip_height));
+	m_tooltip_background_left->setRelativePosition(core::rect<s32>(tooltip_x, tooltip_y + corner_size, tooltip_x + corner_size, tooltip_y + tooltip_height - corner_size));
+	m_tooltip_background_right->setRelativePosition(core::rect<s32>(tooltip_x + tooltip_width - corner_size, tooltip_y + corner_size, tooltip_x + tooltip_width, tooltip_y + tooltip_height - corner_size));
+	// Center
+	m_tooltip_background_center->setRelativePosition(core::rect<s32>(tooltip_x + corner_size, tooltip_y + corner_size, tooltip_x + tooltip_width - corner_size, tooltip_y + tooltip_height - corner_size));
+	// Setting visibility for all background elements
+	m_tooltip_background_up_left->setVisible(true);
+	m_tooltip_background_up->setVisible(true);
+	m_tooltip_background_up_right->setVisible(true);
+	m_tooltip_background_left->setVisible(true);
+	m_tooltip_background_center->setVisible(true);
+	m_tooltip_background_right->setVisible(true);
+	m_tooltip_background_down_left->setVisible(true);
+	m_tooltip_background_down->setVisible(true);
+	m_tooltip_background_down_right->setVisible(true);
+#endif
 }
 
 void GUIFormSpecMenu::autoScroll()
@@ -4124,6 +4606,21 @@ void GUIFormSpecMenu::updateSelectedItem()
 	// If craftresult is selected, keep the whole stack selected
 	if (m_selected_item && m_selected_item->listname == "craftresult")
 		m_selected_amount = verifySelectedItem().count;
+
+#if IS_VOPI_ENGINE && (defined(__ANDROID__) || defined(__IOS__))
+	//Show tooltip window when m_selected_item != null
+	if (m_selected_item && m_selected_active && !m_selected_dragging && m_tooltip_show) {
+		u64 current_time = porting::getTimeMs();
+
+		if (current_time - m_tooltip_show_time <= 2000) {
+			std::string tooltip = m_invmgr->getInventory(m_selected_item->inventoryloc)->getList(m_selected_item->listname)->getItem(m_selected_item->i).getDescription(m_client->idef());
+			addHoveredItemTooltip(tooltip);
+		} else {
+			m_tooltip_show = false;
+			m_tooltip_show_time = 0;
+		}
+	}
+#endif
 }
 
 ItemStack GUIFormSpecMenu::verifySelectedItem()
@@ -4441,6 +4938,36 @@ void GUIFormSpecMenu::trySubmitClose()
 	}
 }
 
+#if IS_VOPI_ENGINE && (defined(__ANDROID__) || defined(__IOS__))
+void GUIFormSpecMenu::clearSelection()
+{
+	m_selected_swap.clear();
+	m_selected_item.reset();
+	m_selected_amount = 0;
+	m_selected_dragging = false;
+	m_selected_active = false;
+	m_tooltip_show = false;
+	m_tooltip_show_time = 0;
+}
+bool isPointerFarFromSlot(const v2s32& pointer_pos, const v2s32& slot_pos, const v2s32& slot_size)
+{
+	// Create a slot rectangle
+	core::rect<s32> slot_rect(
+		slot_pos.X,
+		slot_pos.Y,
+		slot_pos.X + slot_size.X,
+		slot_pos.Y + slot_size.Y
+	);
+
+	// Add a small area around the slot
+	slot_rect.UpperLeftCorner -= v2s32(5, 5);
+	slot_rect.LowerRightCorner += v2s32(5, 5);
+
+	// Check if the pointer has gone beyond this area
+	return !slot_rect.isPointInside(pointer_pos);
+}
+#endif
+
 bool GUIFormSpecMenu::OnEvent(const SEvent& event)
 {
 	if (event.EventType==EET_KEY_INPUT_EVENT) {
@@ -4521,6 +5048,18 @@ bool GUIFormSpecMenu::OnEvent(const SEvent& event)
 		}
 
 	}
+
+#if IS_VOPI_ENGINE && (defined(__ANDROID__) || defined(__IOS__))
+	if (event.EventType == EET_MOUSE_INPUT_EVENT &&
+			event.MouseInput.Event == EMIE_MOUSE_MOVED &&
+			m_selected_item && !m_selected_dragging && !m_selected_active) {
+		if (isPointerFarFromSlot(m_pointer, m_selected_item->position, m_selected_item->slotsize)) {
+			m_selected_dragging = true;
+			m_tooltip_show = false;
+			m_tooltip_show_time = 0;
+		}
+	}
+#endif
 
 	/* Mouse event other than movement, or crossing the border of inventory
 	   field while holding left, right, or middle mouse button
@@ -4672,6 +5211,59 @@ bool GUIFormSpecMenu::OnEvent(const SEvent& event)
 			if (button == BET_LEFT || button == BET_RIGHT || button == BET_MIDDLE)
 				m_held_mouse_button = button;
 
+#if IS_VOPI_ENGINE && (defined(__ANDROID__) || defined(__IOS__))
+			if (!s.isValid()) {
+				if (m_selected_item) {
+					if (!getAbsoluteClippingRect().isPointInside(m_pointer)) {
+						// Clicked outside of the window: drop
+						drop_amount = m_selected_amount;
+						m_selected_active = false;
+						m_tooltip_show = false;
+						m_tooltip_show_time = 0;
+					} else {
+						clearSelection();
+					}
+				}
+				break;
+			}
+			if (s.listname == "craftpreview") {
+				if (m_selected_item) {
+					clearSelection();
+
+					break;
+				}
+				// Craft preview has been clicked: craft
+				craft_amount = 1;
+
+				// Holding shift moves the crafted item to the inventory
+				m_shift_move_after_craft = false;
+			} else if (!m_selected_item && !empty) {
+				// Non-empty stack has been clicked: select it
+				m_selected_item = std::make_unique<GUIInventoryList::ItemSpec>(s);
+				m_selected_amount = s_count;
+			} else if (m_selected_item) {
+				// Clicked a slot: move
+				if (s.listname == "craft") {
+					move_amount = 1;
+				} else {
+					move_amount = m_selected_amount;
+					m_selected_active = false;
+					m_tooltip_show = false;
+					m_tooltip_show_time = 0;
+				}
+
+				if (identical) {
+					// Change the selected amount instead of moving
+					if (move_amount >= m_selected_amount)
+						m_selected_amount = 0;
+					else
+						m_selected_amount -= move_amount;
+
+					move_amount = 0;
+					pickup_amount = 0;
+				}
+			}
+#else
 			if (!s.isValid()) {
 				if (m_selected_item && !getAbsoluteClippingRect().isPointInside(m_pointer)) {
 					// Clicked outside of the window: drop
@@ -4796,6 +5388,7 @@ bool GUIFormSpecMenu::OnEvent(const SEvent& event)
 					pickup_amount = 0;
 				}
 			}
+#endif
 			break;
 		}
 		case BET_UP: {
@@ -4804,6 +5397,69 @@ bool GUIFormSpecMenu::OnEvent(const SEvent& event)
 			if (m_held_mouse_button != BET_OTHER && m_held_mouse_button != button)
 				break;
 			m_held_mouse_button = BET_OTHER;
+
+#if IS_VOPI_ENGINE && (defined(__ANDROID__) || defined(__IOS__))
+			if (m_selected_dragging && m_selected_item) {
+				if (s.isValid() && s.listname != "craftpreview" && s.listname != "craftresult") {
+					if (!identical) {
+						// Dragged to different slot: move all selected
+						move_amount = m_selected_amount;
+					} else {
+						m_selected_amount = 0;
+
+						m_selected_active = false;
+						m_tooltip_show = false;
+						m_tooltip_show_time = 0;
+					}
+				} else if (!getAbsoluteClippingRect().isPointInside(m_pointer)) {
+					// Dragged outside of window: drop all selected
+					drop_amount = m_selected_amount;
+				} else {
+					m_selected_amount = 0;
+				}
+			}
+			if(!m_selected_dragging && m_selected_item) {
+				if (s.isValid()) {
+					if (s.listname != "craftpreview" && s.listname != "craftresult" && s.listname != "craft") {
+						if (identical) {
+							m_selected_active = true;
+							if (!m_tooltip_show) {
+								m_tooltip_show = true;
+								m_tooltip_show_time = porting::getTimeMs();
+							}
+						} else {
+							if (m_selected_active) {
+								move_amount = m_selected_amount;
+								m_selected_active = false;
+								m_tooltip_show = false;
+								m_tooltip_show_time = 0;
+							} else {
+								m_selected_amount = 0;
+							}
+						}
+					} else {
+						if (s.listname != "craft") {
+							m_selected_amount = 0;
+							m_selected_active = false;
+							m_tooltip_show = false;
+							m_tooltip_show_time = 0;
+						} else {
+							m_selected_active = true;
+							if (!m_tooltip_show) {
+								m_tooltip_show = true;
+								m_tooltip_show_time = porting::getTimeMs();
+							}
+						}
+					}
+				} else {
+					m_selected_amount = 0;
+					m_selected_active = false;
+					m_tooltip_show = false;
+					m_tooltip_show_time = 0;
+				}
+			}
+			m_selected_dragging = false;
+#else
 
 			if (m_selected_dragging && m_selected_item) {
 				if (s.isValid() && !identical && (empty || matching)) {
@@ -4859,6 +5515,7 @@ bool GUIFormSpecMenu::OnEvent(const SEvent& event)
 
 				m_left_drag_stacks.clear();
 			}
+#endif
 			break;
 		}
 		case BET_MOVE: {
@@ -4867,6 +5524,12 @@ bool GUIFormSpecMenu::OnEvent(const SEvent& event)
 			if (!s.isValid() || s.listname == "craftpreview")
 				break;
 
+#if IS_VOPI_ENGINE && (defined(__ANDROID__) || defined(__IOS__))
+			if (m_selected_item && m_selected_dragging && matching && !identical) {
+				// Pickup items of the same type while dragging
+				pickup_amount = s_count;
+			}
+#else
 			if (!m_selected_item && mouse_shift) {
 				// Shift-move items while dragging
 				if (m_held_mouse_button == BET_RIGHT)
@@ -4912,9 +5575,11 @@ bool GUIFormSpecMenu::OnEvent(const SEvent& event)
 				m_selected_amount = s_count;
 				m_selected_dragging = true;
 			}
+#endif
 			break;
 		}
 		case BET_OTHER: {
+#if !IS_VOPI_ENGINE && !defined(__ANDROID__) && !defined(__IOS__)
 			// Some other mouse event has occured
 			// Currently only left-double-click should trigger this
 			if (!s.isValid() || event.EventType != EET_MOUSE_INPUT_EVENT ||
@@ -4981,6 +5646,7 @@ bool GUIFormSpecMenu::OnEvent(const SEvent& event)
 					}
 				}
 			}
+#endif
 			break;
 		}
 		default:
@@ -5205,6 +5871,112 @@ bool GUIFormSpecMenu::OnEvent(const SEvent& event)
 
 		} else if (craft_amount > 0) {
 			assert(s.isValid());
+#if IS_VOPI_ENGINE && (defined(__ANDROID__) || defined(__IOS__))
+			// First, look for an empty slot
+			bool found_slot = false;
+			GUIInventoryList::ItemSpec target_slot;
+			// Get the item from craftpreview for comparison
+			Inventory *craft_inv = m_invmgr->getInventory(s.inventoryloc);
+			if (!craft_inv)
+			   return false;
+			InventoryList *craft_list = craft_inv->getList("craftpreview");
+			if (!craft_list || craft_list->getSize() == 0)
+			   return false;
+
+			ItemStack craft_item = craft_list->getItem(0);
+			if (craft_item.empty())
+			   return false;
+			// Receive itemdef from the client
+			IItemDefManager *idef = m_client->idef();
+			// Search for a slot
+			for (const GUIInventoryList *e : m_inventorylists) {
+			   if (e->getListname() != "main" ||
+				   e->getInventoryloc().type != InventoryLocation::CURRENT_PLAYER)
+				   continue;
+
+			   Inventory *inv = m_invmgr->getInventory(e->getInventoryloc());
+			   if (!inv)
+				   continue;
+
+			   InventoryList *list = inv->getList(e->getListname());
+			   if (!list)
+				   continue;
+
+			   // First, look for slots with the same subject
+			   for (s32 i = 0; i < list->getSize(); i++) {
+				   ItemStack stack = list->getItem(i);
+				   if (!stack.empty() && stack.name == craft_item.name) {
+					   // Check if there is enough space for the new item
+					   s32 free_space = stack.getStackMax(idef) - stack.count;
+					   if (free_space >= craft_item.count) {
+						   core::rect<s32> rect = e->getSlotRect(i);
+
+						   target_slot = GUIInventoryList::ItemSpec(
+							   e->getInventoryloc(),
+							   e->getListname(),
+							   i,
+							   e->getSlotSize(),
+							   rect.UpperLeftCorner
+						   );
+						   found_slot = true;
+						   break;
+					   }
+				   }
+			   }
+
+			   // If you do not find a suitable slot with the same item, look for an empty one
+			   if (!found_slot) {
+				   for (s32 i = 0; i < list->getSize(); i++) {
+					   ItemStack stack = list->getItem(i);
+					   if (stack.empty()) {
+						   core::rect<s32> rect = e->getSlotRect(i);
+
+						   target_slot = GUIInventoryList::ItemSpec(
+							   e->getInventoryloc(),
+							   e->getListname(),
+							   i,
+							   e->getSlotSize(),
+							   rect.UpperLeftCorner
+						   );
+						   found_slot = true;
+						   break;
+					   }
+				   }
+			   }
+
+			   if (found_slot)
+				   break;
+			}
+
+			if (!found_slot) {
+			   craft_amount = 0;
+			   return false;
+			}
+			// If a slot is found, we craft it
+			ICraftAction *a = new ICraftAction();
+			a->count = craft_amount;
+			a->craft_inv = s.inventoryloc;
+			m_invmgr->inventoryAction(a);
+			Inventory *result_inv = m_invmgr->getInventory(s.inventoryloc);
+			if (result_inv) {
+			   InventoryList *result_list = result_inv->getList("craftresult");
+			   if (result_list && result_list->getSize() > 0) {
+				   u32 result_count = result_list->getItem(0).count;
+
+				   IMoveAction *move = new IMoveAction();
+				   move->count = result_count;
+				   move->from_inv = s.inventoryloc;
+				   move->from_list = "craftresult";
+				   move->from_i = 0;
+				   move->to_inv = target_slot.inventoryloc;
+				   move->to_list = target_slot.listname;
+				   move->to_i = target_slot.i;
+				   m_invmgr->inventoryAction(move);
+			   }
+			}
+
+			craft_amount = 0;
+#else
 
 			// If there are no items selected or the selected item
 			// belongs to craftresult list, proceed with crafting
@@ -5220,6 +5992,7 @@ bool GUIFormSpecMenu::OnEvent(const SEvent& event)
 				a->craft_inv = s.inventoryloc;
 				m_invmgr->inventoryAction(a);
 			}
+#endif
 		}
 
 		// If m_selected_amount has been decreased to zero,
@@ -5245,7 +6018,12 @@ bool GUIFormSpecMenu::OnEvent(const SEvent& event)
 			if (!isVisible())
 				break;
 
-				// find the element that was clicked
+#if IS_VOPI_ENGINE && (defined(__ANDROID__) || defined(__IOS__))
+			// reset selection
+			clearSelection();
+#endif
+
+			// find the element that was clicked
 			for (GUIFormSpecMenu::FieldSpec &s : m_fields) {
 				if (s.ftype == f_TabHeader &&
 						s.fid == caller_id) {
@@ -5275,6 +6053,10 @@ bool GUIFormSpecMenu::OnEvent(const SEvent& event)
 		case gui::EGET_CHECKBOX_CHANGED:
 		case gui::EGET_COMBO_BOX_CHANGED:
 		case gui::EGET_SCROLL_BAR_CHANGED:
+#if IS_VOPI_ENGINE && (defined(__ANDROID__) || defined(__IOS__))
+			// reset selection
+			clearSelection();
+#endif
 			if (caller_id == ID_PROCEED_BTN) {
 				trySubmitClose();
 				return true;
@@ -5379,7 +6161,14 @@ bool GUIFormSpecMenu::OnEvent(const SEvent& event)
 				acceptInput();
 			return true;
 
+#if IS_VOPI_ENGINE && (defined(__ANDROID__) || defined(__IOS__))
 		case gui::EGET_TABLE_CHANGED:
+		case gui::EGET_EDITBOX_CHANGED:
+			// reset selection
+			clearSelection();
+#else
+		case gui::EGET_TABLE_CHANGED:
+#endif
 			if (caller_id <= ID_PROCEED_BTN)
 				break;
 

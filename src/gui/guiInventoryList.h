@@ -22,11 +22,21 @@ public:
 		ItemSpec(const InventoryLocation &a_inventoryloc,
 				const std::string &a_listname,
 				s32 a_i,
+#if IS_VOPI_ENGINE
+				const v2s32 slotsize,
+				const v2s32 slot_pos) :
+#else
 				const v2s32 slotsize) :
+#endif
 			inventoryloc(a_inventoryloc),
 			listname(a_listname),
 			i(a_i),
+#if IS_VOPI_ENGINE
+			slotsize(slotsize),
+			position(slot_pos)
+#else
 			slotsize(slotsize)
+#endif
 		{
 		}
 
@@ -38,10 +48,20 @@ public:
 
 		bool isValid() const { return i != -1; }
 
+#if IS_VOPI_ENGINE
+		v2s32 getAbsolutePosition() const
+		{
+			return position;
+		}
+#endif
+
 		InventoryLocation inventoryloc;
 		std::string listname;
 		s32 i = -1;
 		v2s32 slotsize;
+#if IS_VOPI_ENGINE
+		v2s32 position;
+#endif
 	};
 
 	// options for inventorylists that are setable with the lua api
@@ -105,6 +125,9 @@ public:
 	// returns -1 if not item is at pos p
 	s32 getItemIndexAtPos(v2s32 p) const;
 
+#if IS_VOPI_ENGINE
+	core::rect<s32> getSlotRect(s32 item_i) const;
+#endif
 private:
 	InventoryManager *m_invmgr;
 	const InventoryLocation m_inventoryloc;

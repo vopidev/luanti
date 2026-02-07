@@ -221,6 +221,10 @@ public:
 		m_lockscreensize = basescreensize;
 	}
 
+#if IS_VOPI_ENGINE && (defined(__ANDROID__) || defined(__IOS__))
+	void removeItemSelectBackground();
+#endif
+
 	void removeTooltip();
 	void setInitialFocus();
 
@@ -269,6 +273,9 @@ public:
 
 	void acceptInput(FormspecQuitMode quitmode=quit_mode_no);
 	bool preprocessEvent(const SEvent& event);
+#if IS_VOPI_ENGINE && (defined(__ANDROID__) || defined(__IOS__))
+	void clearSelection();
+#endif
 	bool OnEvent(const SEvent& event);
 	bool doPause;
 	bool pausesGame() { return doPause; }
@@ -346,6 +353,22 @@ protected:
 	std::vector<gui::IGUIElement *> m_clickthrough_elements;
 	std::vector<std::pair<std::string, GUIScrollContainer *>> m_scroll_containers;
 
+#if IS_VOPI_ENGINE && (defined(__ANDROID__) || defined(__IOS__))
+	//Selected item background
+	gui::IGUIImage *m_selected_item_background_up_left = nullptr;
+	gui::IGUIImage *m_selected_item_background_up = nullptr;
+	gui::IGUIImage *m_selected_item_background_up_right = nullptr;
+	gui::IGUIImage *m_selected_item_background_left = nullptr;
+	gui::IGUIImage *m_selected_item_background_center = nullptr;
+	gui::IGUIImage *m_selected_item_background_right = nullptr;
+
+	gui::IGUIImage *m_selected_item_background_down_left = nullptr;
+	gui::IGUIImage *m_selected_item_background_down = nullptr;
+	gui::IGUIImage *m_selected_item_background_down_right = nullptr;
+
+	bool m_selected_active = false;
+#endif
+
 	std::unique_ptr<GUIInventoryList::ItemSpec> m_selected_item;
 	u16 m_selected_amount = 0;
 	bool m_selected_dragging = false;
@@ -360,10 +383,29 @@ protected:
 
 	gui::IGUIStaticText *m_tooltip_element = nullptr;
 
+#if IS_VOPI_ENGINE
+	//Tooltip background
+	gui::IGUIImage *m_tooltip_background_up_left = nullptr;
+	gui::IGUIImage *m_tooltip_background_up = nullptr;
+	gui::IGUIImage *m_tooltip_background_up_right = nullptr;
+	gui::IGUIImage *m_tooltip_background_left = nullptr;
+	gui::IGUIImage *m_tooltip_background_center = nullptr;
+	gui::IGUIImage *m_tooltip_background_right = nullptr;
+
+	gui::IGUIImage *m_tooltip_background_down_left = nullptr;
+	gui::IGUIImage *m_tooltip_background_down = nullptr;
+	gui::IGUIImage *m_tooltip_background_down_right = nullptr;
+#endif
+
 	u64 m_tooltip_show_delay;
 	bool m_tooltip_append_itemname;
 	u64 m_hovered_time = 0;
 	s32 m_old_tooltip_id = -1;
+
+#if IS_VOPI_ENGINE && (defined(__ANDROID__) || defined(__IOS__))
+	bool m_tooltip_show = false;
+	u64 m_tooltip_show_time = 0;
+#endif
 
 	bool m_default_allowclose = true;
 	bool m_allowclose = true;

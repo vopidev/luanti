@@ -346,6 +346,9 @@ private:
 	std::string                *error_message;
 	bool                       *reconnect_requested;
 	PausedNodesList             paused_animated_nodes;
+#if IS_VOPI_ENGINE
+	std::string 			    wield_name;
+#endif
 
 	bool simple_singleplayer_mode;
 	/* End 'cache' */

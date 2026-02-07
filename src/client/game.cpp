@@ -3535,6 +3535,13 @@ void Game::updateFrame(ProfilerGraph *graph, RunStats *stats, f32 dtime,
 		ItemStack selected_item, hand_item;
 		ItemStack &tool_item = player->getWieldedItem(&selected_item, &hand_item);
 		camera->wield(tool_item);
+#if IS_VOPI_ENGINE
+		std::string item_desc = selected_item.getDefinition(itemdef_manager).description;
+		if (wield_name != item_desc) {
+			m_game_ui->showStatusText(utf8_to_wide(item_desc));
+			wield_name = item_desc;
+		}
+#endif
 	}
 
 	/*
