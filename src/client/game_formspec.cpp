@@ -363,11 +363,11 @@ void GameFormSpec::showPauseMenu()
 #if IS_VOPI_ENGINE
 	float font_size = g_settings->getFloat("font_size");
 
-	const std::string background_image = "gui_common/gui_small_notebook_bg.png";
-	const std::string green_button_image = "gui_common/gui_big_green_btn.png";
-	const std::string red_button_image = "gui_common/gui_big_red_btn.png";
-	const std::string blue_button_image = "gui_common/gui_big_blue_btn.png";
-	const std::string cat_image = "gui_common/gui_pause_menu_cat.png";
+	static constexpr const char *background_image = "gui_common/gui_small_notebook_bg.png";
+	static constexpr const char *green_button_image = "gui_common/gui_big_green_btn.png";
+	static constexpr const char *red_button_image = "gui_common/gui_big_red_btn.png";
+	static constexpr const char *blue_button_image = "gui_common/gui_big_blue_btn.png";
+	static constexpr const char *cat_image = "gui_common/gui_pause_menu_cat.png";
 
 	os  << "formspec_version[9]" << "size[6,3;false]"
 		<< "no_prepend[]"
@@ -375,16 +375,14 @@ void GameFormSpec::showPauseMenu()
 		<< "background[0,0;0,0;" << background_image << ";true]"
 		<< "image[2.75,1.1;2.6,1.65;" << cat_image << "]"
 		<< "style_type[label;font_size=" << font_size * 1.5f << ";textcolor=#FF8BB2;font=bold]"
-		<< "label[3,0.85;" << strgettext("GAME PAUSED") << ";center]";
+		<< "label[3,0.85;" << strgettext("GAME PAUSED") << ";center]"
+		<< "style[btn_continue;bgcolor=#00000000;border=false;font_size=" << font_size * 0.95f << "]"
+		<< "style[btn_exit_menu;bgcolor=#00000000;border=false;font_size=" << font_size * 0.91f << "]";
 	if (simple_singleplayer_mode) {
-		os	<< "style[btn_continue;bgcolor=#00000000;border=false;font_size=" << font_size * 0.95f << "]"
-			<< "style[btn_exit_menu;bgcolor=#00000000;border=false;font_size=" << font_size * 0.91f << "]"
-			<< "image_button_exit[0.5,1.15;1.63,0.61;" << green_button_image << ";btn_continue;" << strgettext("CONTINUE") << "]"
+		os	<< "image_button_exit[0.5,1.15;1.63,0.61;" << green_button_image << ";btn_continue;" << strgettext("CONTINUE") << "]"
 			<< "image_button_exit[0.5,1.9;1.63,0.61;" << red_button_image << ";btn_exit_menu;" << strgettext("EXIT TO MENU") << "]";
 	} else {
-		os	<< "style[btn_continue;bgcolor=#00000000;border=false;font_size=" << font_size * 0.95f << "]"
-			<< "style[btn_change_password;bgcolor=#00000000;border=false;font_size=" << font_size * 0.93f << "]"
-			<< "style[btn_exit_menu;bgcolor=#00000000;border=false;font_size=" << font_size * 0.91f << "]"
+		os	<< "style[btn_change_password;bgcolor=#00000000;border=false;font_size=" << font_size * 0.93f << "]"
 			<< "image_button_exit[0.5,1.05;1.63,0.53;" << green_button_image << ";btn_continue;" << strgettext("CONTINUE") << "]"
 			<< "image_button[0.5,1.62;1.63,0.53;" << blue_button_image << ";btn_change_password;" << strgettext("PASSWORD") << "]"
 			<< "image_button_exit[0.5,2.2;1.63,0.53;" << red_button_image << ";btn_exit_menu;" << strgettext("EXIT TO MENU") << "]";

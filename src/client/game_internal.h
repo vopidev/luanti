@@ -348,6 +348,7 @@ private:
 	PausedNodesList             paused_animated_nodes;
 #if IS_VOPI_ENGINE
 	std::string 			    wield_name;
+	std::string 			    prev_wielded_item_name;
 #endif
 
 	bool simple_singleplayer_mode;

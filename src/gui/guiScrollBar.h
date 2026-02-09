@@ -13,7 +13,6 @@ the arrow buttons where there is insufficient space.
 #pragma once
 
 #if IS_VOPI_ENGINE
-#include "guiAnimatedImage.h"
 #include "StyleSpec.h"
 #include <vector>
 #endif

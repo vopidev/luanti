@@ -218,8 +218,6 @@ void GameUI::update(const RunStats &stats, Client *client, MapDrawControl *draw_
 	m_guitext2->setVisible(m_flags.show_minimal_debug);
 	// Basic debug text also shows info that might give a gameplay advantage
 	if (m_flags.show_basic_debug) {
-		LocalPlayer *player = client->getEnv().getLocalPlayer();
-		v3f player_position = player->getPosition();
 		std::ostringstream os1(std::ios_base::binary);
 		os1 << std::setprecision(1) << std::fixed
 			<< "| seed: "
@@ -397,8 +395,7 @@ void GameUI::update(const RunStats &stats, Client *client, MapDrawControl *draw_
 		s32 central_height = text_height + (2 * padding);
 		// Calculate side element dimensions
 		s32 side_width = central_height / 4;
-		s32 side_height = central_height;
-		// Ensure side_width is at least 5 pixels and at most 15 pixels
+		// Ensure side_width is at least 5 pixels and at most 50 pixels
 		side_width = std::max(5, std::min(side_width, 50));
 		// Calculate total width and height
 		s32 total_width = text_width + (side_width * 2) + (2 * padding);
@@ -490,11 +487,10 @@ void GameUI::updateChatSize()
 {
 #if IS_VOPI_ENGINE
 	const v2u32& window_size = RenderingEngine::getWindowSize();
-	// Step 1: Define maximum and minimum chat window dimensions
-	s32 max_chat_width = (window_size.X / 2) - round_screen - (button_size * 1.3);
-	s32 min_chat_width = (window_size.X / 2) - round_screen - (button_size * 1.3);  // Adjust as needed
+	// Step 1: Define chat window dimensions
+	s32 chat_width = (window_size.X / 2) - round_screen - (button_size * 1.3);
 	s32 max_chat_height = window_size.Y / 2;
-	s32 min_chat_height = g_fontengine->getLineHeight();  // At least 1 lines
+	s32 min_chat_height = g_fontengine->getLineHeight();
 	// Step 2: Determine the initial position of the chat
 	s32 chat_y = 2;
 	#if defined(__ANDROID__) || defined(__IOS__)
@@ -509,7 +505,6 @@ void GameUI::updateChatSize()
 	// Step 3: Calculate the actual chat size based on content
 	s32 content_height = m_guitext_chat->getTextHeight();
 	s32 chat_height = std::max(min_chat_height, std::min(content_height, max_chat_height));
-	s32 chat_width = std::max(min_chat_width, std::min(m_guitext_chat->getTextWidth(), max_chat_width));
 	// Step 4: Define the background size and position
 	s32 padding;
 	s32 corner_size;

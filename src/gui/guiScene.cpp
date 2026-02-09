@@ -46,23 +46,7 @@ scene::AnimatedMeshSceneNode *GUIScene::setMesh(scene::IAnimatedMesh *mesh)
 #if IS_VOPI_ENGINE
 	// Fix vertex colors: ensure all vertices are white so textures
 	// display at full brightness instead of being darkened.
-	// Applied to scene node's mesh copy, not the shared source mesh.
-	{
-		scene::IMesh *node_mesh = m_mesh->getMesh();
-		if (node_mesh) {
-			video::SColor white(255, 255, 255, 255);
-			for (u32 i = 0; i < node_mesh->getMeshBufferCount(); ++i) {
-				scene::IMeshBuffer *buf = node_mesh->getMeshBuffer(i);
-				if (!buf)
-					continue;
-				const u32 stride = getVertexPitchFromType(buf->getVertexType());
-				u8 *vertices = (u8 *)buf->getVertices();
-				for (u32 j = 0; j < buf->getVertexCount(); ++j)
-					((video::S3DVertex *)(vertices + j * stride))->Color = white;
-				buf->setDirty(scene::EBT_VERTEX);
-			}
-		}
-	}
+	setMeshColor(m_mesh->getMesh(), video::SColor(255, 255, 255, 255));
 #endif
 
 	return m_mesh;

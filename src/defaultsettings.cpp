@@ -595,7 +595,7 @@ void set_default_settings()
 	settings->setDefault("chat_message_max_age", "60.0");
 
 	// Player settings
-	settings->setDefault("default_player_name", "Player");
+	settings->setDefault("default_player_name", "");
 #endif
 
 	// Altered settings for Android

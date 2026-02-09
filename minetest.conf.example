@@ -1331,8 +1331,8 @@
 # chat_message_limit_trigger_kick = 50
 
 #    [VOPI Engine] Maximum age of chat messages in seconds before they auto-disappear.
-#    Useful for mobile devices to prevent chat clutter. Set to 0 to disable.
-#    type: float min: 0 max: 600
+#    Useful for mobile devices to prevent chat clutter.
+#    type: float min: 5 max: 300
 # chat_message_max_age = 60.0
 
 #    [VOPI Engine] Default player name for singleplayer mode.

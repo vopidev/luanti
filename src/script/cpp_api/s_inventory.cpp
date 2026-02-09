@@ -87,9 +87,16 @@ int ScriptApiDetached::detached_inventory_AllowTake(
 	lua_pushinteger(L, ma.from_i + 1);       // index
 	LuaItemStack::create(L, stack);          // stack
 	objectrefGetOrCreate(L, player);         // player
-	InvRef::create(L, ma.to_inv);            // to_inv
-	lua_pushstring(L, ma.to_list.c_str());   // to_list
-	lua_pushinteger(L, ma.to_i + 1);         // to_index (1-based for Lua)
+	// Push destination info (nil for drop actions where to_inv is unset)
+	if (ma.to_inv.type != InventoryLocation::UNDEFINED) {
+		InvRef::create(L, ma.to_inv);            // to_inv
+		lua_pushstring(L, ma.to_list.c_str());   // to_list
+		lua_pushinteger(L, ma.to_i + 1);         // to_index (1-based)
+	} else {
+		lua_pushnil(L);                          // to_inv
+		lua_pushnil(L);                          // to_list
+		lua_pushnil(L);                          // to_index
+	}
 	PCALL_RES(lua_pcall(L, 8, 1, error_handler));
 #else
 	// Call function(inv, listname, index, stack, player)
@@ -178,13 +185,19 @@ void ScriptApiDetached::detached_inventory_OnTake(
 	lua_pushinteger(L, ma.from_i + 1);       // index
 	LuaItemStack::create(L, stack);          // stack
 	objectrefGetOrCreate(L, player);         // player
-	InvRef::create(L, ma.to_inv);            // to_inv
-	lua_pushstring(L, ma.to_list.c_str());   // to_list
-	lua_pushinteger(L, ma.to_i + 1);         // to_index (1-based for Lua)
+	// Push destination info (nil for drop actions where to_inv is unset)
+	if (ma.to_inv.type != InventoryLocation::UNDEFINED) {
+		InvRef::create(L, ma.to_inv);            // to_inv
+		lua_pushstring(L, ma.to_list.c_str());   // to_list
+		lua_pushinteger(L, ma.to_i + 1);         // to_index (1-based)
+	} else {
+		lua_pushnil(L);                          // to_inv
+		lua_pushnil(L);                          // to_list
+		lua_pushnil(L);                          // to_index
+	}
 	PCALL_RES(lua_pcall(L, 8, 0, error_handler));
 #else
 	// Call function(inv, listname, index, stack, player)
-	// inv
 	InvRef::create(L, ma.from_inv);
 	lua_pushstring(L, ma.from_list.c_str()); // listname
 	lua_pushinteger(L, ma.from_i + 1);       // index

@@ -151,8 +151,13 @@ void Camera::notifyViewBobbingChange()
 
 	m_view_bobbing_transition_active = spec.transition_time > 0.0f;
 	if (m_view_bobbing_transition_active) {
-		m_view_bobbing_transition_time = spec.transition_time;
 		m_view_bobbing_diff = m_target_view_bobbing_amount - m_old_view_bobbing_amount;
+		if (m_view_bobbing_diff == 0.0f) {
+			// Target equals current — no transition needed
+			m_view_bobbing_transition_active = false;
+		} else {
+			m_view_bobbing_transition_time = spec.transition_time;
+		}
 	}
 }
 #endif
@@ -182,9 +187,10 @@ void Camera::step(f32 dtime)
 		LocalPlayer *player = m_client->getEnv().getLocalPlayer();
 		f32 bobbing_multiplier = 0.030;
 
-		// Check if player is sneaking/crouching
+		// Compensate reduced movement speed when crouching so bobbing
+		// stays close to normal pace (slightly slower net result).
 		if (player && player->getPlayerControl().sneak) {
-			bobbing_multiplier = 0.075; // Slower bobbing when crouching
+			bobbing_multiplier = 0.075;
 		}
 
 		f32 offset = dtime * m_view_bobbing_speed * bobbing_multiplier;

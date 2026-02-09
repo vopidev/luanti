@@ -506,6 +506,8 @@ bool ClientLauncher::launch_game(std::string &error_message,
 	if (start_data.isSinglePlayer()) {
 #if IS_VOPI_ENGINE
 		start_data.name = g_settings->get("default_player_name");
+		if (!is_valid_player_name(start_data.name))
+			start_data.name = "Player";
 #else
 		start_data.name = "singleplayer";
 #endif

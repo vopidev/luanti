@@ -2744,12 +2744,9 @@ void Game::processPlayerInteraction(f32 dtime, bool show_hud)
 
 #if IS_VOPI_ENGINE
 	// Reset tap state when wielded item changes (prevents dig after eating food)
-	{
-		static std::string prev_wielded_item_name;
-		if (g_touchcontrols && tool_item.name != prev_wielded_item_name) {
-			g_touchcontrols->resetTapState();
-			prev_wielded_item_name = tool_item.name;
-		}
+	if (g_touchcontrols && tool_item.name != prev_wielded_item_name) {
+		g_touchcontrols->resetTapState();
+		prev_wielded_item_name = tool_item.name;
 	}
 #endif
 
@@ -3829,6 +3826,9 @@ void the_game(volatile std::sig_atomic_t *kill,
 		error_message = strgettext("A serialization error occurred:") +"\n"
 				+ e.what() + "\n\n" + ver_err;
 		errorstream << error_message << std::endl;
+#if IS_VOPI_ENGINE && (defined(__ANDROID__) || defined(__IOS__))
+		porting::handleError("SerializationError", error_message);
+#endif
 	} catch (ServerError &e) {
 		error_message = e.what();
 		errorstream << "ServerError: " << error_message << std::endl;
@@ -3847,13 +3847,13 @@ void the_game(volatile std::sig_atomic_t *kill,
 		error_message = gettext("Connection error (timed out?)");
 		errorstream << error_message << std::endl;
 #if IS_VOPI_ENGINE && (defined(__ANDROID__) || defined(__IOS__))
-		porting::handleError("PeerNotFoundException: ", error_message);
+		porting::handleError("PeerNotFoundException", error_message);
 #endif
 	} catch (ShaderException &e) {
 		error_message = e.what();
 		errorstream << error_message << std::endl;
 #if IS_VOPI_ENGINE && (defined(__ANDROID__) || defined(__IOS__))
-		porting::handleError("ShaderException: ", error_message);
+		porting::handleError("ShaderException", error_message);
 #endif
 	}
 

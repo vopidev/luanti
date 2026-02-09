@@ -337,7 +337,7 @@ void StreamLogOutput::logRaw(LogLevel lev, std::string_view line)
 {
 	bool colored_message = (Logger::color_mode == LOG_COLOR_ALWAYS) ||
 		(Logger::color_mode == LOG_COLOR_AUTO && is_tty);
-#if defined(__MACH__) && defined(__APPLE__)
+#if defined(__IOS__)
 	if (colored_message) {
 		switch (lev) {
 		case LL_ERROR:

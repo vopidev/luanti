@@ -1941,6 +1941,14 @@ void GUIFormSpecMenu::parseLabel(parserData* data, const std::string &element)
 			align = parts[2];
 		}
 	}
+
+	// Convert alignment string to enum once (used in loop and sized-label block)
+	gui::EGUI_ALIGNMENT e_align = gui::EGUIA_UPPERLEFT;
+	if (align == "center") {
+		e_align = gui::EGUIA_CENTER;
+	} else if (align == "right") {
+		e_align = gui::EGUIA_LOWERRIGHT;
+	}
 #endif
 
 	auto style = getDefaultStyleForElement("label", "");
@@ -2019,12 +2027,6 @@ void GUIFormSpecMenu::parseLabel(parserData* data, const std::string &element)
 
 #if IS_VOPI_ENGINE
 			s32 text_width = font->getDimension(line.c_str()).Width;
-			gui::EGUI_ALIGNMENT e_align = gui::EGUIA_UPPERLEFT;
-			if (align == "center") {
-				e_align = gui::EGUIA_CENTER;
-			} else if (align == "right") {
-				e_align = gui::EGUIA_LOWERRIGHT;
-			}
 #endif
 
 			core::rect<s32> rect;
@@ -2045,10 +2047,9 @@ void GUIFormSpecMenu::parseLabel(parserData* data, const std::string &element)
 #endif
 
 #if IS_VOPI_ENGINE
-				// Modify the X coordinate based on alignment
-				if (align == "center") {
+				if (e_align == gui::EGUIA_CENTER) {
 					pos.X -= text_width / 2;
-				} else if (align == "right") {
+				} else if (e_align == gui::EGUIA_LOWERRIGHT) {
 					pos.X -= text_width;
 				}
 #endif
@@ -2080,10 +2081,9 @@ void GUIFormSpecMenu::parseLabel(parserData* data, const std::string &element)
 				pos.Y += ((float) i) * spacing.Y * 2.0 / 5.0;
 
 #if IS_VOPI_ENGINE
-				// Modify the X coordinate based on alignment
-				if (align == "center") {
+				if (e_align == gui::EGUIA_CENTER) {
 					pos.X -= text_width / 2;
-				} else if (align == "right") {
+				} else if (e_align == gui::EGUIA_LOWERRIGHT) {
 					pos.X -= text_width;
 				}
 #endif
@@ -2108,23 +2108,17 @@ void GUIFormSpecMenu::parseLabel(parserData* data, const std::string &element)
 		v2s32 pos = getRealCoordinateBasePos(v_pos);
 
 #if IS_VOPI_ENGINE
-		gui::EGUI_ALIGNMENT e_align = gui::EGUIA_UPPERLEFT;
 		core::rect<s32> rect;
 
-		if (align == "center") {
-			e_align = gui::EGUIA_CENTER;
-			// Center alignment: rect centered around pos.X
+		if (e_align == gui::EGUIA_CENTER) {
 			rect = core::rect<s32>(
 				pos.X - geom.X / 2, pos.Y,
 				pos.X + geom.X / 2, pos.Y + geom.Y);
-		} else if (align == "right") {
-			e_align = gui::EGUIA_LOWERRIGHT;
-			// Right alignment: pos.X is the right edge, text goes left
+		} else if (e_align == gui::EGUIA_LOWERRIGHT) {
 			rect = core::rect<s32>(
 				pos.X - geom.X, pos.Y,
 				pos.X, pos.Y + geom.Y);
 		} else {
-			// Left alignment (default): pos.X is the left edge, text goes right
 			rect = core::rect<s32>(
 				pos.X, pos.Y,
 				pos.X + geom.X, pos.Y + geom.Y);

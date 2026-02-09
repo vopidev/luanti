@@ -2418,11 +2418,11 @@ void read_hud_element(lua_State *L, HudElement *elem)
 #if IS_VOPI_ENGINE
 	lua_getfield(L, 2, "middle");
 	if (lua_istable(L, -1)) {
-		lua_rawgeti(L, -1, 1); s32 mx = lua_tointeger(L, -1); lua_pop(L, 1);
-		lua_rawgeti(L, -1, 2); s32 my = lua_tointeger(L, -1); lua_pop(L, 1);
-		lua_rawgeti(L, -1, 3); s32 mw = lua_tointeger(L, -1); lua_pop(L, 1);
-		lua_rawgeti(L, -1, 4); s32 mh = lua_tointeger(L, -1); lua_pop(L, 1);
-		elem->middle = core::rect<s32>(mx, my, mw, mh);
+		s32 x = getintfield_default(L, -1, "x", 0);
+		s32 y = getintfield_default(L, -1, "y", 0);
+		s32 w = getintfield_default(L, -1, "w", 0);
+		s32 h = getintfield_default(L, -1, "h", 0);
+		elem->middle = core::rect<s32>(x, y, w, h);
 	}
 	lua_pop(L, 1);
 	elem->middle_scale = getfloatfield_default(L, 2, "middle_scale", 1.0f);
@@ -2495,15 +2495,15 @@ void push_hud_element(lua_State *L, HudElement *elem)
 	lua_setfield(L, -2, "style");
 
 #if IS_VOPI_ENGINE
-	lua_newtable(L);
+	lua_createtable(L, 0, 4);
 	lua_pushinteger(L, elem->middle.UpperLeftCorner.X);
-	lua_rawseti(L, -2, 1);
+	lua_setfield(L, -2, "x");
 	lua_pushinteger(L, elem->middle.UpperLeftCorner.Y);
-	lua_rawseti(L, -2, 2);
+	lua_setfield(L, -2, "y");
 	lua_pushinteger(L, elem->middle.LowerRightCorner.X);
-	lua_rawseti(L, -2, 3);
+	lua_setfield(L, -2, "w");
 	lua_pushinteger(L, elem->middle.LowerRightCorner.Y);
-	lua_rawseti(L, -2, 4);
+	lua_setfield(L, -2, "h");
 	lua_setfield(L, -2, "middle");
 
 	lua_pushnumber(L, elem->middle_scale);
@@ -2581,11 +2581,11 @@ bool read_hud_change(lua_State *L, HudElementStat &stat, HudElement *elem, void 
 #if IS_VOPI_ENGINE
 		case HUD_STAT_MIDDLE:
 			if (lua_istable(L, 4)) {
-				lua_rawgeti(L, 4, 1); s32 mx = lua_tointeger(L, -1); lua_pop(L, 1);
-				lua_rawgeti(L, 4, 2); s32 my = lua_tointeger(L, -1); lua_pop(L, 1);
-				lua_rawgeti(L, 4, 3); s32 mw = lua_tointeger(L, -1); lua_pop(L, 1);
-				lua_rawgeti(L, 4, 4); s32 mh = lua_tointeger(L, -1); lua_pop(L, 1);
-				elem->middle = core::rect<s32>(mx, my, mw, mh);
+				s32 x = getintfield_default(L, 4, "x", 0);
+				s32 y = getintfield_default(L, 4, "y", 0);
+				s32 w = getintfield_default(L, 4, "w", 0);
+				s32 h = getintfield_default(L, 4, "h", 0);
+				elem->middle = core::rect<s32>(x, y, w, h);
 			}
 			*value = &elem->middle;
 			break;
