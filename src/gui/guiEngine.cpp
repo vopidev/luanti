@@ -322,6 +322,9 @@ void GUIEngine::run()
 
 	FpsControl fps_control;
 	f32 dtime = 0.0f;
+#if defined(__ANDROID__) || defined(__IOS__)
+	bool was_window_active = true;
+#endif
 
 	fps_control.reset();
 
@@ -378,6 +381,15 @@ void GUIEngine::run()
 		}
 
 		m_script->step();
+
+#if defined(__ANDROID__) || defined(__IOS__)
+		bool is_window_active = device->isWindowActive();
+		if (was_window_active && !is_window_active)
+			m_sound_manager->pauseAll();
+		else if (!was_window_active && is_window_active)
+			m_sound_manager->resumeAll();
+		was_window_active = is_window_active;
+#endif
 
 		sound_volume_control(m_sound_manager.get(), device->isWindowActive());
 		m_sound_manager->step(dtime);
