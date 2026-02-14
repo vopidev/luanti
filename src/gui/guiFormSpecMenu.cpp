@@ -122,14 +122,15 @@ void GUIFormSpecMenu::create(GUIFormSpecMenu *&cur_formspec, Client *client,
 	gui::IGUIEnvironment *guienv, JoystickController *joystick, IFormSource *fs_src,
 	TextDest *txt_dest, const std::string &formspecPrepend, ISoundManager *sound_manager)
 {
-	if (cur_formspec && cur_formspec->getReferenceCount() == 1) {
+	if (cur_formspec && (cur_formspec->getReferenceCount() == 1
+			|| cur_formspec->getParent() == nullptr)) {
 		/*
-			Why reference count == 1? Reason:
-			1 on creation (see "drop()" remark below)
-			+1 for being a guiroot child
-			+1 when focused (CGUIEnvironment::setFocus)
-
-			Hence re-create the formspec when it's existing without any parent.
+			Drop the formspec if:
+			- refcount == 1: no parent, no focus, only our reference remains
+			- parent == nullptr: removed from GUI tree (e.g. by quitMenu) but
+			  Irrlicht internals may still hold extra references keeping
+			  refcount > 1. Reusing such an orphaned formspec would leave it
+			  invisible since it's not in the GUI tree.
 		*/
 		cur_formspec->drop();
 		cur_formspec = nullptr;
