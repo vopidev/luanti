@@ -597,9 +597,17 @@ void Game::run()
 		updateFrame(&graph, &stats, dtime, cam_view);
 		updateProfilerGraphs(&graph);
 
+		// On mobile, lost-focus pause is handled in processUserInput via
+		// m_lost_focus_needs_pause. The isWindowFocused() check here uses
+		// SDL_WINDOW_INPUT_FOCUS which may remain false after returning
+		// from background on iOS, causing a duplicate showPauseMenu() call
+		// that reuses an orphaned formspec (removed from GUI tree but with
+		// refcount > 1), rendering it invisible.
+#if !defined(__ANDROID__) && !defined(__IOS__)
 		if (m_does_lost_focus_pause_game && !device->isWindowFocused() && !isMenuActive()) {
 			m_game_formspec.showPauseMenu();
 		}
+#endif
 	}
 
 	framemarker.end();
