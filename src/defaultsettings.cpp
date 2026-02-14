@@ -565,41 +565,49 @@ void set_default_settings()
 	settings->setDefault("clickable_chat_weblinks", "true");
 
 #if IS_VOPI_ENGINE
+	// Game defaults
+	settings->setDefault("default_game", "kawaii_craft");
+	settings->setDefault("default_stack_max", "64");
+	settings->setDefault("default_player_name", "");
+#ifndef NDEBUG
+	settings->setDefault("debug_mode", "true");
+#else
+	settings->setDefault("debug_mode", "false");
+#endif
+
 	// Main menu appearance
 	settings->setDefault("main_menu_bg", "bg_1080.png");
 
-	// Audio settings
+	// Audio
 	settings->setDefault("mute_music", "false");
-	settings->setDefault("mute_sound", "false");
 	settings->setDefault("mute_ui_sound", "false");
 
-	// HUD settings
+	// HUD
 	settings->setDefault("hud_hotbar_bottom_margin", "5");
 	settings->setDefault("round_screen", "0");
 
-	// Icon padding
+	// Inventory icon padding
 	settings->setDefault("mesh_icon_padding_percent", "0.0");
 	settings->setDefault("image_icon_padding_percent", "0.0");
 
-	// Text appearance
+	// Font scaling
 	settings->setDefault("chat_font_scale", "1.0");
 	settings->setDefault("info_font_scale", "1.0");
 	settings->setDefault("status_font_scale", "1.0");
+
+	// Status text positioning
 	settings->setDefault("status_text_bottom_offset", "0.3");
 
 	// Text backgrounds
 	settings->setDefault("show_chat_background", "true");
 	settings->setDefault("show_status_background", "true");
 
-	// Chat behavior
+	// Chat
 	settings->setDefault("chat_message_max_age", "60.0");
-
-	// Player settings
-	settings->setDefault("default_player_name", "");
 #endif
 
 	// Altered settings for Android
-#ifdef __ANDROID__
+#if defined(__ANDROID__) && !IS_VOPI_ENGINE
 	settings->setDefault("screen_w", "0");
 	settings->setDefault("screen_h", "0");
 	settings->setDefault("performance_tradeoffs", "true");
