@@ -663,7 +663,11 @@ void Camera::updateViewingRange()
 {
 	f32 viewing_range = g_settings->getFloat("viewing_range");
 
+#if IS_VOPI_ENGINE
+	m_cameranode->setNearValue(0.05f * BS);
+#else
 	m_cameranode->setNearValue(0.1f * BS);
+#endif
 
 	m_draw_control.wanted_range = std::fmin(adjustDist(viewing_range, getFovMax()), 6000);
 	if (m_draw_control.range_all) {
