@@ -1200,14 +1200,35 @@ void LocalPlayer::handleAutojump(f32 dtime, Environment *env,
 	if (!horizontal_collision)
 		return;
 
+	const NodeDefManager *ndef = env->getGameDef()->ndef();
+	bool is_position_valid;
+
+#if IS_VOPI_ENGINE
+	// Check that obstacle is not too high to jump over.
+	// At the wall's XZ position, check if the node one above the player's
+	// feet level is walkable. If so, the wall is at least 2 nodes high
+	// relative to the player and cannot be jumped over.
+	// Use initial_position (before collision/step-height resolution) so that
+	// step-height elevation from adjacent short obstacles doesn't shift the check.
+	{
+		v3s16 feet_pos = floatToInt(initial_position, BS);
+		for (const auto &colinfo : result.collisions) {
+			if (colinfo.type == COLLISION_NODE && colinfo.axis != COLLISION_AXIS_Y) {
+				MapNode n = env->getMap().getNode(v3s16(colinfo.node_p.X,
+					feet_pos.Y + 1, colinfo.node_p.Z), &is_position_valid);
+				if (is_position_valid && ndef->get(n).walkable)
+					return; // obstacle too high
+			}
+		}
+	}
+#endif
+
 	// check for nodes above
 	v3f headpos_min = m_position + m_collisionbox.MinEdge * 0.99f;
 	v3f headpos_max = m_position + m_collisionbox.MaxEdge * 0.99f;
 	headpos_min.Y = headpos_max.Y; // top face of collision box
 	v3s16 ceilpos_min = floatToInt(headpos_min, BS) + v3s16(0, 1, 0);
 	v3s16 ceilpos_max = floatToInt(headpos_max, BS) + v3s16(0, 1, 0);
-	const NodeDefManager *ndef = env->getGameDef()->ndef();
-	bool is_position_valid;
 	for (s16 z = ceilpos_min.Z; z <= ceilpos_max.Z; ++z) {
 		for (s16 x = ceilpos_min.X; x <= ceilpos_max.X; ++x) {
 			MapNode n = env->getMap().getNode(v3s16(x, ceilpos_max.Y, z), &is_position_valid);
