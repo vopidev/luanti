@@ -320,8 +320,35 @@ void LocalPlayer::move(f32 dtime, Environment *env,
 
 	// Player object property step height is multiplied by BS in
 	// /src/script/common/c_content.cpp and /src/content_sao.cpp
+#if IS_VOPI_ENGINE
+	// Allow full step height when swimming at the water surface,
+	// so the player can exit water onto land.
+	// "At surface" = player is in liquid but the node at head level is not liquid.
+	bool at_liquid_surface = false;
+	if (in_liquid && !touching_ground) {
+		v3s16 head_pos = floatToInt(position + v3f(0.0f,
+			m_collisionbox.MaxEdge.Y, 0.0f), BS);
+		MapNode head_node = map->getNode(head_pos, &is_valid_position);
+		if (is_valid_position)
+			at_liquid_surface = !nodemgr->get(head_node.getContent()).liquid_move_physics;
+	}
+	float player_stepheight;
+	if (m_cao == nullptr) {
+		player_stepheight = 0.0f;
+	} else if (at_liquid_surface) {
+		// Larger step height to climb out of water onto shore.
+		// Must exceed NECK_OFFSET (~1.1 blocks) since the player's feet
+		// are that far below the water surface when floating.
+		player_stepheight = 1.2f * BS;
+	} else if (touching_ground) {
+		player_stepheight = m_cao->getStepHeight();
+	} else {
+		player_stepheight = 0.2f * BS;
+	}
+#else
 	float player_stepheight = (m_cao == nullptr) ? 0.0f :
 		(touching_ground ? m_cao->getStepHeight() : (0.2f * BS));
+#endif
 
 	v3f accel_f(0, -gravity, 0);
 	const v3f initial_position = position;
