@@ -716,7 +716,7 @@ void GUIButton::setFromStyle(const StyleSpec& style)
 	setNotClipped(style.getBool(StyleSpec::NOCLIP, false));
 	setDrawBorder(style.getBool(StyleSpec::BORDER, true));
 	setUseAlphaChannel(style.getBool(StyleSpec::ALPHA, true));
-	setOverrideFont(style.getFont());
+	setOverrideFont(style.getFont(FontScale));
 
 	BgMiddle = style.getRect(StyleSpec::BGIMG_MIDDLE, BgMiddle);
 

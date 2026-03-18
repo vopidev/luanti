@@ -324,6 +324,13 @@ protected:
 	v2s32 padding;
 	v2f32 spacing;
 	v2s32 imgsize;
+	float m_font_scale = 1.0f;
+
+	// Get default font scaled by m_font_scale
+	gui::IGUIFont *getScaledDefaultFont() const;
+
+	// Get style font with m_font_scale fallback to scaled default
+	gui::IGUIFont *getScaledStyleFont(const StyleSpec &style) const;
 	v2s32 offset;
 	v2f32 pos_offset;
 	std::stack<v2f32> container_stack;

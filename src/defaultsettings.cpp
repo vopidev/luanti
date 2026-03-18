@@ -302,7 +302,7 @@ void set_default_settings()
 	settings->setDefault("smooth_scrolling", "true");
 	settings->setDefault("hud_hotbar_max_width", "1.0");
 	settings->setDefault("enable_local_map_saving", "false");
-	settings->setDefault("show_entity_selectionbox", "false");
+	settings->setDefault("show_entity_selectionbox", "true"); //debug
 	settings->setDefault("ambient_occlusion_gamma", "1.8");
 	settings->setDefault("arm_inertia", "true");
 	settings->setDefault("show_nametag_backgrounds", "true");
@@ -656,5 +656,33 @@ void set_default_settings()
 #endif
 #if defined(__ANDROID__) && VOPI_ANDROID_PROJECT
 	vopi::set_android_settings(settings);
+#endif
+
+	// VOPI Engine: Desktop defaults (macOS, Windows, Linux)
+#if IS_VOPI_ENGINE && !defined(__ANDROID__) && !defined(__IOS__)
+	settings->setDefault("default_game", "kawaii_craft");
+
+	// Game version (passed via CMake -DGAME_VERSION=...)
+#ifdef GAME_VERSION
+	settings->setDefault("game_version", GAME_VERSION);
+#else
+	settings->setDefault("game_version", "dev");
+#endif
+
+	// Custom fonts
+	std::string vopi_font = porting::getDataPath("fonts" DIR_DELIM "Blogger_Sans_Medium.otf");
+	std::string vopi_font_bold = porting::getDataPath("fonts" DIR_DELIM "Blogger_Sans_Bold.otf");
+	settings->setDefault("font_path", vopi_font);
+	settings->setDefault("font_path_italic", vopi_font);
+	settings->setDefault("font_path_bold", vopi_font_bold);
+	settings->setDefault("font_path_bold_italic", vopi_font_bold);
+
+	// Font size — slightly larger for desktop readability
+	settings->setDefault("font_size", "18");
+	settings->setDefault("mono_font_size", "18");
+
+	// GUI/HUD scaling
+	settings->setDefault("gui_scaling", "1.0");
+	settings->setDefault("hud_scaling", "0.75");
 #endif
 }

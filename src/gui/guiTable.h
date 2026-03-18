@@ -133,10 +133,14 @@ public:
 
 #if IS_VOPI_ENGINE
 	/* Set scrollbar texture */
-	void setStyle(const StyleSpec &style)
+	void setStyle(const StyleSpec &style, float font_scale = 1.0f)
 	{
 		setNotClipped(style.getBool(StyleSpec::NOCLIP, false));
-		setOverrideFont(style.getFont());
+		gui::IGUIFont *sf = style.getFont(font_scale);
+		if (sf)
+			setOverrideFont(sf);
+		else if (font_scale != 1.0f)
+			setOverrideFont(nullptr); // triggers skin font fallback
 		m_scrollbar->setArrowsVisible(false); //CHECK (A hack to fix in the future)
 		m_scrollbar->setStyle(style, m_tsrc);
 	}

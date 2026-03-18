@@ -328,7 +328,19 @@ void RenderingEngine::draw_load_screen(const std::wstring &text,
 
 	v2u32 screensize = driver->getScreenSize();
 	const std::wstring loading_text = fwgettext("LOADING...");
-	v2s32 textsize(g_fontengine->getTextWidth(loading_text), g_fontengine->getLineHeight());
+
+	// Get scaled font for loading text
+#if !defined(__ANDROID__) && !defined(__IOS__)
+	float screen_h = (float)std::min(screensize.X, screensize.Y);
+	float load_font_scale = std::max(0.5f, screen_h * 0.9f / VOPI_DESKTOP_FONT_REF_HEIGHT);
+	unsigned base_size = g_fontengine->getFontSize(FM_Standard);
+	FontSpec load_font_spec(base_size * load_font_scale, FM_Standard, false, false);
+	gui::IGUIFont *load_font = g_fontengine->getFont(load_font_spec);
+#else
+	gui::IGUIFont *load_font = g_fontengine->getFont();
+#endif
+	auto load_text_dim = load_font->getDimension(loading_text.c_str());
+	v2s32 textsize(load_text_dim.Width, load_text_dim.Height);
 
 	driver->beginScene(true, true, video::SColor(255, 0, 0, 0));
 
@@ -373,7 +385,14 @@ void RenderingEngine::draw_load_screen(const std::wstring &text,
 			s32 min_screen_dim = std::min(padded_screensize.X, padded_screensize.Y);
 			double dynamic_imgsize = min_screen_dim / 15.0 * gui_scaling;
 			double prefer_imgsize = std::max(dynamic_imgsize, fixed_imgsize);
+#if !defined(__ANDROID__) && !defined(__IOS__)
+			// Desktop: scale to fill window (same as calculateImgsize)
+			double window_scaled_prefer = padded_screensize.Y / 6.0;
+			double desktop_prefer = std::max(window_scaled_prefer, prefer_imgsize);
+			double actual_imgsize = std::min(desktop_prefer, std::min(fitx_factor, fity_factor));
+#else
 			double actual_imgsize = std::min(prefer_imgsize, std::min(fitx_factor, fity_factor));
+#endif
 
 			v2s32 progress_bar_dimensions(
 				LOADING_SCREEN_FORMSPEC_WIDTH * actual_imgsize,
@@ -393,6 +412,7 @@ void RenderingEngine::draw_load_screen(const std::wstring &text,
 			gui::IGUIStaticText *guitext = guienv->addStaticText(
 				loading_text.c_str(), textrect, false, false);
 			if (guitext) {
+				guitext->setOverrideFont(load_font);
 				guitext->setTextAlignment(gui::EGUIA_UPPERLEFT, gui::EGUIA_UPPERLEFT);
 				guitext->setOverrideColor(LOADING_TEXT_COLOR);
 			}
