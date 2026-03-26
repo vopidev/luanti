@@ -8,6 +8,9 @@
 #include "nodemetadata.h"
 #include "renderingengine.h"
 #include "client.h"
+#if IS_VOPI_ENGINE
+#include "camera.h"
+#endif
 #include "scripting_client.h"
 #include "cpp_api/s_client_common.h"
 #include "clientmap.h"
@@ -247,6 +250,12 @@ void GameFormSpec::showFormSpec(const std::string &formspec, const std::string &
 		&m_input->joystick, fs_src, txt_dst, m_client->getFormspecPrepend(),
 		m_client->getSoundManager());
 	m_formspec->setName(formname);
+
+#if IS_VOPI_ENGINE
+	// Cancel rightclick hand animation when formspec opens
+	if (Camera *camera = m_client->getCamera())
+		camera->cancelDigging();
+#endif
 }
 
 void GameFormSpec::showCSMFormSpec(const std::string &formspec, const std::string &formname)
@@ -307,6 +316,12 @@ void GameFormSpec::showNodeFormspec(const std::string &formspec, const v3s16 &no
 		m_client->getSoundManager());
 
 	m_formspec->setFormSpec(formspec, inventoryloc);
+
+#if IS_VOPI_ENGINE
+	// Cancel rightclick hand animation when node formspec opens
+	if (Camera *camera = m_client->getCamera())
+		camera->cancelDigging();
+#endif
 }
 
 bool GameFormSpec::showPlayerInventory(const std::string *fs_override)

@@ -155,6 +155,11 @@ public:
 	// Pass 0 for left click, 1 for right click
 	void setDigging(s32 button);
 
+#if IS_VOPI_ENGINE
+	// Cancel any in-progress digging animation (e.g. when formspec opens)
+	void cancelDigging() { m_digging_button = -1; m_digging_anim = 0; }
+#endif
+
 	// Replace the wielded item mesh
 	void wield(const ItemStack &item, bool animate = true);
 
