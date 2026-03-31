@@ -453,7 +453,7 @@ void GameUI::update(const RunStats &stats, Client *client, MapDrawControl *draw_
 	m_guitext_chat->setVisible(isChatVisible() && !chat_console->isVisible() && (player->hud_flags & HUD_FLAG_CHAT_VISIBLE));
 
 #if IS_VOPI_ENGINE
-	m_chat_bg.setVisible(isChatVisible() && !chat_console->isVisible() && m_show_chat_background);
+	m_chat_bg.setVisible(isChatVisible() && !chat_console->isVisible() && m_show_chat_background && (player->hud_flags & HUD_FLAG_CHAT_VISIBLE));
 #endif
 }
 
