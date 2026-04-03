@@ -28,6 +28,9 @@
 #include "netcode/networkpacket.h"
 #include "script/scripting_client.h"
 #include "util/serialize.h"
+#if IS_VOPI_ENGINE
+#include "gui/touchcontrols.h"
+#endif
 #include "util/srp.h"
 #include "util/hashing.h"
 #include "tileanimation.h"
@@ -1351,6 +1354,16 @@ void Client::handleCommand_HudSetFlags(NetworkPacket* pkt)
 	}
 	// <--
 	// End of 'not so satifying code'
+
+#if IS_VOPI_ENGINE
+	// Immediately apply touch controls visibility
+	if (g_touchcontrols && (mask & HUD_FLAG_TOUCH_CONTROLS_VISIBLE)) {
+		if (player->hud_flags & HUD_FLAG_TOUCH_CONTROLS_VISIBLE)
+			g_touchcontrols->show();
+		else
+			g_touchcontrols->hide();
+	}
+#endif
 }
 
 void Client::handleCommand_HudSetParam(NetworkPacket* pkt)

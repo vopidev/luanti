@@ -1425,7 +1425,14 @@ void Game::processUserInput(f32 dtime)
 		if (g_touchcontrols) {
 			/* on touchcontrols step may generate own input events which ain't
 			 * what we want in case we just did clear them */
+#if IS_VOPI_ENGINE
+			if (client->getEnv().getLocalPlayer()->hud_flags & HUD_FLAG_TOUCH_CONTROLS_VISIBLE)
+				g_touchcontrols->show();
+			else
+				g_touchcontrols->hide();
+#else
 			g_touchcontrols->show();
+#endif
 			g_touchcontrols->step(dtime);
 		}
 
