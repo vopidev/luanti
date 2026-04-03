@@ -206,8 +206,13 @@ void Mapgen::getMapgenNames(std::vector<const char *> *mgnames, bool include_hid
 
 void Mapgen::setDefaultSettings(Settings *settings)
 {
+#if IS_VOPI_ENGINE
+	settings->setDefault("mg_flags", flagdesc_mapgen,
+		 MG_CAVES | MG_LIGHT | MG_DECORATIONS | MG_BIOMES | MG_ORES);
+#else
 	settings->setDefault("mg_flags", flagdesc_mapgen,
 		 MG_CAVES | MG_DUNGEONS | MG_LIGHT | MG_DECORATIONS | MG_BIOMES | MG_ORES);
+#endif
 
 	for (int i = 0; i < (int)MAPGEN_INVALID; ++i) {
 		MapgenParams *params = createMapgenParams((MapgenType)i);
