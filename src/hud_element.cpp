@@ -53,5 +53,8 @@ const struct EnumString es_HudBuiltinElement[] =
 	{HUD_FLAG_MINIMAP_RADAR_VISIBLE, "minimap_radar"},
 	{HUD_FLAG_BASIC_DEBUG,           "basic_debug"},
 	{HUD_FLAG_CHAT_VISIBLE,          "chat"},
+#if IS_VOPI_ENGINE
+	{HUD_FLAG_TOUCH_CONTROLS_VISIBLE, "touch_controls"},
+#endif
 	{0, NULL},
 };
