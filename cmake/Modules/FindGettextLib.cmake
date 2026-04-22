@@ -31,7 +31,14 @@ find_package_handle_standard_args(GettextLib DEFAULT_MSG ${GETTEXT_REQUIRED_VARS
 
 if(GETTEXTLIB_FOUND)
 	# Set up paths for building
-	set(GETTEXT_PO_PATH ${CMAKE_SOURCE_DIR}/po)
+	if(IS_VOPI_ENGINE AND DEFINED GETTEXT_PO_PATH)
+		# VOPI Engine: honor externally-defined GETTEXT_PO_PATH. The fork's
+		# build scripts pre-merge upstream luanti/po/ with the project-local
+		# po/ (VOPI strings take precedence) and pass the merged dir here.
+		message(STATUS "VOPI Engine: using GETTEXT_PO_PATH=${GETTEXT_PO_PATH}")
+	else()
+		set(GETTEXT_PO_PATH ${CMAKE_SOURCE_DIR}/po)
+	endif()
 	# If the executable is expected to be ran from <source dir>/bin/, also
 	# generate the locale in <source dir>/locale/.
 	if(RUN_IN_PLACE AND NOT CMAKE_CROSSCOMPILING)
