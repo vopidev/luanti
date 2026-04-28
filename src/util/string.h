@@ -19,6 +19,7 @@
 #include <iomanip>
 #include <cctype>
 #include <cwctype>
+#include <locale>
 #include <unordered_map>
 #include <optional>
 
@@ -433,7 +434,29 @@ inline s32 mystoi(const std::string &str)
  */
 inline float mystof(const std::string &str)
 {
+#if defined(__APPLE__)
+	// Apple's strtod fast-path (fastParse64) is known to dereference
+	// invalid pointers on certain edge-case inputs on iOS <17 / macOS
+	// <13.3, producing EXC_BAD_ACCESS in atof()/strtod_l(). Use a C++
+	// stringstream with the classic locale, which doesn't go through
+	// Apple's libc fast path and is locale-independent.
+	//
+	// Note: libc++ sets failbit alongside eofbit when extraction reaches
+	// EOF on the same character it successfully consumed (e.g. "3.14"),
+	// so we treat that as success — only bail on stream errors or true
+	// no-progress failures.
+	std::istringstream iss(str);
+	iss.imbue(std::locale::classic());
+	float result = 0.0f;
+	iss >> result;
+	if (iss.bad())
+		return 0.0f;
+	if (iss.fail() && !iss.eof())
+		return 0.0f;
+	return result;
+#else
 	return atof(str.c_str());
+#endif
 }
 
 #define stoi mystoi

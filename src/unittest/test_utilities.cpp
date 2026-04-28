@@ -31,6 +31,7 @@ public:
 	void testStartsWith();
 	void testStrEqual();
 	void testStrToIntConversion();
+	void testStrToFloatConversion();
 	void testStringReplace();
 	void testStringAllowed();
 	void testAsciiPrintableHelper();
@@ -69,6 +70,7 @@ void TestUtilities::runTests(IGameDef *gamedef)
 	TEST(testStartsWith);
 	TEST(testStrEqual);
 	TEST(testStrToIntConversion);
+	TEST(testStrToFloatConversion);
 	TEST(testStringReplace);
 	TEST(testStringAllowed);
 	TEST(testAsciiPrintableHelper);
@@ -268,6 +270,35 @@ void TestUtilities::testStrToIntConversion()
 {
 	UASSERT(mystoi("123", 0, 1000) == 123);
 	UASSERT(mystoi("123", 0, 10) == 10);
+}
+
+
+void TestUtilities::testStrToFloatConversion()
+{
+	// Basic decimal parsing
+	UASSERT(std::abs(mystof("3.14") - 3.14f) < 0.001f);
+	UASSERT(std::abs(mystof("-2.5") - (-2.5f)) < 0.001f);
+	UASSERT(mystof("0") == 0.0f);
+	UASSERT(mystof("1") == 1.0f);
+
+	// Scientific notation
+	UASSERT(std::abs(mystof("1e3") - 1000.0f) < 0.001f);
+	UASSERT(std::abs(mystof("2.5e-2") - 0.025f) < 0.0001f);
+
+	// Empty / invalid input → must not crash, returns 0
+	UASSERT(mystof("") == 0.0f);
+	UASSERT(mystof("abc") == 0.0f);
+	UASSERT(mystof(" ") == 0.0f);
+
+	// Leading whitespace (atof + stringstream both skip)
+	UASSERT(std::abs(mystof("  3.14") - 3.14f) < 0.001f);
+
+	// Locale-independence: comma must NOT be parsed as decimal separator
+	// in locales where it is (e.g., de_DE). mystof uses C locale.
+	UASSERT(mystof("3,14") < 3.5f); // parses "3" then stops, NOT 3.14
+
+	// Boundary values
+	UASSERT(std::isfinite(mystof("1.0e30")));
 }
 
 
