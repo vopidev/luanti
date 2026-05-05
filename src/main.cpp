@@ -751,12 +751,42 @@ static bool init_common(const Settings &cmd_args, int argc, char *argv[])
 
 	sockets_init();
 
+#if IS_VOPI_ENGINE && defined(__ANDROID__)
+	// On Android, the SDL Activity can be destroyed and re-created within the
+	// same JNI process: SDL_main() returns, then a new SDLThread re-enters
+	// main(). atexit handlers only run at process exit, so the static
+	// g_hierarchy in settings.cpp may still hold layers from the previous run.
+	// Drop any leftovers before re-creating them, otherwise createLayer()
+	// throws "Setting layer N already exists" and aborts the process during
+	// startup. iOS does not need this: UIApplicationMain() never returns, so
+	// main() runs at most once per process.
+	//
+	// Gate on g_settings: it is only set by onLayerCreated(SL_GLOBAL) during a
+	// successful previous run, and never reset until the process exits. On a
+	// cold start it is null, the layer vector is too small to index, and
+	// getLayer() would throw "Invalid settings layer".
+	if (g_settings) {
+		for (int i = (int)SL_TOTAL_COUNT - 1; i >= 0; --i)
+			delete Settings::getLayer((SettingsLayer)i);
+	}
+#endif
+
 	// Initialize g_settings
 	set_default_settings();
 	Settings::createLayer(SL_GLOBAL);
 
+#if IS_VOPI_ENGINE && defined(__ANDROID__)
+	// Set cleanup callback to run at process exit. Guarded against repeat
+	// registration so a re-entered main() does not stack duplicate handlers.
+	static bool atexit_registered = false;
+	if (!atexit_registered) {
+		atexit(uninit_common);
+		atexit_registered = true;
+	}
+#else
 	// Set cleanup callback(s) to run at process exit
 	atexit(uninit_common);
+#endif
 
 	if (!read_config_file(cmd_args))
 		return false;
