@@ -6,8 +6,10 @@
 
 #include <SViewFrustum.h>
 #include <AnimatedMeshSceneNode.h>
+#include <IBoneSceneNode.h>
 #include <IVideoDriver.h>
 #include <ISceneManager.h>
+#include "log.h"
 #include "porting.h"
 #include "client/mesh.h"
 
@@ -31,6 +33,15 @@ GUIScene::~GUIScene()
 
 scene::AnimatedMeshSceneNode *GUIScene::setMesh(scene::IAnimatedMesh *mesh)
 {
+#if IS_VOPI_ENGINE
+	// Attachments are parented to bones of the previous mesh — drop them
+	// first so we don't leave dangling references when the primary mesh
+	// goes away. Scene manager would clean them up anyway when m_mesh
+	// is removed (children of a removed node get pruned), but explicit
+	// cleanup keeps m_attachments in sync.
+	clearAttachments();
+#endif
+
 	if (m_mesh) {
 		m_mesh->remove();
 		m_mesh = nullptr;
@@ -52,9 +63,17 @@ scene::AnimatedMeshSceneNode *GUIScene::setMesh(scene::IAnimatedMesh *mesh)
 	return m_mesh;
 }
 
-void GUIScene::setTexture(u32 idx, video::ITexture *texture)
+namespace {
+// Configures one material slot the way GUIScene wants for all of its meshes:
+// alpha-blended with a 0.5 clip threshold, nearest-neighbour filtering (so
+// pixel textures stay sharp), backface-culling off (kawaii models often
+// rely on visible inside faces). Used by both setTexture() and
+// addAttachment() so primary mesh and attachments always render with
+// identical settings — divergence would have been a bug magnet.
+static void apply_material_settings(scene::AnimatedMeshSceneNode *node, u32 idx,
+		video::ITexture *texture)
 {
-	video::SMaterial &material = m_mesh->getMaterial(idx);
+	video::SMaterial &material = node->getMaterial(idx);
 	material.MaterialType = video::EMT_TRANSPARENT_ALPHA_CHANNEL;
 	material.MaterialTypeParam = 0.5f;
 	material.TextureLayers[0].Texture = texture;
@@ -64,6 +83,96 @@ void GUIScene::setTexture(u32 idx, video::ITexture *texture)
 	material.BackfaceCulling = false;
 	material.ZWriteEnable = video::EZW_AUTO;
 }
+} // namespace
+
+void GUIScene::setTexture(u32 idx, video::ITexture *texture)
+{
+	apply_material_settings(m_mesh, idx, texture);
+}
+
+#if IS_VOPI_ENGINE
+
+scene::AnimatedMeshSceneNode *GUIScene::addAttachment(
+	scene::IAnimatedMesh *mesh,
+	const std::vector<video::ITexture *> &textures,
+	const std::string &bone_name,
+	const v3f &position, const v3f &rotation, const v3f &scale)
+{
+	// `mesh` is contract-validated by the caller (parseModelOverlay
+	// already errors on null before we get here); no null check needed.
+	if (!m_mesh) {
+		errorstream << "GUIScene::addAttachment: no primary mesh, refusing"
+			<< std::endl;
+		return nullptr;
+	}
+
+	// Resolve the bone on the primary mesh. We need joint nodes to exist,
+	// which requires animateJoints() to have been called — setMesh() does
+	// that already, so by the time addAttachment runs the joint hierarchy
+	// is built and getJointNode() can find named bones.
+	scene::IBoneSceneNode *bone = m_mesh->getJointNode(bone_name.c_str());
+	if (!bone) {
+		errorstream << "GUIScene::addAttachment: bone '" << bone_name
+			<< "' not found on primary mesh" << std::endl;
+		return nullptr;
+	}
+
+	// Spawn the attachment as a child of the bone, mirroring how
+	// content_cao does world-side bone attachments. Position / rotation
+	// passed here are in bone-local coordinates, identical semantics to
+	// entity:set_attach() — that way the same _appearance numbers work
+	// for both world view and inventory preview.
+	scene::AnimatedMeshSceneNode *node =
+		m_smgr->addAnimatedMeshSceneNode(mesh, bone);
+	if (!node) {
+		errorstream << "GUIScene::addAttachment: addAnimatedMeshSceneNode failed"
+			<< std::endl;
+		return nullptr;
+	}
+
+	node->setPosition(position);
+	node->setRotation(rotation);
+	node->setScale(scale);
+	node->animateJoints();
+
+	// Fix vertex colors the same way setMesh() does for the primary,
+	// otherwise dark mesh vertex colors would darken the texture.
+	setMeshColor(node->getMesh(), video::SColor(255, 255, 255, 255));
+
+	// Apply textures to each material slot. Warn on under-supplied
+	// textures so a missing slot doesn't silently render as the default
+	// pink placeholder — matches the warning style of parseModel.
+	const u32 mat_count = node->getMaterialCount();
+	for (u32 i = 0; i < mat_count; ++i) {
+		const u32 texture_idx = mesh->getTextureSlot(i);
+		if (texture_idx >= textures.size()) {
+			warningstream << "GUIScene::addAttachment: not enough textures "
+				"for material slot " << i << " (needs index "
+				<< texture_idx << ", got " << textures.size()
+				<< " entries)" << std::endl;
+			continue;
+		}
+		if (textures[texture_idx])
+			apply_material_settings(node, i, textures[texture_idx]);
+	}
+
+	// Returned pointer is OWNED by m_smgr — caller must NOT drop() it.
+	// We also keep it in m_attachments for cleanup tracking. Returned
+	// purely for future API convenience (debug, runtime adjustments).
+	m_attachments.push_back(node);
+	return node;
+}
+
+void GUIScene::clearAttachments()
+{
+	// Pointers in m_attachments are guaranteed non-null by addAttachment
+	// (early-returns on every failure path before push_back), so no null
+	// check needed here.
+	for (auto *node : m_attachments)
+		node->remove();
+	m_attachments.clear();
+}
+#endif
 
 void GUIScene::draw()
 {
@@ -177,9 +286,35 @@ void GUIScene::setAnimationSpeed(f32 speed)
 /* Camera control functions */
 
 #if IS_VOPI_ENGINE
-inline void GUIScene::calcOptimalDistance()
+void GUIScene::calcOptimalDistance()
 {
-	core::aabbox3df box = m_mesh->getBoundingBox();
+	// Update absolute transforms across the whole subtree before reading
+	// transformed bboxes. OnAnimate(0) is the recursive variant —
+	// updateAbsolutePosition() is NOT recursive (see ISceneNode.h docs),
+	// so calling it only on m_mesh or only on the attachments would leave
+	// the intermediate bone joints stale and make attachment world
+	// positions wrong on first frame. This matters because
+	// calcOptimalDistance runs once (gated by m_initial_rotation) before
+	// the first drawAll(), so without this the camera distance would be
+	// computed against incorrect aabb and stuck wrong for the formspec's
+	// lifetime.
+	m_mesh->OnAnimate(0);
+
+	// Start from the primary mesh aabb. Use transformed (world-space) box
+	// so attachments — which always live in world coords relative to the
+	// primary's joints — can be unioned in directly. For the primary, the
+	// size dimensions match getBoundingBox() because setMesh() centered
+	// it on origin (translation doesn't change extent).
+	core::aabbox3df box = m_mesh->getTransformedBoundingBox();
+
+	// Union attachment boxes so the camera frames everything visible, not
+	// just the primary. Without this a tall hat on the Head bone would
+	// clip outside the preview rect because the primary's aabb stops at
+	// the head crown.
+	for (auto *att : m_attachments) {
+		box.addInternalBox(att->getTransformedBoundingBox());
+	}
+
 	f32 width  = box.MaxEdge.X - box.MinEdge.X;
 	f32 height = box.MaxEdge.Y - box.MinEdge.Y;
 	f32 depth  = box.MaxEdge.Z - box.MinEdge.Z;
@@ -205,7 +340,7 @@ inline void GUIScene::calcOptimalDistance()
 	m_cam_distance = dist;
 	m_update_cam = true;
 #else
-inline void GUIScene::calcOptimalDistance()
+void GUIScene::calcOptimalDistance()
 {
 	core::aabbox3df box = m_mesh->getBoundingBox();
 	f32 width  = box.MaxEdge.X - box.MinEdge.X;

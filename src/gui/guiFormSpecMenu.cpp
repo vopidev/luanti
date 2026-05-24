@@ -3107,6 +3107,13 @@ void GUIFormSpecMenu::parseModel(parserData *data, const std::string &element)
 			data->current_parent, rect, spec.fid);
 
 	auto meshnode = e->setMesh(mesh);
+	// m_client->getMesh() returned with refcount +1; setMesh() (via
+	// addAnimatedMeshSceneNode) grabbed it again. Drop our caller-side
+	// reference here so when the scene node is destroyed the mesh
+	// refcount reaches zero and the underlying data is freed. Without
+	// this every formspec refresh leaks one IAnimatedMesh — matches
+	// the content_cao.cpp pattern for in-world meshes.
+	mesh->drop();
 
 	for (u32 i = 0; i < meshnode->getMaterialCount(); ++i) {
 		const auto texture_idx = mesh->getTextureSlot(i);
@@ -3138,8 +3145,115 @@ void GUIFormSpecMenu::parseModel(parserData *data, const std::string &element)
 	e->setStyles(style);
 	e->drop();
 
+#if IS_VOPI_ENGINE
+	// Index by name so later model_overlay[] entries can find this scene.
+	// Skip empty names (model[] with no name can't be referenced anyway,
+	// and "" key would conflict with other unnamed model[] elements).
+	// Warn on duplicate names — overlays placed between two model[name=X]
+	// entries would attach to the first, those after to the second; that
+	// non-obvious ordering dependency is worth surfacing instead of
+	// silently swallowing.
+	if (!name.empty()) {
+		if (m_scene_models.find(name) != m_scene_models.end()) {
+			warningstream << "Duplicate model[] name '" << name
+				<< "' — second declaration will shadow the first for "
+				<< "model_overlay[] resolution" << std::endl;
+		}
+		m_scene_models[name] = e;
+	}
+#endif
+
 	m_fields.push_back(spec);
 }
+
+#if IS_VOPI_ENGINE
+// VOPI extension — `model_overlay[model_name;mesh;textures;bone;pos;rot;scale]`
+//
+// Attaches a secondary mesh to a previously-declared model[] by name. Position,
+// rotation, scale are in bone-local coordinates — identical semantics to
+// entity:set_attach() in-world, so the same _appearance numbers used for the
+// world-side wearable can drive the preview without translation.
+//
+// Must appear AFTER the model[] it references; if the parent isn't found in
+// m_scene_models the call logs and skips. Multiple overlays per model[] are
+// supported — each call appends to the GUIScene's attachment list.
+void GUIFormSpecMenu::parseModelOverlay(parserData *data, const std::string &element)
+{
+	MY_CHECKCLIENT("model_overlay");
+
+	std::vector<std::string> parts;
+	if (!precheckElement("model_overlay", element, 7, 7, parts))
+		return;
+
+	std::string model_name = unescape_string(parts[0]);
+	std::string meshstr    = unescape_string(parts[1]);
+	std::vector<std::string> textures = split(parts[2], ',');
+	std::string bone_name  = unescape_string(parts[3]);
+	std::vector<std::string> v_pos = split(parts[4], ',');
+	std::vector<std::string> v_rot = split(parts[5], ',');
+	std::vector<std::string> v_scl = split(parts[6], ',');
+
+	auto it = m_scene_models.find(model_name);
+	if (it == m_scene_models.end()) {
+		errorstream << "Invalid model_overlay element: parent model '"
+			<< model_name << "' not found (model_overlay[] must appear "
+			<< "after its model[] in the formspec)" << std::endl;
+		return;
+	}
+	GUIScene *scene = it->second;
+	if (!scene)
+		return;
+
+	scene::IAnimatedMesh *mesh = m_client->getMesh(meshstr);
+	if (!mesh) {
+		errorstream << "Invalid model_overlay element: unable to load mesh:"
+			<< std::endl << "\t" << meshstr << std::endl;
+		return;
+	}
+
+	// Resolve texture file names to ITexture pointers. Order matches the
+	// declaration; null entries are accepted (caller may pad with blank
+	// strings to skip particular material slots, though typical usage
+	// passes exactly one texture per slot).
+	std::vector<video::ITexture *> resolved_textures;
+	resolved_textures.reserve(textures.size());
+	for (const auto &tex : textures) {
+		std::string tex_name = unescape_string(tex);
+		resolved_textures.push_back(tex_name.empty()
+			? nullptr : m_tsrc->getTexture(tex_name));
+	}
+
+	v3f position(0.f, 0.f, 0.f);
+	if (v_pos.size() >= 3) {
+		position.X = stof(v_pos[0]);
+		position.Y = stof(v_pos[1]);
+		position.Z = stof(v_pos[2]);
+	}
+
+	v3f rotation(0.f, 0.f, 0.f);
+	if (v_rot.size() >= 3) {
+		rotation.X = stof(v_rot[0]);
+		rotation.Y = stof(v_rot[1]);
+		rotation.Z = stof(v_rot[2]);
+	}
+
+	v3f scale(1.f, 1.f, 1.f);
+	if (v_scl.size() >= 3) {
+		scale.X = stof(v_scl[0]);
+		scale.Y = stof(v_scl[1]);
+		scale.Z = stof(v_scl[2]);
+	}
+
+	scene->addAttachment(mesh, resolved_textures, bone_name,
+		position, rotation, scale);
+
+	// Same mesh refcount discipline as parseModel — getMesh() handed us a
+	// +1 ref, addAttachment's internal addAnimatedMeshSceneNode grabbed
+	// again, drop our caller-side ref so the mesh frees when the scene
+	// node goes away.
+	mesh->drop();
+}
+#endif
 
 void GUIFormSpecMenu::parseAllowClose(parserData *data, const std::string &element)
 {
@@ -3148,6 +3262,14 @@ void GUIFormSpecMenu::parseAllowClose(parserData *data, const std::string &eleme
 
 void GUIFormSpecMenu::removeAll()
 {
+#if IS_VOPI_ENGINE
+	// GUIScene pointers in m_scene_models are about to be invalidated by
+	// removeAllChildren(). Clear the index first so no stale lookup can
+	// race with the cleanup (parseModelOverlay races aren't realistic
+	// today, but cheap defensive hygiene).
+	m_scene_models.clear();
+#endif
+
 	// Remove children
 	removeAllChildren();
 	removeTooltip();
@@ -3219,6 +3341,9 @@ const std::unordered_map<std::string, std::function<void(GUIFormSpecMenu*, GUIFo
 		{"scroll_container_end",   &GUIFormSpecMenu::parseScrollContainerEnd},
 		{"set_focus",              &GUIFormSpecMenu::parseSetFocus},
 		{"model",                  &GUIFormSpecMenu::parseModel},
+#if IS_VOPI_ENGINE
+		{"model_overlay",          &GUIFormSpecMenu::parseModelOverlay},
+#endif
 		{"allow_close",            &GUIFormSpecMenu::parseAllowClose},
 };
 
