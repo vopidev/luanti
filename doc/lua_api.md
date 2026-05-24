@@ -3072,6 +3072,33 @@ Elements
     * Syntax: `<begin>,<end>`
 * `animation speed` (Optional): Sets the animation speed. Default 0 FPS.
 
+### `model_overlay[<parent_name>;<mesh>;<textures>;<bone>;<position>;<rotation>;<scale>]`
+
+* **VOPI Engine extension.** Attaches a secondary mesh to a bone of a
+  previously declared `model[]` element. Mirrors `entity:set_attach`
+  semantics — `position`, `rotation`, `scale` are in bone-local
+  coordinates, so a wearable item's appearance offsets work identically
+  in world rendering and in formspec previews.
+* Must appear AFTER the `model[]` it references in the formspec string.
+  If the parent name is not found in the parsed model index the call
+  is skipped with an error log; it is NOT queued for later resolution.
+* `parent_name`: `name` of the target `model[]` element.
+* `mesh`: Mesh file to attach (`.obj` / `.b3d` / `.gltf`).
+* `textures`: Mesh textures, comma-separated; one entry per mesh
+   material slot. A warning is logged when fewer textures are provided
+   than the mesh has slots — matching `model[]` behaviour.
+* `bone`: Name of the bone in the parent mesh's skeleton that the
+   attachment binds to. Resolved via `getJointNode()` on the parent;
+   a missing bone is logged and the attachment skipped.
+* `position`: Offset relative to the bone, format `x,y,z`.
+* `rotation`: Euler angles in degrees, format `x,y,z`.
+* `scale`: Visual size, format `x,y,z`.
+* Multiple `model_overlay[]` entries may target the same parent —
+  each appends one attached scene node. Skeletal animation, mouse-driven
+  rotation, and frame loop of the parent automatically propagate to all
+  attached meshes; the camera's optimal distance is recomputed to frame
+  the union of the primary mesh and every attachment.
+
 ### `item_image[<X>,<Y>;<W>,<H>;<item name>]`
 
 * Show an inventory image of registered item/node
