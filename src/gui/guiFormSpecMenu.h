@@ -22,6 +22,7 @@
 #include <ICursorControl.h> // gui::ECURSOR_ICON
 #include <IGUIStaticText.h>
 #if IS_VOPI_ENGINE
+#include <IGUIImage.h>
 #include "guiNineSliceBackground.h"
 #endif
 
@@ -361,7 +362,7 @@ protected:
 	std::vector<std::pair<std::string, GUIScrollContainer *>> m_scroll_containers;
 
 #if IS_VOPI_ENGINE && (defined(__ANDROID__) || defined(__IOS__))
-	NineSliceBackground m_selected_item_bg;
+	gui::IGUIImage *m_selected_item_bg = nullptr;
 	bool m_selected_active = false;
 #endif
 

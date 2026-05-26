@@ -161,7 +161,11 @@ void GUIFormSpecMenu::create(GUIFormSpecMenu *&cur_formspec, Client *client,
 #if IS_VOPI_ENGINE && (defined(__ANDROID__) || defined(__IOS__))
 void GUIFormSpecMenu::removeItemSelectBackground()
 {
-	m_selected_item_bg.remove();
+	if (m_selected_item_bg) {
+		m_selected_item_bg->remove();
+		m_selected_item_bg->drop();
+		m_selected_item_bg = nullptr;
+	}
 }
 #endif
 
@@ -3453,8 +3457,15 @@ void GUIFormSpecMenu::regenerateGui(v2u32 screensize)
 	std::string textures_path = porting::path_share + "/textures/base/pack/gui_pop_up/";
 #if defined(__ANDROID__) || defined(__IOS__)
 	{
-		assert(!m_selected_item_bg.isInitialized());
-		m_selected_item_bg.init(guienv, driver, guiroot, textures_path, "gui_tooltip_bg", false);
+		assert(!m_selected_item_bg);
+		std::string slot_texture = porting::path_share +
+			"/textures/base/pack/gui_common/gui_selected_slot.png";
+		m_selected_item_bg = guienv->addImage(
+			core::rect<s32>(0, 0, 1, 1), guiroot, -1, nullptr, true);
+		m_selected_item_bg->setImage(driver->getTexture(slot_texture.c_str()));
+		m_selected_item_bg->setScaleImage(true);
+		m_selected_item_bg->setVisible(false);
+		m_selected_item_bg->grab();
 	}
 #endif
 #endif
@@ -3904,22 +3915,26 @@ void GUIFormSpecMenu::drawSelectedItem()
 			m_selected_item->position.X + slotsize.X,
 			m_selected_item->position.Y + slotsize.Y
 		);
-		if (m_selected_active) {
-			s32 corner_size = 10;
-			s32 bg_padding = 3;
-			core::rect<s32> bg_rect(
-				rect.UpperLeftCorner.X - bg_padding,
-				rect.UpperLeftCorner.Y - bg_padding,
-				rect.LowerRightCorner.X + bg_padding,
-				rect.LowerRightCorner.Y + bg_padding
-			);
-			m_selected_item_bg.setPosition(bg_rect, corner_size);
-			m_selected_item_bg.setVisible(true);
-		} else {
-			m_selected_item_bg.setVisible(false);
+		if (m_selected_item_bg) {
+			if (m_selected_active) {
+				// Cached once at first call (lazy static init). Defaults registered
+				// in defaultsettings.cpp with platform-specific values.
+				static thread_local const s32 bg_padding  = g_settings->getS32("selected_slot_bg_padding");
+				static thread_local const s32 bg_offset_x = g_settings->getS32("selected_slot_bg_offset_x");
+				static thread_local const s32 bg_offset_y = g_settings->getS32("selected_slot_bg_offset_y");
+				core::rect<s32> bg_rect(
+					rect.UpperLeftCorner.X - bg_padding + bg_offset_x,
+					rect.UpperLeftCorner.Y - bg_padding + bg_offset_y,
+					rect.LowerRightCorner.X + bg_padding + bg_offset_x,
+					rect.LowerRightCorner.Y + bg_padding + bg_offset_y
+				);
+				m_selected_item_bg->setRelativePosition(bg_rect);
+				m_selected_item_bg->setVisible(true);
+			} else {
+				m_selected_item_bg->setVisible(false);
+			}
+			m_selected_item_bg->draw();
 		}
-
-		m_selected_item_bg.draw();
 	} else {
 		// When dragging, follow the cursor
 		rect = imgrect + (m_pointer - imgrect.getCenter());
