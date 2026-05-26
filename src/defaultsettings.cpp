@@ -612,6 +612,11 @@ void set_default_settings()
 	settings->setDefault("tooltip_padding_height", "5");
 	settings->setDefault("tooltip_bg_offset_x", "0");
 	settings->setDefault("tooltip_bg_offset_y", "0");
+
+	// Selected inventory slot highlight (single-image overlay; mobile only)
+	settings->setDefault("selected_slot_bg_padding", "3");
+	settings->setDefault("selected_slot_bg_offset_x", "0");
+	settings->setDefault("selected_slot_bg_offset_y", "0");
 #endif
 
 	// Altered settings for Android
