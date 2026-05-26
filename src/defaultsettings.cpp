@@ -595,8 +595,8 @@ void set_default_settings()
 	settings->setDefault("round_screen", "0");
 
 	// Icon padding
-	settings->setDefault("mesh_icon_padding_percent", "0.0");
-	settings->setDefault("image_icon_padding_percent", "0.0");
+	settings->setDefault("mesh_icon_padding_percent", "7.0");
+	settings->setDefault("image_icon_padding_percent", "7.0");
 
 	// Text appearance
 	settings->setDefault("chat_font_scale", "1.0");
