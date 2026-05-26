@@ -604,6 +604,14 @@ void set_default_settings()
 
 	// Chat
 	settings->setDefault("chat_message_max_age", "60.0");
+
+	// Tooltip 9-slice background (desktop defaults; iOS/Android override
+	// in vopi::set_ios_settings / vopi::set_android_settings)
+	settings->setDefault("tooltip_corner_size", "8");
+	settings->setDefault("tooltip_padding_width", "2");
+	settings->setDefault("tooltip_padding_height", "5");
+	settings->setDefault("tooltip_bg_offset_x", "0");
+	settings->setDefault("tooltip_bg_offset_y", "0");
 #endif
 
 	// Altered settings for Android
