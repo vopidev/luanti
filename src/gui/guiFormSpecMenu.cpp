@@ -4143,15 +4143,13 @@ void GUIFormSpecMenu::showTooltip(const std::wstring &text,
 #endif
 
 #if IS_VOPI_ENGINE
-#if defined(__ANDROID__) || defined(__IOS__)
-	s32 corner_size = 15; // Size for corner images
-	s32 padding_width = 7; // Padding width
-	s32 padding_height = 20; // Padding height
-#else
-	s32 corner_size = 8; // Size for corner images
-	s32 padding_width = 2; // Padding width
-	s32 padding_height = 5; // Padding height
-#endif
+	// Cached once at first call (lazy static init). Defaults registered in
+	// defaultsettings.cpp with platform-specific values.
+	static thread_local const s32 corner_size    = g_settings->getS32("tooltip_corner_size");
+	static thread_local const s32 padding_width  = g_settings->getS32("tooltip_padding_width");
+	static thread_local const s32 padding_height = g_settings->getS32("tooltip_padding_height");
+	static thread_local const s32 bg_offset_x    = g_settings->getS32("tooltip_bg_offset_x");
+	static thread_local const s32 bg_offset_y    = g_settings->getS32("tooltip_bg_offset_y");
 #else
 	setStaticText(m_tooltip_element, ntext);
 #endif
@@ -4217,8 +4215,9 @@ void GUIFormSpecMenu::showTooltip(const std::wstring &text,
 
 #if IS_VOPI_ENGINE
 	m_tooltip_bg.setPosition(
-		core::rect<s32>(tooltip_x, tooltip_y,
-			tooltip_x + tooltip_width, tooltip_y + tooltip_height),
+		core::rect<s32>(tooltip_x + bg_offset_x, tooltip_y + bg_offset_y,
+			tooltip_x + tooltip_width + bg_offset_x,
+			tooltip_y + tooltip_height + bg_offset_y),
 		corner_size);
 	m_tooltip_bg.setVisible(true);
 #endif
