@@ -347,11 +347,14 @@ void TouchControls::applyLayout(const ButtonLayout &layout)
 #if IS_VOPI_ENGINE
 	// Inventory button: not part of the general layout (filtered out by
 	// ButtonLayout::isButtonAllowed), so it is created here with a zero-size
-	// placeholder rect and hidden until Hud::drawHotbar reports the real
-	// anchor via setInventoryButtonRect. The standard m_buttons press / release
-	// pipeline still routes its taps to keymap_inventory.
+	// placeholder rect. Hud::drawHotbar will report the real anchor on the
+	// next frame via setInventoryButtonRect; until then a 0x0 image is not
+	// rendered by Irrlicht anyway, so we can leave visible=true and let the
+	// normal updateVisibility pipeline manage it like any other button.
+	// The standard m_buttons press/release pipeline routes taps to
+	// keymap_inventory unchanged.
 	addButton(m_buttons, inventory_id, button_image_names[inventory_id],
-			recti(0, 0, 0, 0), false);
+			recti(0, 0, 0, 0), true);
 	m_inventory_btn = m_buttons.back().gui_button;
 #endif
 
@@ -494,13 +497,8 @@ std::optional<u16> TouchControls::getHotbarDropRequest()
 
 void TouchControls::setInventoryButtonRect(const recti &rect)
 {
-	if (!m_inventory_btn)
-		return;
-	// Show on first valid rect; updateVisibility takes care of hiding it
-	// when touch controls themselves are hidden (e.g. formspec open).
-	m_inventory_btn->setRelativePosition(rect);
-	if (m_visible && !m_overflow_open && !m_inventory_btn->isVisible())
-		m_inventory_btn->setVisible(true);
+	if (m_inventory_btn)
+		m_inventory_btn->setRelativePosition(rect);
 }
 #endif
 

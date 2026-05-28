@@ -839,12 +839,17 @@ void Hud::drawHotbar(const v2s32 &pos, const v2f &offset, u16 dir, const v2f &al
 	s32 width = hotbar_itemcount * slot_size;
 
 #if IS_VOPI_ENGINE
-	// On touch: reserve room on the right for the inventory button (same size
-	// as a hotbar slot, with a small gap). Shift the hotbar's center leftward
-	// by half the (button + gap) so the visual composition stays centered.
+	// On touch: reserve room on the right for the inventory button. The button
+	// is intentionally a little smaller than a full hotbar slot (the slot has
+	// 2*m_padding around the icon; the button has 1*m_padding) and the gap
+	// between hotbar and button is tightened to 1*m_padding too, so the touch
+	// composition feels tight without dwarfing the hotbar visually.
+	// Shift the hotbar's center leftward by half of (button + gap) so the
+	// composition (hotbar + gap + button) stays centered on screen.
 	const bool touch_active = g_touchcontrols != nullptr;
-	const s32 inv_gap = m_padding * 2;
-	const s32 inv_button_total = slot_size + inv_gap; // slot + gap
+	const s32 inv_button_size = m_hotbar_imagesize + m_padding;
+	const s32 inv_gap = m_padding;
+	const s32 inv_button_total = inv_button_size + inv_gap;
 	v2s32 hotbar_pos = pos;
 	if (touch_active)
 		hotbar_pos.X -= inv_button_total / 2;
@@ -887,9 +892,11 @@ void Hud::drawHotbar(const v2s32 &pos, const v2f &offset, u16 dir, const v2f &al
 				+ (s32) std::round(screen_offset.X * m_scale_factor)
 				+ width / 2; // align.X = 0 centers width around hotbar_pos.X
 		const s32 inv_left = row_right + inv_gap;
+		// Vertically center the (slightly smaller) button against the slot.
+		const s32 inv_top = row_y_top + (slot_size - inv_button_size) / 2;
 		g_touchcontrols->setInventoryButtonRect(core::recti(
-				inv_left, row_y_top,
-				inv_left + slot_size, row_y_top + slot_size));
+				inv_left, inv_top,
+				inv_left + inv_button_size, inv_top + inv_button_size));
 	}
 #endif
 }
