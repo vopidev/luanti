@@ -126,6 +126,11 @@ public:
 	// Drag-to-drop: returns the hotbar slot index from which the player just
 	// dragged an item out of the hotbar, then clears the request.
 	std::optional<u16> getHotbarDropRequest();
+
+	// Updates the position and size of the inventory button so it sits
+	// flush against the right edge of the hotbar. Called by Hud::drawHotbar
+	// each frame the hotbar is drawn. The rect is in screen pixels.
+	void setInventoryButtonRect(const recti &rect);
 #endif
 
 	bool isStatusTextOverriden() { return m_overflow_open; }
@@ -210,6 +215,17 @@ private:
 
 	std::vector<button_info> m_buttons;
 	std::shared_ptr<IGUIImage> m_overflow_btn;
+
+#if IS_VOPI_ENGINE
+	// Inventory button anchored to the right edge of the hotbar.
+	// Created separately in applyLayout (not via the generic m_buttons loop,
+	// since inventory_id is filtered out by ButtonLayout::isButtonAllowed);
+	// its position and size are refreshed every HUD frame by
+	// setInventoryButtonRect, called from Hud::drawHotbar.
+	// It is still registered in m_buttons so the standard press / release
+	// pipeline emits the same keypress as before (keymap_inventory).
+	std::shared_ptr<IGUIImage> m_inventory_btn;
+#endif
 
 	bool m_overflow_open = false;
 	std::shared_ptr<IGUIStaticText> m_overflow_bg;

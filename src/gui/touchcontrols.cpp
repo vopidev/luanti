@@ -288,6 +288,10 @@ void TouchControls::applyLayout(const ButtonLayout &layout)
 	// with a future one (Android reuses pointer IDs).
 	m_has_hotbar_drag_id = false;
 	m_hotbar_drag_active = false;
+
+	// Reset hotbar-anchored inventory button; it will be (re)created below
+	// and resized/repositioned per frame by Hud::drawHotbar.
+	m_inventory_btn = nullptr;
 #endif
 
 	// Initialize joystick display "button".
@@ -339,6 +343,17 @@ void TouchControls::applyLayout(const ButtonLayout &layout)
 		else
 			addButton(m_buttons, id, button_image_names[id], rect, true);
 	}
+
+#if IS_VOPI_ENGINE
+	// Inventory button: not part of the general layout (filtered out by
+	// ButtonLayout::isButtonAllowed), so it is created here with a zero-size
+	// placeholder rect and hidden until Hud::drawHotbar reports the real
+	// anchor via setInventoryButtonRect. The standard m_buttons press / release
+	// pipeline still routes its taps to keymap_inventory.
+	addButton(m_buttons, inventory_id, button_image_names[inventory_id],
+			recti(0, 0, 0, 0), false);
+	m_inventory_btn = m_buttons.back().gui_button;
+#endif
 
 	IGUIStaticText *background = m_guienv->addStaticText(L"",
 			recti(v2s32(0, 0), dimension2du(m_screensize)));
@@ -475,6 +490,17 @@ std::optional<u16> TouchControls::getHotbarDropRequest()
 	auto req = m_hotbar_drop_request;
 	m_hotbar_drop_request = std::nullopt;
 	return req;
+}
+
+void TouchControls::setInventoryButtonRect(const recti &rect)
+{
+	if (!m_inventory_btn)
+		return;
+	// Show on first valid rect; updateVisibility takes care of hiding it
+	// when touch controls themselves are hidden (e.g. formspec open).
+	m_inventory_btn->setRelativePosition(rect);
+	if (m_visible && !m_overflow_open && !m_inventory_btn->isVisible())
+		m_inventory_btn->setVisible(true);
 }
 #endif
 
