@@ -1624,6 +1624,20 @@ void Game::processItemSelection(u16 *new_playeritem)
 		std::optional<u16> selection = g_touchcontrols->getHotbarSelection();
 		if (selection)
 			*new_playeritem = *selection;
+
+#if IS_VOPI_ENGINE
+		// VOPI mobile drag-to-drop: drop the entire stack from the slot the
+		// player dragged out of, without touching the current wield index.
+		std::optional<u16> drop_slot = g_touchcontrols->getHotbarDropRequest();
+		if (drop_slot && *drop_slot <= max_item) {
+			IDropAction *a = new IDropAction();
+			a->count = 0; // 0 = entire stack
+			a->from_inv.setCurrentPlayer();
+			a->from_list = "main";
+			a->from_i = *drop_slot;
+			client->inventoryAction(a);
+		}
+#endif
 	}
 
 	// Clamp selection again in case it wasn't changed but max_item was

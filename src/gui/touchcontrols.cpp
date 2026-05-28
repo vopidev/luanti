@@ -282,6 +282,12 @@ void TouchControls::applyLayout(const ButtonLayout &layout)
 
 #if IS_VOPI_ENGINE
 	m_joystick_center_size = m_button_size * 1.5f;
+
+	// Cancel any in-flight hotbar drag — slot rects will be re-registered
+	// on the next HUD frame and the old pointer ID could otherwise collide
+	// with a future one (Android reuses pointer IDs).
+	m_has_hotbar_drag_id = false;
+	m_hotbar_drag_active = false;
 #endif
 
 	// Initialize joystick display "button".
@@ -434,9 +440,22 @@ bool TouchControls::isHotbarButton(const SEvent &event)
 	// check if hotbar item is pressed
 	for (auto &[index, rect] : m_hotbar_rects) {
 		if (rect.isPointInside(touch_pos)) {
+#if IS_VOPI_ENGINE
+			// VOPI mobile: defer selection until release so we can detect a
+			// drag-to-drop gesture. Only one drag tracker at a time — ignore
+			// additional fingers landing on the hotbar while one is active.
+			if (!m_has_hotbar_drag_id) {
+				m_has_hotbar_drag_id  = true;
+				m_hotbar_drag_id      = event.TouchInput.ID;
+				m_hotbar_drag_slot    = index;
+				m_hotbar_drag_downpos = touch_pos;
+				m_hotbar_drag_active  = false;
+			}
+#else
 			// We can't just emit a keypress event because the number keys
 			// range from 1 to 9, but there may be more hotbar items.
 			m_hotbar_selection = index;
+#endif
 			return true;
 		}
 	}
@@ -450,6 +469,15 @@ std::optional<u16> TouchControls::getHotbarSelection()
 	return selection;
 }
 
+#if IS_VOPI_ENGINE
+std::optional<u16> TouchControls::getHotbarDropRequest()
+{
+	auto req = m_hotbar_drop_request;
+	m_hotbar_drop_request = std::nullopt;
+	return req;
+}
+#endif
+
 void TouchControls::handleReleaseEvent(size_t pointer_id)
 {
 	// By the way: Android reuses pointer IDs, so m_pointer_pos[pointer_id]
@@ -462,6 +490,22 @@ void TouchControls::handleReleaseEvent(size_t pointer_id)
 		return;
 	if (buttonsHandleRelease(m_overflow_buttons, pointer_id))
 		return;
+
+#if IS_VOPI_ENGINE
+	// Hotbar drag-to-drop: if this pointer started on a hotbar slot, decide
+	// here whether it was a tap (select the slot) or a successful drag
+	// (request a drop from that slot). Either way the gesture is consumed.
+	if (m_has_hotbar_drag_id && pointer_id == m_hotbar_drag_id) {
+		if (m_hotbar_drag_active) {
+			m_hotbar_drop_request = m_hotbar_drag_slot;
+		} else {
+			m_hotbar_selection = m_hotbar_drag_slot;
+		}
+		m_has_hotbar_drag_id = false;
+		m_hotbar_drag_active = false;
+		return;
+	}
+#endif
 
 	if (m_has_move_id && pointer_id == m_move_id) {
 		// handle the point used for moving view
@@ -665,6 +709,30 @@ void TouchControls::translateEvent(const SEvent &event)
 				}
 			}
 		}
+
+#if IS_VOPI_ENGINE
+		// Hotbar drag-to-drop tracking. The drag is "activated" once the
+		// finger leaves the originating slot rect AND moves upward beyond
+		// a threshold (~1 button_size). Lateral / downward movement is
+		// ignored on purpose so casual taps don't accidentally drop items
+		// and so left/right swipes remain free for a future hotbar swipe.
+		// We only watch for activation here — once active, no further per-move
+		// work is needed (the drop is committed on release).
+		if (m_has_hotbar_drag_id && event.TouchInput.ID == m_hotbar_drag_id &&
+				!m_hotbar_drag_active) {
+			bool still_in_hotbar = false;
+			for (auto &[idx, rect] : m_hotbar_rects) {
+				if (rect.isPointInside(touch_pos)) {
+					still_in_hotbar = true;
+					break;
+				}
+			}
+			const s32 upward = m_hotbar_drag_downpos.Y - touch_pos.Y;
+			const s32 drag_threshold = m_button_size;
+			if (!still_in_hotbar && upward > drag_threshold)
+				m_hotbar_drag_active = true;
+		}
+#endif
 	}
 }
 

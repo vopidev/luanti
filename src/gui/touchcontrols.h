@@ -122,6 +122,12 @@ public:
 	void registerHotbarRect(u16 index, const recti &rect);
 	std::optional<u16> getHotbarSelection();
 
+#if IS_VOPI_ENGINE
+	// Drag-to-drop: returns the hotbar slot index from which the player just
+	// dragged an item out of the hotbar, then clears the request.
+	std::optional<u16> getHotbarDropRequest();
+#endif
+
 	bool isStatusTextOverriden() { return m_overflow_open; }
 	IGUIStaticText *getStatusText() { return m_status_text.get(); }
 
@@ -155,6 +161,16 @@ private:
 
 	std::unordered_map<u16, recti> m_hotbar_rects;
 	std::optional<u16> m_hotbar_selection = std::nullopt;
+
+#if IS_VOPI_ENGINE
+	// Hotbar drag-to-drop state (VOPI mobile gesture)
+	bool m_has_hotbar_drag_id = false;
+	size_t m_hotbar_drag_id = 0;
+	u16 m_hotbar_drag_slot = 0;
+	v2s32 m_hotbar_drag_downpos;
+	bool m_hotbar_drag_active = false;
+	std::optional<u16> m_hotbar_drop_request = std::nullopt;
+#endif
 
 	// value in degree
 	double m_camera_yaw_change = 0.0;
