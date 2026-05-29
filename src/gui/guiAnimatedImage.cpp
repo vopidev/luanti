@@ -47,9 +47,15 @@ void GUIAnimatedImage::draw()
 
 		m_global_time = new_global_time;
 
-		// Advance by the number of elapsed frames, looping if necessary
+		// Advance by the number of elapsed frames
 		m_frame_idx += (u32)(m_frame_time / m_frame_duration);
-		m_frame_idx %= m_frame_count;
+		if (m_loop) {
+			// Loop back to the start
+			m_frame_idx %= m_frame_count;
+		} else if (m_frame_idx >= m_frame_count) {
+			// One-shot: hold on the last frame instead of wrapping
+			m_frame_idx = m_frame_count - 1;
+		}
 
 		// If 1 or more frames have elapsed, reset the frame time counter with
 		// the remainder

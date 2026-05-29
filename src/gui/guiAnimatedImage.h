@@ -28,6 +28,11 @@ public:
 	void setFrameIndex(s32 frame) { m_frame_idx = std::max(frame, 0); };
 	s32 getFrameIndex() const { return m_frame_idx; };
 
+	// When false, the animation plays once and holds on the last frame
+	// instead of looping back to frame 1. Default true (upstream behaviour).
+	void setLoop(bool loop) { m_loop = loop; };
+	bool getLoop() const { return m_loop; };
+
 private:
 	video::ITexture *m_texture = nullptr;
 
@@ -36,6 +41,7 @@ private:
 	s32 m_frame_count = 1;
 	u64 m_frame_duration = 0;
 	u64 m_frame_time = 0;
+	bool m_loop = true;
 
 	core::rect<s32> m_middle;
 };

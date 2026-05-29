@@ -984,7 +984,7 @@ void GUIFormSpecMenu::parseImage(parserData* data, const std::string &element)
 void GUIFormSpecMenu::parseAnimatedImage(parserData *data, const std::string &element)
 {
 	std::vector<std::string> parts;
-	if (!precheckElement("animated_image", element, 6, 8, parts))
+	if (!precheckElement("animated_image", element, 6, 9, parts))
 		return;
 
 	std::vector<std::string> v_pos  = split(parts[0], ',');
@@ -1037,6 +1037,10 @@ void GUIFormSpecMenu::parseAnimatedImage(parserData *data, const std::string &el
 	e->setFrameCount(frame_count);
 	if (parts.size() >= 7)
 		e->setFrameIndex(stoi(parts[6]) - 1);
+	// Optional 9th param: loop flag. Default true (upstream behaviour); set
+	// to false for a one-shot animation that holds on its last frame.
+	if (parts.size() >= 9)
+		e->setLoop(is_yes(parts[8]));
 
 	auto style = getDefaultStyleForElement("animated_image", spec.fname, "image");
 	e->setNotClipped(style.getBool(StyleSpec::NOCLIP, false));

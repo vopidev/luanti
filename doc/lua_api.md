@@ -3043,7 +3043,7 @@ Elements
     * Requires formspec version >= 6.
     * See `background9[]` documentation for more information.
 
-### `animated_image[<X>,<Y>;<W>,<H>;<name>;<texture name>;<frame count>;<frame duration>;<frame start>;<middle>]`
+### `animated_image[<X>,<Y>;<W>,<H>;<name>;<texture name>;<frame count>;<frame duration>;<frame start>;<middle>;<loop>]`
 
 * Show an animated image. The image is drawn like a "vertical_frames" tile
   animation (See [Tile animation definition](#tile-animation-definition)), but uses a frame count/duration for simplicity
@@ -3055,6 +3055,12 @@ Elements
 * `middle` (optional): Makes the image render in 9-sliced mode and defines the middle rect.
     * Requires formspec version >= 6.
     * See `background9[]` documentation for more information.
+    * Leave empty (e.g. `;;false`) to keep the default scaled rendering while
+      still passing the `loop` parameter that follows.
+* `loop` (optional): Whether the animation loops. Default `true` (upstream
+  behaviour). Set to `false` for a one-shot animation that plays through once
+  and then holds on the last frame instead of wrapping back to the first.
+  (VOPI Engine extension.)
 
 ### `model[<X>,<Y>;<W>,<H>;<name>;<mesh>;<textures>;<rotation>;<continuous>;<mouse control>;<frame loop range>;<animation speed>]`
 
