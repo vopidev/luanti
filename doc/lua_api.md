@@ -3062,6 +3062,25 @@ Elements
   and then holds on the last frame instead of wrapping back to the first.
   (VOPI Engine extension.)
 
+### `map[<X>,<Y>;<W>,<H>;<name>;<marker 1>;<marker 2>;...]`
+
+* **VOPI Engine extension.** Shows a top-down map of the world around the
+  player. The terrain is rendered directly from the loaded client map (surface
+  node colours, smooth relief shading, a cave view when underground) — it is
+  independent of the HUD minimap and always centered on the player.
+* `name`: Element name. Reserved for future interaction events.
+* Each following field is one marker, `wx,wy,wz,#RRGGBB[,icon]`:
+    * `wx,wy,wz` — marker world position.
+    * `#RRGGBB` — marker colour (used as fallback when no icon is given, or the
+      icon fails to load).
+    * `icon` (optional) — texture name drawn at the marker instead of the
+      colour square.
+    * Markers are separate `;`-fields (like `table[]` cells), not a single
+      `;`-joined argument — `;` is the formspec field separator.
+    * A marker is drawn only when its position falls within the visible area.
+    * Example (a coloured marker and an icon marker):
+      `map[0,0;5,5;worldmap;10,8,-4,#ff0000;120,8,60,#00ff00,my_home_icon.png]`
+
 ### `model[<X>,<Y>;<W>,<H>;<name>;<mesh>;<textures>;<rotation>;<continuous>;<mouse control>;<frame loop range>;<animation speed>]`
 
 * Show a mesh model.

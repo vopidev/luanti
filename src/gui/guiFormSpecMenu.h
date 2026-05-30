@@ -532,6 +532,7 @@ private:
 	void parseStyle(parserData *data, const std::string &element);
 	void parseSetFocus(parserData *, const std::string &element);
 	void parseModel(parserData *data, const std::string &element);
+	void parseMap(parserData *data, const std::string &element);
 #if IS_VOPI_ENGINE
 	void parseModelOverlay(parserData *data, const std::string &element);
 #endif

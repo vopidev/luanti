@@ -47,6 +47,7 @@
 #include "guiEditBoxWithScrollbar.h"
 #include "guiInventoryList.h"
 #include "guiItemImage.h"
+#include "guiMapElement.h"
 #include "guiScrollContainer.h"
 #include "guiHyperText.h"
 #include "guiScene.h"
@@ -3053,6 +3054,83 @@ void GUIFormSpecMenu::parseSetFocus(parserData*, const std::string &element)
 		setFocus(parts[0]);
 }
 
+void GUIFormSpecMenu::parseMap(parserData *data, const std::string &element)
+{
+	MY_CHECKCLIENT("map");
+
+	// Points are passed as additional ';'-separated fields (like table[] cells),
+	// because ';' is the formspec field separator — encoding markers inside a
+	// single field with ';' would be miscounted as extra element fields. So the
+	// field count is variable (pos;geom;name; then zero or more point fields)
+	// and we don't cap the maximum.
+	std::vector<std::string> parts;
+	if (!precheckElement("map", element, 3, 10000, parts))
+		return;
+
+	std::vector<std::string> v_pos = split(parts[0], ',');
+	std::vector<std::string> v_geom = split(parts[1], ',');
+	std::string name = parts[2];
+
+	MY_CHECKPOS("map", 0);
+	MY_CHECKGEOM("map", 1);
+
+	v2s32 pos;
+	v2s32 geom;
+
+	if (data->real_coordinates) {
+		pos = getRealCoordinateBasePos(v_pos);
+		geom = getRealCoordinateGeometry(v_geom);
+	} else {
+		pos = getElementBasePos(&v_pos);
+		geom.X = stof(v_geom[0]) * (float)imgsize.X;
+		geom.Y = stof(v_geom[1]) * (float)imgsize.Y;
+	}
+
+	if (!data->explicit_size)
+		warningstream << "Invalid use of map without a size[] element" << std::endl;
+
+	FieldSpec spec(
+		name,
+		L"",
+		L"",
+		258 + m_fields.size()
+	);
+
+	core::rect<s32> rect(pos, pos + geom);
+
+	GUIMapElement *e = new GUIMapElement(Environment, data->current_parent,
+			spec.fid, rect, m_client);
+
+	// Optional points: each is its own ';'-separated field after name, of the
+	// form "wx,wy,wz,#RRGGBB[,icon]". The optional 5th sub-field names an icon
+	// texture drawn instead of the colour square (the colour is the fallback).
+	if (parts.size() > 3) {
+		std::vector<GUIMapElement::MapPoint> points;
+		for (size_t i = 3; i < parts.size(); i++) {
+			if (parts[i].empty())
+				continue;
+			std::vector<std::string> f = split(parts[i], ',');
+			if (f.size() < 4)
+				continue;
+			GUIMapElement::MapPoint mp;
+			mp.world_pos = v3f(stof(f[0]), stof(f[1]), stof(f[2]));
+			if (!parseColorString(f[3], mp.color, false))
+				mp.color = video::SColor(255, 255, 0, 0);
+			if (f.size() >= 5)
+				mp.icon = unescape_string(f[4]);
+			points.push_back(mp);
+		}
+		e->setPoints(std::move(points));
+	}
+
+	auto style = getDefaultStyleForElement("map", spec.fname);
+	e->setNotClipped(style.getBool(StyleSpec::NOCLIP, false));
+
+	e->drop();
+
+	m_fields.push_back(spec);
+}
+
 void GUIFormSpecMenu::parseModel(parserData *data, const std::string &element)
 {
 	MY_CHECKCLIENT("model");
@@ -3349,6 +3427,7 @@ const std::unordered_map<std::string, std::function<void(GUIFormSpecMenu*, GUIFo
 		{"scroll_container_end",   &GUIFormSpecMenu::parseScrollContainerEnd},
 		{"set_focus",              &GUIFormSpecMenu::parseSetFocus},
 		{"model",                  &GUIFormSpecMenu::parseModel},
+		{"map",                    &GUIFormSpecMenu::parseMap},
 #if IS_VOPI_ENGINE
 		{"model_overlay",          &GUIFormSpecMenu::parseModelOverlay},
 #endif
