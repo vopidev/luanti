@@ -11,11 +11,10 @@
 #include "client/client.h"
 #include "client/clientenvironment.h"
 #include "client/localplayer.h"
-#include "client/node_visuals.h"
+#include "client/mapCanvas.h"
 #include "client/texturesource.h"
 #include "constants.h"
 #include "map.h"
-#include "mapblock.h"
 #include "mapnode.h"
 #include "nodedef.h"
 #include "porting.h"
@@ -31,13 +30,6 @@ namespace {
 constexpr s32 MAP_PX = 256;
 constexpr s32 NODES_PER_PIXEL = 1;
 constexpr s32 MAP_EXTENT_NODES = MAP_PX * NODES_PER_PIXEL;
-
-// Vertical scan window around the player's Y when looking for a surface node.
-// SCAN_DOWN is deliberately deep so that flying high still finds the ground far
-// below; unloaded blocks in that range are skipped 16 nodes at a time (see the
-// block-level skip in rebuildTexture), so a wide window stays cheap.
-constexpr s16 SCAN_UP = 64;
-constexpr s16 SCAN_DOWN = 400;
 
 // Rebuild throttle. While the player moves we rebake at most every
 // REBUILD_INTERVAL_MS and only after moving REBUILD_MOVE_NODES. But a stationary
@@ -144,29 +136,28 @@ void GUIMapElement::draw()
 	IGUIElement::draw();
 }
 
-// NOTE (perf, Phase 2): this bakes the whole texture synchronously on the
-// render thread (scan + 4 image passes + GPU upload). It is throttled so it
-// runs at most a few times per second, but a rebuild can still cause a small
-// hitch on low-end mobile. The engine minimap avoids this with a dedicated
-// MinimapUpdateThread; moving this work off-thread is deferred to the Phase 2
-// fog-of-war rework, where the data source changes anyway.
 void GUIMapElement::rebuildTexture(v3s16 center)
 {
 	const NodeDefManager *ndef = m_client->getNodeDefManager();
 	Map &map = m_client->getEnv().getMap();
+	MapCanvas *canvas = m_client->getMapCanvas();
 
 	video::IImage *img = m_driver->createImage(video::ECF_A8R8G8B8,
 		core::dimension2du(MAP_PX, MAP_PX));
 	if (!img)
 		return;
 
+	// Work on the raw ARGB8888 pixel buffer directly (row-major u32, index
+	// py*MAP_PX+px) instead of img->getPixel/setPixel. Those are virtual calls
+	// with per-pixel bounds checks; over ~65k px x 4 passes that was the entire
+	// ~600ms rebuild cost on A10. Raw pointer access is ~an order of magnitude
+	// cheaper. SColor's packed value IS this u32 (A<<24|R<<16|G<<8|B).
+	u32 *buf = (u32 *)img->getData();
+
 	// Height per pixel for relief shading (INT16_MIN = no surface found).
 	std::vector<s16> heights(MAP_PX * MAP_PX, -32768);
 
 	const s32 half = MAP_EXTENT_NODES / 2;
-
-	const s16 y_top = center.Y + SCAN_UP;
-	const s16 y_bottom = center.Y - SCAN_DOWN;
 
 	// Is the player underground? Look for a solid roof a short way above the
 	// head. If found, the map renders in cave view (see COL_CAVE / COL_DEPTH).
@@ -185,7 +176,23 @@ void GUIMapElement::rebuildTexture(v3s16 center)
 		}
 	}
 
-	// First pass: pick the topmost non-air node per column and store its colour.
+	// First pass: assemble the player-centered window from the persistent
+	// fog-of-war canvas (filled continuously by Client::step harvest). A cell
+	// the canvas has never recorded stays fog. Cache the last tile across the
+	// inner loop — the window spans only ~9 tiles, so consecutive pixels
+	// overwhelmingly hit the same tile.
+	//
+	// IMPORTANT: cache on the tile COORD, not on (cur_tile != null). A large
+	// part of the render window is usually unexplored (findTileReadonly returns
+	// null there); keying the cache on a null check re-queried the canvas for
+	// every single fog pixel — tens of thousands of make_unique<MapTile>(96KiB)
+	// + disk-stat calls per rebuild. That was the ~600ms freeze. Tracking
+	// "which coord we last looked up" makes a fog tile cost one lookup, not one
+	// per pixel.
+	const MapTile *cur_tile = nullptr;
+	s16 cur_tx = -32768, cur_tz = -32768;
+	bool have_lookup = false;
+
 	for (s32 py = 0; py < MAP_PX; py++)
 	for (s32 px = 0; px < MAP_PX; px++) {
 		// North (+Z) is up on screen, East (+X) is right.
@@ -195,78 +202,52 @@ void GUIMapElement::rebuildTexture(v3s16 center)
 		video::SColor out(0, 0, 0, 0); // transparent => fog shows through
 		bool found = false;
 
-		// Scan the column top-down. Cache the current MapBlock so we don't do a
-		// full block lookup per node, and skip whole unloaded blocks at once —
-		// this is what makes a deep SCAN_DOWN affordable.
-		MapBlock *block = nullptr;
-		v3s16 cached_bp(-32768, -32768, -32768);
+		if (canvas) {
+			const s16 tx = MapCanvas::tileCoord(wx);
+			const s16 tz = MapCanvas::tileCoord(wz);
+			if (!have_lookup || tx != cur_tx || tz != cur_tz) {
+				cur_tile = canvas->findTileReadonly(tx, tz);
+				cur_tx = tx;
+				cur_tz = tz;
+				have_lookup = true;
+			}
+			if (cur_tile) {
+				const s32 ox = wx & (MAPCANVAS_TILE_NODES - 1);
+				const s32 oz = wz & (MAPCANVAS_TILE_NODES - 1);
+				const s32 ci = oz * MAPCANVAS_TILE_NODES + ox;
+				const u32 argb = cur_tile->colour[ci];
+				if ((argb >> 24) != 0) { // alpha != 0 => explored
+					video::SColor tilecolor(argb);
+					const s16 wy = cur_tile->height[ci];
 
-		for (s16 wy = y_top; wy >= y_bottom; wy--) {
-			const v3s16 wp(wx, wy, wz);
-			const v3s16 bp = getNodeBlockPos(wp);
-			if (bp != cached_bp) {
-				cached_bp = bp;
-				block = map.getBlockNoCreateNoEx(bp);
+					// Cave view is applied at RENDER time (never stored), using
+					// the player's CURRENT Y, so an area explored from below
+					// isn't permanently dark on the surface map.
+					if (underground && wy < center.Y) {
+						const f32 t = core::clamp(
+							(f32)(center.Y - wy) / CAVE_DEPTH_FULL, 0.0f, 1.0f);
+						const f32 keep = 1.0f - 0.6f * t;
+						tilecolor.setRed((s32)(tilecolor.getRed() * keep +
+							COL_DEPTH.getRed() * (1.0f - keep)));
+						tilecolor.setGreen((s32)(tilecolor.getGreen() * keep +
+							COL_DEPTH.getGreen() * (1.0f - keep)));
+						tilecolor.setBlue((s32)(tilecolor.getBlue() * keep +
+							COL_DEPTH.getBlue() * (1.0f - keep)));
+					}
+					tilecolor.setAlpha(255);
+					out = tilecolor;
+					heights[py * MAP_PX + px] = wy;
+					found = true;
+				}
 			}
-			if (!block) {
-				// Jump straight to the node below this block's bottom.
-				wy = bp.Y * MAP_BLOCKSIZE; // loop's wy-- lands at bottom-1
-				continue;
-			}
-
-			MapNode n = block->getNodeNoCheck(wp - bp * MAP_BLOCKSIZE);
-			content_t c = n.getContent();
-			if (c == CONTENT_IGNORE || c == CONTENT_AIR)
-				continue;
-			const ContentFeatures &f = ndef->get(c);
-			if (f.drawtype == NDT_AIRLIKE)
-				continue;
-
-			// Representative top colour of the node (same recipe the engine
-			// uses for the minimap pixel — but computed here independently).
-			video::SColor tilecolor(255, 255, 255, 255);
-			const TileDef &tile = f.tiledef[0];
-			const TileDef &overlay = f.tiledef_overlay[0];
-			if (!overlay.name.empty() && overlay.has_color) {
-				tilecolor = overlay.color;
-			} else if (overlay.name.empty() && tile.has_color) {
-				tilecolor = tile.color;
-			} else if (f.visuals) {
-				f.visuals->getColor(n.param2, &tilecolor);
-			}
-			if (f.visuals) {
-				const video::SColor &mc = f.visuals->minimap_color;
-				tilecolor.setRed(tilecolor.getRed() * mc.getRed() / 255);
-				tilecolor.setGreen(tilecolor.getGreen() * mc.getGreen() / 255);
-				tilecolor.setBlue(tilecolor.getBlue() * mc.getBlue() / 255);
-			}
-			// Cave view: tint nodes below the player toward the cave tone and
-			// darken them with depth, so descending reads as going deeper.
-			if (underground && wy < center.Y) {
-				const f32 t = core::clamp(
-					(f32)(center.Y - wy) / CAVE_DEPTH_FULL, 0.0f, 1.0f);
-				const f32 keep = 1.0f - 0.6f * t; // fade material colour out
-				tilecolor.setRed((s32)(tilecolor.getRed() * keep +
-					COL_DEPTH.getRed() * (1.0f - keep)));
-				tilecolor.setGreen((s32)(tilecolor.getGreen() * keep +
-					COL_DEPTH.getGreen() * (1.0f - keep)));
-				tilecolor.setBlue((s32)(tilecolor.getBlue() * keep +
-					COL_DEPTH.getBlue() * (1.0f - keep)));
-			}
-
-			tilecolor.setAlpha(255);
-			out = tilecolor;
-			heights[py * MAP_PX + px] = wy;
-			found = true;
-			break;
 		}
 
-		// In cave view, empty columns (no surface within the scan) get a soft
-		// cave fill instead of falling through to the near-black fog.
+		// In cave view, empty columns (no surface) get a soft cave fill instead
+		// of falling through to the near-black fog.
 		if (!found && underground)
 			out = COL_CAVE;
 
-		img->setPixel(px, py, out);
+		buf[py * MAP_PX + px] = out.color;
 	}
 
 	// Second pass: relief shading. Use the *signed height difference* to the
@@ -298,11 +279,12 @@ void GUIMapElement::rebuildTexture(v3s16 center)
 		if (factor > 0.999f && factor < 1.001f)
 			continue;
 
-		video::SColor c = img->getPixel(px, py);
-		c.setRed(core::clamp((s32)(c.getRed() * factor), 0, 255));
-		c.setGreen(core::clamp((s32)(c.getGreen() * factor), 0, 255));
-		c.setBlue(core::clamp((s32)(c.getBlue() * factor), 0, 255));
-		img->setPixel(px, py, c);
+		u32 &c = buf[py * MAP_PX + px];
+		const u32 a = c & 0xFF000000u;
+		const s32 r = core::clamp((s32)(((c >> 16) & 0xFF) * factor), 0, 255);
+		const s32 g = core::clamp((s32)(((c >> 8) & 0xFF) * factor), 0, 255);
+		const s32 b = core::clamp((s32)((c & 0xFF) * factor), 0, 255);
+		c = a | ((u32)r << 16) | ((u32)g << 8) | (u32)b;
 	}
 
 	// Third pass: fill small interior holes. A column can come back empty even
@@ -331,8 +313,7 @@ void GUIMapElement::rebuildTexture(v3s16 center)
 
 			// 3+ real neighbours => surrounded => interior hole, patch it.
 			if (real >= 3 && src_idx >= 0) {
-				img->setPixel(px, py,
-					img->getPixel(src_idx % MAP_PX, src_idx / MAP_PX));
+				buf[idx] = buf[src_idx];
 				filled_h[idx] = heights[src_idx];
 			}
 		}
@@ -373,9 +354,8 @@ void GUIMapElement::rebuildTexture(v3s16 center)
 			dist[idx] = d;
 
 			if (heights[idx] != -32768 && d < FOG_FEATHER) {
-				video::SColor c = img->getPixel(px, py);
-				c.setAlpha((u32)(255 * d / FOG_FEATHER));
-				img->setPixel(px, py, c);
+				const u32 alpha = (u32)(255 * d / FOG_FEATHER);
+				buf[idx] = (buf[idx] & 0x00FFFFFFu) | (alpha << 24);
 			}
 		}
 	}
