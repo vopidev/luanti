@@ -3062,13 +3062,20 @@ Elements
   and then holds on the last frame instead of wrapping back to the first.
   (VOPI Engine extension.)
 
-### `map[<X>,<Y>;<W>,<H>;<name>;<marker 1>;<marker 2>;...]`
+### `map[<X>,<Y>;<W>,<H>;<name>;<scale>;<focus>;<marker 1>;<marker 2>;...]`
 
 * **VOPI Engine extension.** Shows a top-down map of the world around the
   player. The terrain is rendered directly from the loaded client map (surface
   node colours, smooth relief shading, a cave view when underground) — it is
-  independent of the HUD minimap and always centered on the player.
+  independent of the HUD minimap.
 * `name`: Element name. Reserved for future interaction events.
+* `scale` (optional): zoom, as the number of world nodes spanned across the map
+  window. Smaller = closer in. Empty = default. Clamped to a valid range
+  (currently 128…1024); the baked texture size is constant, so cost does not
+  grow with zoom.
+* `focus` (optional): `wx,wy,wz` world point to center the map on. Empty =
+  follow the local player. The player marker is drawn at its real position, so
+  it rides the map (or clamps off-edge) when the focus is pinned elsewhere.
 * Each following field is one marker, `wx,wy,wz,#RRGGBB[,icon]`:
     * `wx,wy,wz` — marker world position.
     * `#RRGGBB` — marker colour (used as fallback when no icon is given, or the

@@ -3101,12 +3101,25 @@ void GUIFormSpecMenu::parseMap(parserData *data, const std::string &element)
 	GUIMapElement *e = new GUIMapElement(Environment, data->current_parent,
 			spec.fid, rect, m_client);
 
-	// Optional points: each is its own ';'-separated field after name, of the
+	// Field 4 (optional): zoom, as the number of world nodes spanned across the
+	// map window. Empty => default. The element clamps it to its valid range.
+	if (parts.size() > 3 && !parts[3].empty())
+		e->setViewNodes(stoi(parts[3]));
+
+	// Field 5 (optional): focus center "wx,wy,wz" — the map centers here instead
+	// of following the player. Empty => follow the player.
+	if (parts.size() > 4 && !parts[4].empty()) {
+		std::vector<std::string> fc = split(parts[4], ',');
+		if (fc.size() >= 3)
+			e->setFocus(v3f(stof(fc[0]), stof(fc[1]), stof(fc[2])));
+	}
+
+	// Fields 6+ (optional): markers, each its own ';'-separated field of the
 	// form "wx,wy,wz,#RRGGBB[,icon]". The optional 5th sub-field names an icon
 	// texture drawn instead of the colour square (the colour is the fallback).
-	if (parts.size() > 3) {
+	if (parts.size() > 5) {
 		std::vector<GUIMapElement::MapPoint> points;
-		for (size_t i = 3; i < parts.size(); i++) {
+		for (size_t i = 5; i < parts.size(); i++) {
 			if (parts[i].empty())
 				continue;
 			std::vector<std::string> f = split(parts[i], ',');

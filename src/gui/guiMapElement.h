@@ -47,14 +47,23 @@ public:
 
 	void setPoints(std::vector<MapPoint> points) { m_points = std::move(points); }
 
+	// Zoom: how many world nodes the (square) map window spans across its full
+	// width. Smaller = closer in. Clamped to a sane range by the setter.
+	void setViewNodes(s32 nodes);
+
+	// Focus: world point the map is centered on. Without a focus the map follows
+	// the local player. setFocus pins it to an arbitrary point (e.g. a POI).
+	void setFocus(v3f focus) { m_focus = focus; m_has_focus = true; }
+	void clearFocus() { m_has_focus = false; }
+
 	virtual void draw() override;
 	virtual bool OnEvent(const SEvent &event) override;
 
 private:
 	// Rebuild the baked map texture centered on `center` (node coords).
 	void rebuildTexture(v3s16 center);
-	// Draw the player marker (always centered) and the custom points on top of
-	// the baked map texture, given the on-screen rect and the current center.
+	// Draw the player marker and the custom points on top of the baked texture,
+	// given the on-screen rect and the current node-coord center.
 	void drawMarkers(const core::rect<s32> &rect, v3s16 center);
 
 	Client *m_client;
@@ -62,9 +71,18 @@ private:
 
 	std::vector<MapPoint> m_points;
 
+	// View span in world nodes across the window (zoom). Default 256 (1 node
+	// per texture pixel). 128 = 2x zoom-in (node = 2x2 px, nearest upscale).
+	s32 m_view_nodes = 256;
+
+	// Optional pinned focus center (world coords). When unset, follow player.
+	v3f m_focus;
+	bool m_has_focus = false;
+
 	// Baked top-down texture of the surrounding terrain.
 	video::ITexture *m_texture = nullptr;
 	v3s16 m_cached_center;          // node-coord center the texture was baked at
+	s32 m_cached_view_nodes = 0;    // view span the texture was baked at
 	u64 m_last_update_ms = 0;       // throttle timestamp
 	bool m_has_texture = false;
 };

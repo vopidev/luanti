@@ -808,10 +808,10 @@ void Client::step(float dtime)
 		LocalPlayer *player = m_env.getLocalPlayer();
 		if (canvas && player && m_map_harvest_interval.step(dtime, 0.5f)) {
 			// Harvest radius: kept close to the client's loaded view radius. A
-			// larger radius (e.g. the full 128 render extent) just re-scans an
-			// outer ring of UNLOADED blocks every tick — those return no surface,
-			// never get recorded, and so are re-scanned forever. 72 covers the
-			// normally-loaded area without that waste.
+			// larger radius just re-scans an outer ring of UNLOADED blocks every
+			// tick — those return no surface, never get recorded, and so are
+			// re-scanned forever. 72 covers the normally-loaded area without that
+			// waste.
 			constexpr s16 HARVEST_RADIUS = 72;
 			const v3s16 c = floatToInt(player->getPosition(), BS);
 			const s16 y_top = c.Y + 64;

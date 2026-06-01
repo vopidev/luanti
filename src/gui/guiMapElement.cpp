@@ -14,22 +14,22 @@
 #include "client/mapCanvas.h"
 #include "client/texturesource.h"
 #include "constants.h"
-#include "map.h"
-#include "mapnode.h"
-#include "nodedef.h"
 #include "porting.h"
 #include "util/numeric.h"
 
 namespace {
 
-// Baked texture resolution (pixels per side). One source pixel maps to
-// NODES_PER_PIXEL world nodes, so the map covers MAP_PX * NODES_PER_PIXEL nodes.
-// 256 nodes of coverage matches the engine minimap's widest surface mode, so
-// each node maps to a smaller on-screen area and the result reads as finely as
-// the minimap instead of looking blocky/zoomed-in.
+// Baked texture resolution (pixels per side). The map window spans
+// m_view_nodes world nodes across this width (the zoom level), so one texture
+// pixel maps to (m_view_nodes / MAP_PX) world nodes — which may be < 1 (zoomed
+// in, a node covers several pixels via nearest upscale) or > 1 (zoomed out).
 constexpr s32 MAP_PX = 256;
-constexpr s32 NODES_PER_PIXEL = 1;
-constexpr s32 MAP_EXTENT_NODES = MAP_PX * NODES_PER_PIXEL;
+
+// Zoom range, in world nodes spanned across the window. 128 = closest (a node
+// is a crisp 2x2 px block), 1024 = widest. The texture stays MAP_PX so the
+// rebuild cost is constant regardless of zoom.
+constexpr s32 VIEW_NODES_MIN = 128;
+constexpr s32 VIEW_NODES_MAX = 1024;
 
 // Rebuild throttle. While the player moves we rebake at most every
 // REBUILD_INTERVAL_MS and only after moving REBUILD_MOVE_NODES. But a stationary
@@ -52,24 +52,13 @@ constexpr f32 PLAYER_DOT_SCALE = 0.025f; // player centre marker radius
 // in-world rather than a flat grey void.
 const video::SColor COL_FOG(255, 144, 211, 246);
 
-// Width (in texture pixels) of the soft alpha fade from terrain into the fog at
-// the outer data boundary. Interior holes are patched before this runs, so the
-// fade only ever happens at the real loaded-area edge.
+// Width (in texture pixels) of the soft colour fade from terrain into the fog
+// at the outer data boundary. Interior holes are patched before this runs, so
+// the fade only ever happens at the real loaded-area edge. The map always
+// renders as a surface map with this fixed fog — there is no separate cave/
+// underground view, so the unexplored colour never changes with where the
+// player is or the time of day.
 constexpr s32 FOG_FEATHER = 14;
-
-// Underground rendering. When the player is inside a cave / under a roof, the
-// map switches to a "cave view": surface columns that find no top node are
-// filled with a soft blue-violet cave tone (instead of the near-black fog),
-// and every found node is tinted toward that tone and darkened with depth so
-// the area reads as a real underground space rather than a black hole.
-const video::SColor COL_CAVE(255, 46, 40, 66);   // empty cave column fill
-const video::SColor COL_DEPTH(255, 30, 26, 54);  // tint blended in with depth
-// Depth (in nodes below the player) at which the depth tint reaches full
-// strength. Beyond this the colour is fully COL_DEPTH-blended + darkened.
-constexpr f32 CAVE_DEPTH_FULL = 48.0f;
-// How far above the player's head we look for a solid roof to decide whether
-// the player counts as "underground".
-constexpr s16 ROOF_SCAN = 48;
 
 } // namespace
 
@@ -87,6 +76,11 @@ GUIMapElement::~GUIMapElement()
 		m_driver->removeTexture(m_texture);
 }
 
+void GUIMapElement::setViewNodes(s32 nodes)
+{
+	m_view_nodes = core::clamp(nodes, VIEW_NODES_MIN, VIEW_NODES_MAX);
+}
+
 void GUIMapElement::draw()
 {
 	if (!IsVisible)
@@ -95,7 +89,7 @@ void GUIMapElement::draw()
 	const core::rect<s32> rect = getAbsoluteClippingRect();
 
 	// Always paint the fog background first, so unexplored / unbaked area reads
-	// as sky-coloured mist rather than showing the formspec behind it.
+	// as a fixed sky-coloured mist rather than showing the scene behind it.
 	m_driver->draw2DRectangle(COL_FOG, rect, &rect);
 
 	LocalPlayer *player =
@@ -105,10 +99,14 @@ void GUIMapElement::draw()
 		return;
 	}
 
-	const v3s16 center = floatToInt(player->getPosition(), BS);
+	// The map is centered on the pinned focus if one is set (e.g. a POI the
+	// player selected), otherwise it follows the local player.
+	const v3s16 center = m_has_focus
+		? floatToInt(m_focus, BS)
+		: floatToInt(player->getPosition(), BS);
 
-	// Decide whether to (re)bake the texture: first time, throttled by time,
-	// and only when the player has moved enough to matter.
+	// Decide whether to (re)bake the texture: first time, on zoom change, when
+	// throttle elapsed and the center moved enough, or after a stale interval.
 	const u64 now = porting::getTimeMs();
 	const s32 moved = std::max({
 		std::abs(center.X - m_cached_center.X),
@@ -116,10 +114,12 @@ void GUIMapElement::draw()
 		std::abs(center.Z - m_cached_center.Z) });
 	const u64 since = now - m_last_update_ms;
 	if (!m_has_texture ||
+			m_view_nodes != m_cached_view_nodes ||
 			(since >= REBUILD_INTERVAL_MS && moved >= REBUILD_MOVE_NODES) ||
 			since >= REBUILD_STALE_MS) {
 		rebuildTexture(center);
 		m_cached_center = center;
+		m_cached_view_nodes = m_view_nodes;
 		m_last_update_ms = now;
 	}
 
@@ -138,8 +138,6 @@ void GUIMapElement::draw()
 
 void GUIMapElement::rebuildTexture(v3s16 center)
 {
-	const NodeDefManager *ndef = m_client->getNodeDefManager();
-	Map &map = m_client->getEnv().getMap();
 	MapCanvas *canvas = m_client->getMapCanvas();
 
 	video::IImage *img = m_driver->createImage(video::ECF_A8R8G8B8,
@@ -157,24 +155,20 @@ void GUIMapElement::rebuildTexture(v3s16 center)
 	// Height per pixel for relief shading (INT16_MIN = no surface found).
 	std::vector<s16> heights(MAP_PX * MAP_PX, -32768);
 
-	const s32 half = MAP_EXTENT_NODES / 2;
-
-	// Is the player underground? Look for a solid roof a short way above the
-	// head. If found, the map renders in cave view (see COL_CAVE / COL_DEPTH).
-	bool underground = false;
-	for (s16 dy = 2; dy <= ROOF_SCAN; dy++) {
-		bool valid = false;
-		MapNode rn = map.getNode(v3s16(center.X, center.Y + dy, center.Z), &valid);
-		if (!valid)
-			continue;
-		content_t rc = rn.getContent();
-		if (rc == CONTENT_IGNORE || rc == CONTENT_AIR)
-			continue;
-		if (ndef->get(rc).drawtype != NDT_AIRLIKE) {
-			underground = true;
-			break;
-		}
-	}
+	// Pixel -> world-node mapping for the current zoom. The window spans
+	// m_view_nodes across MAP_PX pixels, so a pixel offset from the center maps
+	// to offset*view/MAP_PX nodes. When view < MAP_PX (zoomed in) several pixels
+	// share one node (nearest upscale, crisp blocks); when view > MAP_PX several
+	// nodes collapse to one pixel (sampled).
+	const s32 view = m_view_nodes;
+	const s32 hpx = MAP_PX / 2;
+	auto pixToWorldX = [&](s32 px) -> s16 {
+		return center.X + (s16)(((px - hpx) * view) / MAP_PX);
+	};
+	auto pixToWorldZ = [&](s32 py) -> s16 {
+		// North (+Z) is up on screen, so screen-down (larger py) is smaller Z.
+		return center.Z - (s16)(((py - hpx) * view) / MAP_PX);
+	};
 
 	// First pass: assemble the player-centered window from the persistent
 	// fog-of-war canvas (filled continuously by Client::step harvest). A cell
@@ -196,11 +190,15 @@ void GUIMapElement::rebuildTexture(v3s16 center)
 	for (s32 py = 0; py < MAP_PX; py++)
 	for (s32 px = 0; px < MAP_PX; px++) {
 		// North (+Z) is up on screen, East (+X) is right.
-		const s16 wx = center.X + (s16)(px * NODES_PER_PIXEL - half);
-		const s16 wz = center.Z + (s16)(half - py * NODES_PER_PIXEL);
+		const s16 wx = pixToWorldX(px);
+		const s16 wz = pixToWorldZ(py);
 
-		video::SColor out(0, 0, 0, 0); // transparent => fog shows through
-		bool found = false;
+		// Default to OPAQUE fog. Baking the fog colour straight into the texture
+		// (rather than leaving fog pixels transparent and relying on a colour
+		// behind the texture) makes the unexplored area a fixed colour no matter
+		// what is drawn behind the map or what the time of day is. Explored
+		// columns overwrite this; the rest stay fog.
+		u32 out = COL_FOG.color;
 
 		if (canvas) {
 			const s16 tx = MapCanvas::tileCoord(wx);
@@ -217,37 +215,13 @@ void GUIMapElement::rebuildTexture(v3s16 center)
 				const s32 ci = oz * MAPCANVAS_TILE_NODES + ox;
 				const u32 argb = cur_tile->colour[ci];
 				if ((argb >> 24) != 0) { // alpha != 0 => explored
-					video::SColor tilecolor(argb);
-					const s16 wy = cur_tile->height[ci];
-
-					// Cave view is applied at RENDER time (never stored), using
-					// the player's CURRENT Y, so an area explored from below
-					// isn't permanently dark on the surface map.
-					if (underground && wy < center.Y) {
-						const f32 t = core::clamp(
-							(f32)(center.Y - wy) / CAVE_DEPTH_FULL, 0.0f, 1.0f);
-						const f32 keep = 1.0f - 0.6f * t;
-						tilecolor.setRed((s32)(tilecolor.getRed() * keep +
-							COL_DEPTH.getRed() * (1.0f - keep)));
-						tilecolor.setGreen((s32)(tilecolor.getGreen() * keep +
-							COL_DEPTH.getGreen() * (1.0f - keep)));
-						tilecolor.setBlue((s32)(tilecolor.getBlue() * keep +
-							COL_DEPTH.getBlue() * (1.0f - keep)));
-					}
-					tilecolor.setAlpha(255);
-					out = tilecolor;
-					heights[py * MAP_PX + px] = wy;
-					found = true;
+					out = 0xFF000000u | (argb & 0x00FFFFFFu); // force opaque
+					heights[py * MAP_PX + px] = cur_tile->height[ci];
 				}
 			}
 		}
 
-		// In cave view, empty columns (no surface) get a soft cave fill instead
-		// of falling through to the near-black fog.
-		if (!found && underground)
-			out = COL_CAVE;
-
-		buf[py * MAP_PX + px] = out.color;
+		buf[py * MAP_PX + px] = out;
 	}
 
 	// Second pass: relief shading. Use the *signed height difference* to the
@@ -293,10 +267,7 @@ void GUIMapElement::rebuildTexture(v3s16 center)
 	// pixel is surrounded by mostly-real neighbours it is an interior hole, so
 	// we copy a neighbour's colour/height into it. Done into scratch copies so
 	// the decision uses only original data (no cascading fills in one pass).
-	//
-	// Surface view only: cave view fills empties with an opaque cave tone on
-	// purpose, so there are no holes to patch there.
-	if (!underground) {
+	{
 		std::vector<s16> filled_h = heights;
 		for (s32 py = 0; py < MAP_PX; py++)
 		for (s32 px = 0; px < MAP_PX; px++) {
@@ -320,14 +291,15 @@ void GUIMapElement::rebuildTexture(v3s16 center)
 		heights.swap(filled_h);
 	}
 
-	// Fourth pass: alpha-feather the OUTER data edge into the fog. Interior
-	// holes were just patched, so the only empty pixels left form the genuine
-	// loaded-area boundary. A cheap two-sweep Chebyshev distance transform gives
-	// each terrain pixel its distance to the nearest empty pixel; we ramp alpha
-	// from 0 at the very edge up to opaque FOG_FEATHER pixels inside, so the map
-	// dissolves smoothly into the sky-coloured fog instead of ending on a hard
-	// block-shaped step. Surface view only (cave view has no real fog edge).
-	if (!underground) {
+	// Fourth pass: feather the OUTER data edge into the fog by BLENDING terrain
+	// toward COL_FOG (not by lowering alpha). The whole texture stays opaque, so
+	// the unexplored area is always the fixed fog colour regardless of what is
+	// drawn behind the map or the time of day. Interior holes were just patched,
+	// so the only empty pixels left form the genuine loaded-area boundary; a
+	// cheap two-sweep Chebyshev distance transform gives each terrain pixel its
+	// distance to the nearest fog pixel, and we blend from full fog at the very
+	// edge to pure terrain FOG_FEATHER pixels inside.
+	{
 		const s32 N = MAP_PX * MAP_PX;
 		const s32 INF = MAP_PX * 4;
 		std::vector<s32> dist(N, INF);
@@ -344,7 +316,7 @@ void GUIMapElement::rebuildTexture(v3s16 center)
 			if (py > 0) d = std::min(d, dist[idx - MAP_PX] + 1);
 			dist[idx] = d;
 		}
-		// Backward sweep: propagate from bottom/right, then apply alpha ramp.
+		// Backward sweep: propagate from bottom/right, then blend toward fog.
 		for (s32 py = MAP_PX - 1; py >= 0; py--)
 		for (s32 px = MAP_PX - 1; px >= 0; px--) {
 			const s32 idx = py * MAP_PX + px;
@@ -354,8 +326,13 @@ void GUIMapElement::rebuildTexture(v3s16 center)
 			dist[idx] = d;
 
 			if (heights[idx] != -32768 && d < FOG_FEATHER) {
-				const u32 alpha = (u32)(255 * d / FOG_FEATHER);
-				buf[idx] = (buf[idx] & 0x00FFFFFFu) | (alpha << 24);
+				// t = 0 at the edge (full fog) .. 1 deep inside (pure terrain).
+				const f32 t = (f32)d / (f32)FOG_FEATHER;
+				const u32 c = buf[idx];
+				const s32 r = (s32)(((c >> 16) & 0xFF) * t + COL_FOG.getRed()   * (1.0f - t));
+				const s32 g = (s32)(((c >> 8)  & 0xFF) * t + COL_FOG.getGreen() * (1.0f - t));
+				const s32 b = (s32)(( c        & 0xFF) * t + COL_FOG.getBlue()  * (1.0f - t));
+				buf[idx] = 0xFF000000u | ((u32)r << 16) | ((u32)g << 8) | (u32)b;
 			}
 		}
 	}
@@ -376,7 +353,7 @@ void GUIMapElement::drawMarkers(const core::rect<s32> &rect, v3s16 center)
 	const f32 w = (f32)rect.getWidth();
 	const f32 h = (f32)rect.getHeight();
 	const v2s32 origin = rect.UpperLeftCorner;
-	const f32 extent = (f32)MAP_EXTENT_NODES;
+	const f32 extent = (f32)m_view_nodes;
 
 	// Custom points (markers passed from Lua). Icon size is a bit larger than
 	// the plain colour square so kawaii icons read clearly on a phone screen.
@@ -408,14 +385,24 @@ void GUIMapElement::drawMarkers(const core::rect<s32> &rect, v3s16 center)
 		}
 	}
 
-	// Player marker — always at the center (the map is centered on the player).
-	const s32 cx = origin.X + (s32)(0.5f * w);
-	const s32 cy = origin.Y + (s32)(0.5f * h);
-	const s32 pr = std::max<s32>(3, (s32)(PLAYER_DOT_SCALE * w));
-	const core::rect<s32> outer(cx - pr, cy - pr, cx + pr, cy + pr);
-	const core::rect<s32> inner(cx - pr + 1, cy - pr + 1, cx + pr - 1, cy + pr - 1);
-	m_driver->draw2DRectangle(video::SColor(255, 0, 0, 0), outer, &rect);
-	m_driver->draw2DRectangle(video::SColor(255, 255, 255, 255), inner, &rect);
+	// Player marker — projected from the player's real position, so it sits at
+	// the center when the map follows the player and rides the map (or clamps
+	// off-edge) when the focus is pinned elsewhere.
+	LocalPlayer *player = m_client ? m_client->getEnv().getLocalPlayer() : nullptr;
+	if (player) {
+		const v3f ppos = player->getPosition() / BS;
+		const f32 fx = ((f32)ppos.X - (f32)center.X) / extent + 0.5f;
+		const f32 fz = 0.5f - ((f32)ppos.Z - (f32)center.Z) / extent;
+		if (fx >= 0.0f && fx <= 1.0f && fz >= 0.0f && fz <= 1.0f) {
+			const s32 cx = origin.X + (s32)(fx * w);
+			const s32 cy = origin.Y + (s32)(fz * h);
+			const s32 pr = std::max<s32>(3, (s32)(PLAYER_DOT_SCALE * w));
+			const core::rect<s32> outer(cx - pr, cy - pr, cx + pr, cy + pr);
+			const core::rect<s32> inner(cx - pr + 1, cy - pr + 1, cx + pr - 1, cy + pr - 1);
+			m_driver->draw2DRectangle(video::SColor(255, 0, 0, 0), outer, &rect);
+			m_driver->draw2DRectangle(video::SColor(255, 255, 255, 255), inner, &rect);
+		}
+	}
 }
 
 bool GUIMapElement::OnEvent(const SEvent &event)
