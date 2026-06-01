@@ -807,12 +807,6 @@ void Client::step(float dtime)
 		MapCanvas *canvas = getMapCanvas();
 		LocalPlayer *player = m_env.getLocalPlayer();
 		if (canvas && player && m_map_harvest_interval.step(dtime, 0.5f)) {
-			// Harvest radius: kept close to the client's loaded view radius. A
-			// larger radius just re-scans an outer ring of UNLOADED blocks every
-			// tick — those return no surface, never get recorded, and so are
-			// re-scanned forever. 72 covers the normally-loaded area without that
-			// waste.
-			constexpr s16 HARVEST_RADIUS = 72;
 			const v3s16 c = floatToInt(player->getPosition(), BS);
 			const s16 y_top = c.Y + 64;
 			const s16 y_bottom = c.Y - 400;
@@ -827,39 +821,87 @@ void Client::step(float dtime)
 			const bool moved = !m_map_harvest_done || c != m_map_harvest_last_center;
 			const bool periodic = (m_map_harvest_ticks % 6) == 0;
 			if (moved || periodic) {
+				// Capture the previous sweep center/state BEFORE overwriting, so a
+				// move-sweep can skip the window the last sweep already covered.
+				const v3s16 prev_center = m_map_harvest_last_center;
+				const bool had_prev = m_map_harvest_done;
 				m_map_harvest_done = true;
 				m_map_harvest_last_center = c;
 
-				// Cache the last canvas tile across the sweep. The window spans
-				// only ~9 tiles and MAX_RESIDENT_TILES is far larger, so eviction
-				// never fires mid-sweep and this pointer stays valid throughout.
+				// Harvest radius tracks the client's configured view range, so the
+				// canvas covers the whole loaded area on every device instead of a
+				// fixed disc. Read once per sweep here (never inside the column loop
+				// below), so it costs nothing measurable yet still picks up a runtime
+				// view-range change within half a second. Ceiling-clamped: view range
+				// can be very large on PC and there is no point scanning beyond a sane
+				// window per sweep. Columns past the actually-loaded edge return no
+				// surface and stay fog, so over-covering only costs a cheap block-skip.
+				const s16 harvest_radius =
+					std::min<s16>(g_settings->getS16("viewing_range"), 192);
+
+				// Iterate at SECTOR granularity (16×16 columns) so a whole unloaded
+				// sector is skipped in ONE hash lookup instead of deep-scanning each
+				// of its columns. The earlier per-column box re-scanned the large
+				// unloaded ring around the loaded area every sweep; at a wide view
+				// range that meant ~10^6 wasted block lookups per 0.5s on the client
+				// main thread (severe stutter). Now only loaded sectors reach the
+				// inner loop, and the skip-recorded check keeps the deep scan to the
+				// fresh frontier. Cache the last canvas tile across the whole sweep:
+				// the window spans far fewer tiles than MAX_RESIDENT_TILES, so
+				// eviction never fires mid-sweep and the pointer stays valid.
+				Map &map = m_env.getMap();
 				const MapTile *seen = nullptr;
 				s16 seen_tx = -32768, seen_tz = -32768;
 
-				for (s16 wz = c.Z - HARVEST_RADIUS; wz <= c.Z + HARVEST_RADIUS; wz++)
-				for (s16 wx = c.X - HARVEST_RADIUS; wx <= c.X + HARVEST_RADIUS; wx++) {
-					// Skip columns already recorded (alpha != 0 == explored), so
-					// the deep scan only runs for the fresh frontier. Standing
-					// still or revisiting => nearly free.
-					const s16 tx = MapCanvas::tileCoord(wx);
-					const s16 tz = MapCanvas::tileCoord(wz);
-					if (tx != seen_tx || tz != seen_tz) {
-						seen = canvas->findTileReadonly(tx, tz);
-						seen_tx = tx;
-						seen_tz = tz;
-					}
-					if (seen) {
-						const s32 ox = wx & (MAPCANVAS_TILE_NODES - 1);
-						const s32 oz = wz & (MAPCANVAS_TILE_NODES - 1);
-						if ((seen->colour[oz * MAPCANVAS_TILE_NODES + ox] >> 24) != 0)
-							continue; // already explored — skip the deep scan
-					}
+				const s16 sx0 = getContainerPos((s16)(c.X - harvest_radius), (s16)MAP_BLOCKSIZE);
+				const s16 sx1 = getContainerPos((s16)(c.X + harvest_radius), (s16)MAP_BLOCKSIZE);
+				const s16 sz0 = getContainerPos((s16)(c.Z - harvest_radius), (s16)MAP_BLOCKSIZE);
+				const s16 sz1 = getContainerPos((s16)(c.Z + harvest_radius), (s16)MAP_BLOCKSIZE);
 
-					u32 argb;
-					s16 h;
-					if (scanSurfaceColumn(m_env.getMap(), m_nodedef, wx, wz,
-							y_top, y_bottom, argb, h))
-						canvas->setCell(wx, wz, argb, h);
+				for (s16 sz = sz0; sz <= sz1; sz++)
+				for (s16 sx = sx0; sx <= sx1; sx++) {
+					if (!map.getSectorNoGenerateNoLock(v2s16(sx, sz)))
+						continue; // sector not loaded — skip all 256 of its columns
+
+					const s16 base_x = sx * MAP_BLOCKSIZE;
+					const s16 base_z = sz * MAP_BLOCKSIZE;
+					for (s16 oz = 0; oz < MAP_BLOCKSIZE; oz++)
+					for (s16 ox = 0; ox < MAP_BLOCKSIZE; ox++) {
+						const s16 wx = base_x + ox;
+						const s16 wz = base_z + oz;
+
+						// On move-only sweeps, scan just the newly-entered frontier band; the
+						// periodic sweep still walks the full box, so columns whose surface had not
+						// finished loading are retried there. Without this, the not-yet-loadable
+						// edge columns (which air_above leaves unrecorded) were deep-scanned every
+						// single 0.5s sweep -- the cost that showed up as movement micro-lag.
+						if (!periodic && had_prev &&
+								std::max(std::abs((s32)wx - prev_center.X),
+									std::abs((s32)wz - prev_center.Z)) <= harvest_radius)
+							continue;
+
+						// Skip columns already recorded (alpha != 0 == explored), so
+						// the deep scan only runs for the fresh frontier.
+						const s16 tx = MapCanvas::tileCoord(wx);
+						const s16 tz = MapCanvas::tileCoord(wz);
+						if (tx != seen_tx || tz != seen_tz) {
+							seen = canvas->findTileReadonly(tx, tz);
+							seen_tx = tx;
+							seen_tz = tz;
+						}
+						if (seen) {
+							const s32 cell_x = wx & (MAPCANVAS_TILE_NODES - 1);
+							const s32 cell_z = wz & (MAPCANVAS_TILE_NODES - 1);
+							if ((seen->colour[cell_z * MAPCANVAS_TILE_NODES + cell_x] >> 24) != 0)
+								continue; // already explored — skip the deep scan
+						}
+
+						u32 argb;
+						s16 h;
+						if (scanSurfaceColumn(map, m_nodedef, wx, wz,
+								y_top, y_bottom, argb, h))
+							canvas->setCell(wx, wz, argb, h);
+					}
 				}
 			} // moved || periodic
 		}
