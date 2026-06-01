@@ -38,7 +38,7 @@ constexpr size_t PAYLOAD_BYTES =
 } // namespace
 
 // ---------------------------------------------------------------------------
-// Shared column-scan helper (used by both the live render and canvas harvest)
+// Column-scan helper (used by the persistent-canvas harvest)
 // ---------------------------------------------------------------------------
 
 bool scanSurfaceColumn(Map &map, const NodeDefManager *ndef, s16 wx, s16 wz,
@@ -49,6 +49,17 @@ bool scanSurfaceColumn(Map &map, const NodeDefManager *ndef, s16 wx, s16 wz,
 	MapBlock *block = nullptr;
 	v3s16 cached_bp(-32768, -32768, -32768);
 
+	// Whether the node directly above the current scan position is confirmed
+	// LOADED empty space (real air). The surface we finally pick is trustworthy
+	// only if loaded air sits directly above it — that proves nothing solid is
+	// hidden higher up. If we instead reached a node by jumping over an unloaded
+	// or ungenerated block, a real (higher) surface may still be streaming in
+	// there and the node we found is likely a DEEPER layer (e.g. red sandstone
+	// under desert sand). Recording that would freeze a wrong colour into the
+	// persistent canvas (skip-recorded never revisits it), so we bail and let a
+	// later sweep record the column once it is fully loaded.
+	bool air_above = false;
+
 	for (s16 wy = y_top; wy >= y_bottom; wy--) {
 		const v3s16 wp(wx, wy, wz);
 		const v3s16 bp = getNodeBlockPos(wp);
@@ -58,16 +69,32 @@ bool scanSurfaceColumn(Map &map, const NodeDefManager *ndef, s16 wx, s16 wz,
 		}
 		if (!block) {
 			wy = bp.Y * MAP_BLOCKSIZE; // loop's wy-- lands at this block's bottom-1
+			air_above = false;         // jumped an unloaded block: above is not loaded
 			continue;
 		}
 
 		MapNode n = block->getNodeNoCheck(wp - bp * MAP_BLOCKSIZE);
 		content_t c = n.getContent();
-		if (c == CONTENT_IGNORE || c == CONTENT_AIR)
+		if (c == CONTENT_AIR) {
+			air_above = true;          // real, loaded air above
 			continue;
+		}
+		if (c == CONTENT_IGNORE) {
+			air_above = false;         // ungenerated node: treat like unloaded
+			continue;
+		}
+
 		const ContentFeatures &f = ndef->get(c);
-		if (f.drawtype == NDT_AIRLIKE)
+		if (f.drawtype == NDT_AIRLIKE) {
+			air_above = true;
 			continue;
+		}
+
+		// Topmost solid node. Trust it as the surface only if confirmed-loaded
+		// air sits directly above; otherwise the true surface may be hidden in an
+		// unloaded block overhead and this is a deeper layer — skip, retry later.
+		if (!air_above)
+			return false;
 
 		// Representative top colour of the node (same recipe as the minimap).
 		video::SColor tilecolor(255, 255, 255, 255);
@@ -100,8 +127,7 @@ bool scanSurfaceColumn(Map &map, const NodeDefManager *ndef, s16 wx, s16 wz,
 // MapCanvas
 // ---------------------------------------------------------------------------
 
-MapCanvas::MapCanvas(u64 seed) :
-	m_seed(seed)
+MapCanvas::MapCanvas(u64 seed)
 {
 	m_dir = porting::path_user + DIR_DELIM + "client" + DIR_DELIM +
 		"worldmaps" + DIR_DELIM + std::to_string(seed);

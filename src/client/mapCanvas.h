@@ -46,10 +46,12 @@ struct MapTile
 // height, using the same recipe as the engine minimap (topmost non-air node,
 // tile/overlay colour or palette colour, multiplied by the node's
 // minimap_color). Returns true and fills out_argb / out_height when a surface
-// node is found within [y_top, y_bottom]; returns false for an empty/unloaded
-// column. Shared by the live render path and the persistent-canvas harvest so
-// both agree on colour. The returned colour is plain (no cave tint) — tinting
-// is a render-time concern.
+// node is found within [y_top, y_bottom]. Returns false for an empty/unloaded
+// column, OR when the topmost solid node has no confirmed-loaded air directly
+// above it (a still-streaming surface — see air_above in the body), so a deeper
+// layer is never frozen into the persistent canvas. Used by the canvas harvest;
+// the live map view reads the baked canvas, not this. The returned colour is
+// plain (no cave tint) — tinting is a render-time concern.
 bool scanSurfaceColumn(Map &map, const NodeDefManager *ndef, s16 wx, s16 wz,
 		s16 y_top, s16 y_bottom, u32 &out_argb, s16 &out_height);
 
@@ -99,7 +101,6 @@ private:
 		}
 	};
 
-	u64 m_seed;
 	std::string m_dir;                 // path_user/client/worldmaps/<seed>/
 	bool m_dir_ready = false;          // created lazily on first save
 	std::unordered_map<v2s16, std::unique_ptr<MapTile>, V2s16Hash> m_tiles;
