@@ -56,6 +56,14 @@ public:
 	void setFocus(v3f focus) { m_focus = focus; m_has_focus = true; }
 	void clearFocus() { m_has_focus = false; }
 
+	// Static icon for the player marker. Empty keeps the default white dot.
+	void setPlayerIcon(std::string icon) { m_player_icon = std::move(icon); }
+
+	// Edge length (pixels) for every map icon — POI icons and the player icon.
+	// 0 keeps the responsive default (a fraction of the map width). The formspec
+	// gives it in coordinate units; parseMap converts to pixels.
+	void setIconSize(s32 size_px) { m_icon_size = size_px; }
+
 	virtual void draw() override;
 	virtual bool OnEvent(const SEvent &event) override;
 
@@ -78,6 +86,11 @@ private:
 	// Optional pinned focus center (world coords). When unset, follow player.
 	v3f m_focus;
 	bool m_has_focus = false;
+
+	// Static player-marker icon (empty => default white dot) and the shared icon
+	// edge length in pixels for POI + player icons (0 => responsive default).
+	std::string m_player_icon;
+	s32 m_icon_size = 0;
 
 	// Baked top-down texture of the surrounding terrain.
 	video::ITexture *m_texture = nullptr;

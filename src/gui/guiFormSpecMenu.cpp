@@ -3114,12 +3114,29 @@ void GUIFormSpecMenu::parseMap(parserData *data, const std::string &element)
 			e->setFocus(v3f(stof(fc[0]), stof(fc[1]), stof(fc[2])));
 	}
 
-	// Fields 6+ (optional): markers, each its own ';'-separated field of the
+	// Field 6 (optional): player-marker icon texture. Empty => default dot.
+	if (parts.size() > 5 && !parts[5].empty())
+		e->setPlayerIcon(unescape_string(parts[5]));
+
+	// Field 7 (optional): icon size in coordinate units, shared by POI icons and
+	// the player icon. Empty/0 => the element's responsive default. Convert to
+	// pixels via this element's own px-per-unit (works in both coordinate modes,
+	// since geom is already in pixels).
+	if (parts.size() > 6 && !parts[6].empty()) {
+		const f32 units = stof(v_geom[0]);
+		const f32 px_per_unit = units > 0.001f ? (f32)geom.X / units : (f32)imgsize.Y;
+		// Clamp to [0, element width] so a stray/garbage size can't overflow the
+		// s32 cast (and the 2*icon_half rect maths) into a degenerate rect.
+		const f32 size_px = core::clamp(stof(parts[6]) * px_per_unit, 0.0f, (f32)geom.X);
+		e->setIconSize((s32)size_px);
+	}
+
+	// Fields 8+ (optional): markers, each its own ';'-separated field of the
 	// form "wx,wy,wz,#RRGGBB[,icon]". The optional 5th sub-field names an icon
 	// texture drawn instead of the colour square (the colour is the fallback).
-	if (parts.size() > 5) {
+	if (parts.size() > 7) {
 		std::vector<GUIMapElement::MapPoint> points;
-		for (size_t i = 5; i < parts.size(); i++) {
+		for (size_t i = 7; i < parts.size(); i++) {
 			if (parts[i].empty())
 				continue;
 			std::vector<std::string> f = split(parts[i], ',');

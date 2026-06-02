@@ -355,11 +355,28 @@ void GUIMapElement::drawMarkers(const core::rect<s32> &rect, v3s16 center)
 	const v2s32 origin = rect.UpperLeftCorner;
 	const f32 extent = (f32)m_view_nodes;
 
-	// Custom points (markers passed from Lua). Icon size is a bit larger than
-	// the plain colour square so kawaii icons read clearly on a phone screen.
+	// Custom points (markers passed from Lua). `r` is the colour-dot radius —
+	// the fallback drawn when a marker has no icon; the icon size is below.
 	const s32 r = std::max<s32>(2, (s32)(POI_DOT_SCALE * w));
-	const s32 ir = std::max<s32>(6, (s32)(POI_ICON_SCALE * w));
+	// Icon edge length: the Lua-configurable size (m_icon_size, in pixels) when
+	// set, else the responsive default. Shared by POI icons and the player icon.
+	const s32 icon_half = m_icon_size > 0
+		? std::max<s32>(2, m_icon_size / 2)
+		: std::max<s32>(6, (s32)(POI_ICON_SCALE * w));
 	ITextureSource *tsrc = m_client ? m_client->tsrc() : nullptr;
+
+	// Draw a marker icon anchored by its BOTTOM-CENTRE on the marker position
+	// (pin style): the bottom edge sits on the point and the icon body rises
+	// above it. Marker icons are head/pin shapes whose meaningful tip is the
+	// bottom, so this reads more naturally than centring the icon on the point.
+	auto draw_marker_icon = [&](video::ITexture *t, s32 cx, s32 cy) {
+		const core::dimension2du isz = t->getOriginalSize();
+		const core::rect<s32> src(0, 0, isz.Width, isz.Height);
+		const core::rect<s32> dest(cx - icon_half, cy - 2 * icon_half,
+			cx + icon_half, cy);
+		m_driver->draw2DImage(t, dest, src, &rect, nullptr, true);
+	};
+
 	for (const MapPoint &p : m_points) {
 		const f32 fx = ((f32)p.world_pos.X - (f32)center.X) / extent + 0.5f;
 		const f32 fz = 0.5f - ((f32)p.world_pos.Z - (f32)center.Z) / extent;
@@ -369,16 +386,16 @@ void GUIMapElement::drawMarkers(const core::rect<s32> &rect, v3s16 center)
 		const s32 cx = origin.X + (s32)(fx * w);
 		const s32 cy = origin.Y + (s32)(fz * h);
 
-		// Prefer an icon texture if the point carries one and it loads.
+		// Prefer an icon texture if the point carries one and the image exists.
+		// isKnownSourceImage avoids generating a 1x1 dummy texture + logging an
+		// error for a missing name (getTexture's behaviour); a known image then
+		// returns a real, non-null texture.
 		video::ITexture *icon = nullptr;
-		if (!p.icon.empty() && tsrc)
+		if (!p.icon.empty() && tsrc && tsrc->isKnownSourceImage(p.icon))
 			icon = tsrc->getTexture(p.icon);
 
 		if (icon) {
-			const core::dimension2du isz = icon->getOriginalSize();
-			const core::rect<s32> src(0, 0, isz.Width, isz.Height);
-			const core::rect<s32> dest(cx - ir, cy - ir, cx + ir, cy + ir);
-			m_driver->draw2DImage(icon, dest, src, &rect, nullptr, true);
+			draw_marker_icon(icon, cx, cy);
 		} else {
 			const core::rect<s32> dest(cx - r, cy - r, cx + r, cy + r);
 			m_driver->draw2DRectangle(p.color, dest, &rect);
@@ -387,7 +404,8 @@ void GUIMapElement::drawMarkers(const core::rect<s32> &rect, v3s16 center)
 
 	// Player marker — projected from the player's real position, so it sits at
 	// the center when the map follows the player and rides the map (or clamps
-	// off-edge) when the focus is pinned elsewhere.
+	// off-edge) when the focus is pinned elsewhere. Drawn as a custom icon when
+	// one is set and loads, otherwise the default black-outlined white dot.
 	LocalPlayer *player = m_client ? m_client->getEnv().getLocalPlayer() : nullptr;
 	if (player) {
 		const v3f ppos = player->getPosition() / BS;
@@ -396,11 +414,20 @@ void GUIMapElement::drawMarkers(const core::rect<s32> &rect, v3s16 center)
 		if (fx >= 0.0f && fx <= 1.0f && fz >= 0.0f && fz <= 1.0f) {
 			const s32 cx = origin.X + (s32)(fx * w);
 			const s32 cy = origin.Y + (s32)(fz * h);
-			const s32 pr = std::max<s32>(3, (s32)(PLAYER_DOT_SCALE * w));
-			const core::rect<s32> outer(cx - pr, cy - pr, cx + pr, cy + pr);
-			const core::rect<s32> inner(cx - pr + 1, cy - pr + 1, cx + pr - 1, cy + pr - 1);
-			m_driver->draw2DRectangle(video::SColor(255, 0, 0, 0), outer, &rect);
-			m_driver->draw2DRectangle(video::SColor(255, 255, 255, 255), inner, &rect);
+
+			video::ITexture *picon = nullptr;
+			if (!m_player_icon.empty() && tsrc && tsrc->isKnownSourceImage(m_player_icon))
+				picon = tsrc->getTexture(m_player_icon);
+
+			if (picon) {
+				draw_marker_icon(picon, cx, cy);
+			} else {
+				const s32 pr = std::max<s32>(3, (s32)(PLAYER_DOT_SCALE * w));
+				const core::rect<s32> outer(cx - pr, cy - pr, cx + pr, cy + pr);
+				const core::rect<s32> inner(cx - pr + 1, cy - pr + 1, cx + pr - 1, cy + pr - 1);
+				m_driver->draw2DRectangle(video::SColor(255, 0, 0, 0), outer, &rect);
+				m_driver->draw2DRectangle(video::SColor(255, 255, 255, 255), inner, &rect);
+			}
 		}
 	}
 }

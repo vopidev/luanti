@@ -3062,12 +3062,12 @@ Elements
   and then holds on the last frame instead of wrapping back to the first.
   (VOPI Engine extension.)
 
-### `map[<X>,<Y>;<W>,<H>;<name>;<scale>;<focus>;<marker 1>;<marker 2>;...]`
+### `map[<X>,<Y>;<W>,<H>;<name>;<scale>;<focus>;<player icon>;<icon size>;<marker 1>;...]`
 
 * **VOPI Engine extension.** Shows a top-down map of the world around the
   player. The terrain is rendered directly from the loaded client map (surface
-  node colours, smooth relief shading, a cave view when underground) — it is
-  independent of the HUD minimap.
+  node colours with smooth relief shading) — it is independent of the HUD
+  minimap.
 * `name`: Element name. Reserved for future interaction events.
 * `scale` (optional): zoom, as the number of world nodes spanned across the map
   window. Smaller = closer in. Empty = default. Clamped to a valid range
@@ -3076,17 +3076,25 @@ Elements
 * `focus` (optional): `wx,wy,wz` world point to center the map on. Empty =
   follow the local player. The player marker is drawn at its real position, so
   it rides the map (or clamps off-edge) when the focus is pinned elsewhere.
+* `player icon` (optional): texture drawn at the player's live position instead
+  of the default white dot. Empty = the dot; a missing or 1×1 texture also falls
+  back to the dot.
+* `icon size` (optional): edge length, in coordinate units, applied to every
+  marker icon (the POIs and the player). Empty or `0` = the engine's responsive
+  default (a fraction of the map width).
 * Each following field is one marker, `wx,wy,wz,#RRGGBB[,icon]`:
     * `wx,wy,wz` — marker world position.
     * `#RRGGBB` — marker colour (used as fallback when no icon is given, or the
       icon fails to load).
     * `icon` (optional) — texture name drawn at the marker instead of the
-      colour square.
+      colour square. Marker icons (POI and player) anchor by their
+      bottom-centre on the position (pin style); the colour-square / dot
+      fallbacks stay centred.
     * Markers are separate `;`-fields (like `table[]` cells), not a single
       `;`-joined argument — `;` is the formspec field separator.
     * A marker is drawn only when its position falls within the visible area.
-    * Example (a coloured marker and an icon marker):
-      `map[0,0;5,5;worldmap;10,8,-4,#ff0000;120,8,60,#00ff00,my_home_icon.png]`
+    * Example (player icon, icon size, then a coloured + an icon marker):
+      `map[0,0;5,5;worldmap;256;;sky.png;0.5;10,8,-4,#ff0000;120,8,60,#00ff00,home.png]`
 
 ### `model[<X>,<Y>;<W>,<H>;<name>;<mesh>;<textures>;<rotation>;<continuous>;<mouse control>;<frame loop range>;<animation speed>]`
 
