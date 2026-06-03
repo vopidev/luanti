@@ -56,15 +56,22 @@ bool scanSurfaceColumn(Map &map, const NodeDefManager *ndef, s16 wx, s16 wz,
 		s16 y_top, s16 y_bottom, u32 &out_argb, s16 &out_height);
 
 // Persistent, world-anchored, chunked record of explored surface terrain for one
-// world (keyed by map seed). Owned by Client so it accumulates across the whole
-// session even while the map UI is closed, and survives relog via on-disk tiles.
+// world. Owned by Client so it accumulates across the whole session even while
+// the map UI is closed, and survives relog via on-disk tiles.
+//
+// Storage location is chosen by the caller and passed in as a directory: for a
+// local (internal-server) world it lives inside the world folder, so the
+// fog-of-war is deleted, moved and copied together with the world; for a remote
+// server (no local world folder) the caller passes a client-side cache dir.
 //
 // All access is main-thread only (Client::step / GUIMapElement::draw /
 // Client::Stop all run on the client main thread), so there is no locking.
 class MapCanvas
 {
 public:
-	explicit MapCanvas(u64 seed);
+	// `dir` is the directory under which tile files (t_<tx>_<tz>.bin) are stored.
+	// Created lazily on the first save.
+	explicit MapCanvas(std::string dir);
 	~MapCanvas();
 
 	// Record an explored surface cell at world (wx, wz). No-op semantics for
@@ -101,7 +108,7 @@ private:
 		}
 	};
 
-	std::string m_dir;                 // path_user/client/worldmaps/<seed>/
+	std::string m_dir;                 // caller-provided tile dir (see Client::getMapCanvas)
 	bool m_dir_ready = false;          // created lazily on first save
 	std::unordered_map<v2s16, std::unique_ptr<MapTile>, V2s16Hash> m_tiles;
 	f32 m_flush_timer = 0.0f;

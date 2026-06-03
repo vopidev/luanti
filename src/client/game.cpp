@@ -1059,6 +1059,10 @@ bool Game::connectToServer(const GameStartData &start_data,
 	client->migrateModStorage();
 	client->m_simple_singleplayer_mode = simple_singleplayer_mode;
 	client->m_internal_server = !!server;
+	// Hand the client the local world path (only meaningful with an internal
+	// server) so the persistent map canvas can live inside the world folder.
+	if (server)
+		client->m_world_path = start_data.world_spec.path;
 
 	/*
 		Wait for server to accept connection

@@ -360,6 +360,13 @@ public:
 	// server hosted by a different Luanti instance.
 	bool m_internal_server;
 
+	// Filesystem path of the local world directory, set by the game glue when an
+	// internal server is hosting it. Empty for remote servers (the world lives on
+	// the remote machine, not here). Used so the persistent map canvas can store
+	// its fog-of-war inside the world folder and thus be deleted/moved together
+	// with the world. (VOPI Engine extension.)
+	std::string m_world_path;
+
 	float mediaReceiveProgress();
 
 	void drawLoadScreen(const std::wstring &text, float dtime, int percent);

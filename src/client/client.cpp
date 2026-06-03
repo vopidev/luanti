@@ -914,8 +914,21 @@ MapCanvas *Client::getMapCanvas()
 {
 	// Lazy-create once the handshake is complete and the map seed is known.
 	// Guard on client STATE, not the seed value (0 is a legitimate seed).
-	if (!m_map_canvas && m_state == LC_Ready)
-		m_map_canvas = std::make_unique<MapCanvas>(m_map_seed);
+	if (!m_map_canvas && m_state == LC_Ready) {
+		std::string dir;
+		if (m_internal_server && !m_world_path.empty()) {
+			// Local world: keep the fog-of-war inside the world folder so it is
+			// owned by the world and deleted/moved/copied together with it.
+			dir = m_world_path + DIR_DELIM + "worldmap";
+		} else {
+			// Remote server: there is no local world folder, so fall back to a
+			// client-side cache keyed by seed. (Proper multiplayer handling —
+			// per-server keying and cleanup — is a later task.)
+			dir = porting::path_user + DIR_DELIM + "client" + DIR_DELIM +
+				"worldmaps" + DIR_DELIM + std::to_string(m_map_seed);
+		}
+		m_map_canvas = std::make_unique<MapCanvas>(std::move(dir));
+	}
 	return m_map_canvas.get();
 }
 
