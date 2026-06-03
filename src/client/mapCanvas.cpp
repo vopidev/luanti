@@ -160,10 +160,9 @@ bool scanSurfaceColumn(Map &map, const NodeDefManager *ndef, s16 wx, s16 wz,
 // MapCanvas
 // ---------------------------------------------------------------------------
 
-MapCanvas::MapCanvas(u64 seed)
+MapCanvas::MapCanvas(std::string dir) :
+	m_dir(std::move(dir))
 {
-	m_dir = porting::path_user + DIR_DELIM + "client" + DIR_DELIM +
-		"worldmaps" + DIR_DELIM + std::to_string(seed);
 }
 
 MapCanvas::~MapCanvas()
