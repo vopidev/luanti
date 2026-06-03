@@ -101,8 +101,17 @@ void GUIMapElement::draw()
 
 	// The map is centered on the pinned focus if one is set (e.g. a POI the
 	// player selected), otherwise it follows the local player.
+	//
+	// Unit care: m_focus is already in WORLD NODE coords (the formspec passes
+	// wx,wy,wz — the same units as the markers' world_pos, which drawMarkers
+	// subtracts straight from `center`). So it must only be rounded to s16,
+	// NOT divided by BS. Using floatToInt(.., 1.0f) rounds without scaling.
+	// The player branch DOES divide by BS because getPosition() is BS-scaled.
+	// (Previously this used floatToInt(m_focus, BS), which divided the node
+	// coords by BS=10 and dropped the center near the origin — almost always
+	// unexplored, so focusing on any POI showed nothing but fog.)
 	const v3s16 center = m_has_focus
-		? floatToInt(m_focus, BS)
+		? floatToInt(m_focus, 1.0f)
 		: floatToInt(player->getPosition(), BS);
 
 	// Decide whether to (re)bake the texture: first time, on zoom change, when
