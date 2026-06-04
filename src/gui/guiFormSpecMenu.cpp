@@ -985,8 +985,14 @@ void GUIFormSpecMenu::parseImage(parserData* data, const std::string &element)
 void GUIFormSpecMenu::parseAnimatedImage(parserData *data, const std::string &element)
 {
 	std::vector<std::string> parts;
+#if IS_VOPI_ENGINE
+	// VOPI: allow a 10th param (column count for a 2D grid atlas).
+	if (!precheckElement("animated_image", element, 6, 10, parts))
+		return;
+#else
 	if (!precheckElement("animated_image", element, 6, 9, parts))
 		return;
+#endif
 
 	std::vector<std::string> v_pos  = split(parts[0], ',');
 	std::vector<std::string> v_geom = split(parts[1], ',');
@@ -1042,6 +1048,25 @@ void GUIFormSpecMenu::parseAnimatedImage(parserData *data, const std::string &el
 	// to false for a one-shot animation that holds on its last frame.
 	if (parts.size() >= 9)
 		e->setLoop(is_yes(parts[8]));
+#if IS_VOPI_ENGINE
+	// VOPI: Optional 10th param: column count for a 2D grid atlas (frames packed
+	// left-to-right, then top-to-bottom). Default 1 = vertical strip. A grid
+	// keeps long animations within the GPU's max texture size.
+	if (parts.size() >= 10) {
+		s32 columns = stoi(parts[9]);
+		e->setColumns(columns);
+		video::ITexture *tex = e->getTexture();
+		if (tex && columns > 1) {
+			const core::dimension2d<u32> ts = tex->getOriginalSize();
+			const s32 grid_rows = (frame_count + columns - 1) / columns;
+			if (grid_rows > 0 && (ts.Width % columns != 0 || ts.Height % grid_rows != 0))
+				warningstream << "animated_image[" << name << "]: atlas "
+					<< ts.Width << "x" << ts.Height << " is not evenly divisible by a "
+					<< columns << "x" << grid_rows << " grid; frames may jitter."
+					<< std::endl;
+		}
+	}
+#endif
 
 	auto style = getDefaultStyleForElement("animated_image", spec.fname, "image");
 	e->setNotClipped(style.getBool(StyleSpec::NOCLIP, false));

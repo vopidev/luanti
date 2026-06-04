@@ -33,6 +33,15 @@ public:
 	void setLoop(bool loop) { m_loop = loop; };
 	bool getLoop() const { return m_loop; };
 
+#if IS_VOPI_ENGINE
+	// VOPI: Number of columns for a 2D grid atlas (frames packed left-to-right,
+	// then top-to-bottom). Default 1 = single-column vertical strip (upstream
+	// behaviour). A grid lets a long animation stay within the GPU's max
+	// texture size, since the atlas grows ~sqrt(frames) instead of linearly.
+	void setColumns(s32 columns) { m_columns = std::max(columns, 1); };
+	s32 getColumns() const { return m_columns; };
+#endif
+
 private:
 	video::ITexture *m_texture = nullptr;
 
@@ -42,6 +51,9 @@ private:
 	u64 m_frame_duration = 0;
 	u64 m_frame_time = 0;
 	bool m_loop = true;
+#if IS_VOPI_ENGINE
+	s32 m_columns = 1;
+#endif
 
 	core::rect<s32> m_middle;
 };
