@@ -104,8 +104,22 @@
 #define TTF_DEFAULT_FONT_SIZE (16)
 #endif
 
-// VOPI Desktop: reference screen height for font scaling (calibrated for desktop readability)
+// VOPI Desktop: reference screen height for the LOADING-SCREEN font scaling.
+// The loading screen draws before any formspec exists, so it has no imgsize to
+// scale against and falls back to window height. (Formspec text uses
+// VOPI_FONT_IMGSIZE_RATIO instead — see guiFormSpecMenu.cpp.)
 #define VOPI_DESKTOP_FONT_REF_HEIGHT (850.0f)
+
+// VOPI: formspec font size as a fraction of the formspec's element scale
+// (imgsize — the pixels-per-formspec-unit that ALL elements are sized by).
+// Formspec fonts are computed so that font_px ≈ this * imgsize, which makes
+// text a constant fraction of the UI on EVERY device: design the layout on one
+// screen (e.g. Mac) and it stays proportional on all others (phones), with no
+// per-device calibration. Resizing the game window still rescales text, because
+// imgsize tracks the window. This is the single GLOBAL text-size knob — raise
+// it for bigger text everywhere, lower for smaller; per-element style
+// multipliers (font_size=*N) scale relative to it. Tune once on desktop.
+#define VOPI_FONT_IMGSIZE_RATIO (0.45f)
 
 // Minimum texture size enforced/checked for enabling linear filtering
 // This serves as the minimum for `texture_min_size`.
