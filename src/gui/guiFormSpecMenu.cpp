@@ -44,6 +44,7 @@
 #include "guiButtonImage.h"
 #include "guiButtonItemImage.h"
 #include "guiButtonKey.h"
+#include "guiCheckBox.h"
 #include "guiEditBoxWithScrollbar.h"
 #include "guiInventoryList.h"
 #include "guiItemImage.h"
@@ -594,8 +595,17 @@ void GUIFormSpecMenu::parseListRing(parserData *data, const std::string &element
 void GUIFormSpecMenu::parseCheckbox(parserData* data, const std::string &element)
 {
 	std::vector<std::string> parts;
+#if IS_VOPI_ENGINE
+	// VOPI: optional params — 5 & 6: custom unchecked/checked textures; 7: align
+	// (left|center|right, anchors the box+label group on pos.X); 8: box size
+	// (coordinate units, overrides the skin checkbox width); 9: label vertical
+	// nudge (coordinate units, + = down). Label colour/font via style[<name>;...].
+	if (!precheckElement("checkbox", element, 3, 9, parts))
+		return;
+#else
 	if (!precheckElement("checkbox", element, 3, 4, parts))
 		return;
+#endif
 
 	std::vector<std::string> v_pos = split(parts[0],',');
 	std::string name = parts[1];
@@ -612,29 +622,77 @@ void GUIFormSpecMenu::parseCheckbox(parserData* data, const std::string &element
 	if (selected == "true")
 		fselected = true;
 
+	// Style fetched EARLY so the label is MEASURED with the same font it will be
+	// DRAWN with (font_size-scaled) — keeps the rect / centering exact.
+	auto style = getDefaultStyleForElement("checkbox", name);
+#if IS_VOPI_ENGINE
+	gui::IGUIFont *cb_font = getScaledStyleFont(style);
+	if (!cb_font)
+		cb_font = m_font;
+#else
+	gui::IGUIFont *cb_font = m_font;
+#endif
+
 	std::wstring wlabel = translate_string(utf8_to_wide(unescape_string(label)));
-	const core::dimension2d<u32> label_size = m_font->getDimension(wlabel.c_str());
+	const core::dimension2d<u32> label_size = cb_font->getDimension(wlabel.c_str());
 	s32 cb_size = Environment->getSkin()->getSize(gui::EGDS_CHECK_BOX_WIDTH);
+#if IS_VOPI_ENGINE
+	// VOPI: optional box size (field 8) in coordinate units → px. Overrides the
+	// skin width for layout (rect / y_center / centering) AND the drawn box
+	// (passed to GUICheckBox below), so both stay in sync.
+	if (parts.size() >= 8 && !parts[7].empty()) {
+		const f32 box_units = stof(parts[7]);
+		if (box_units > 0.0f)
+			cb_size = (s32)(box_units * (f32)imgsize.Y);
+	}
+	// VOPI: optional label vertical nudge (field 9) in coordinate units → px
+	// (+ = down). Lets the label line up with the box despite font metrics.
+	s32 cb_text_voffset = 0;
+	if (parts.size() >= 9 && !parts[8].empty())
+		cb_text_voffset = (s32)(stof(parts[8]) * (f32)imgsize.Y);
+#endif
 	s32 y_center = (std::max(label_size.Height, (u32)cb_size) + 1) / 2;
 
 	v2s32 pos;
 	core::rect<s32> rect;
 
+	// VOPI: total group width (box + 7px gap + measured label). The label width
+	// is known here (client-side font metric), so we can anchor the whole group
+	// left (default), centered, or right on pos.X via the optional `align` field.
+	const s32 cb_total_w = label_size.Width + cb_size + 7;
+#if IS_VOPI_ENGINE
+	const std::string cb_align = parts.size() >= 7 ? parts[6] : "left";
+	auto cb_anchor_x = [&](s32 px) -> s32 {
+		if (cb_align == "center") return px - cb_total_w / 2;
+		if (cb_align == "right")  return px - cb_total_w;
+		return px;
+	};
+#endif
+
 	if (data->real_coordinates) {
 		pos = getRealCoordinateBasePos(v_pos);
-
+#if IS_VOPI_ENGINE
+		const s32 x0 = cb_anchor_x(pos.X);
+#else
+		const s32 x0 = pos.X;
+#endif
 		rect = core::rect<s32>(
-				pos.X,
+				x0,
 				pos.Y - y_center,
-				pos.X + label_size.Width + cb_size + 7,
+				x0 + cb_total_w,
 				pos.Y + y_center
 			);
 	} else {
 		pos = getElementBasePos(&v_pos);
+#if IS_VOPI_ENGINE
+		const s32 x0 = cb_anchor_x(pos.X);
+#else
+		const s32 x0 = pos.X;
+#endif
 		rect = core::rect<s32>(
-				pos.X,
+				x0,
 				pos.Y + imgsize.Y / 2 - y_center,
-				pos.X + label_size.Width + cb_size + 7,
+				x0 + cb_total_w,
 				pos.Y + imgsize.Y / 2 + y_center
 			);
 	}
@@ -648,10 +706,35 @@ void GUIFormSpecMenu::parseCheckbox(parserData* data, const std::string &element
 
 	spec.ftype = f_CheckBox;
 
-	gui::IGUICheckBox *e = Environment->addCheckBox(fselected, rect,
+	gui::IGUICheckBox *e;
+#if IS_VOPI_ENGINE
+	// VOPI: always use GUICheckBox so the style label font/colour, box-size and
+	// vertical-nudge apply uniformly — whether or not custom textures are given.
+	// Optional fields 5 & 6 supply unchecked/checked textures (both required to
+	// replace the skin box); without them GUICheckBox renders the default box.
+	std::string tex_unchecked = parts.size() >= 5 ? unescape_string(parts[4]) : "";
+	std::string tex_checked   = parts.size() >= 6 ? unescape_string(parts[5]) : "";
+	{
+		GUICheckBox *ce = new GUICheckBox(fselected, Environment,
+				data->current_parent, spec.fid, rect);
+		ce->setText(spec.flabel.c_str());
+		if (!tex_unchecked.empty() && !tex_checked.empty())
+			ce->setImages(m_tsrc->getTexture(tex_unchecked),
+					m_tsrc->getTexture(tex_checked));
+		ce->setBoxSize(cb_size);   // skin width, or the field-8 override above
+		ce->setOverrideFont(cb_font);  // font_size-scaled label font (style)
+		ce->setTextVOffset(cb_text_voffset);  // field-9 vertical nudge
+		// Label colour via style textcolor; default = skin button-text colour,
+		// so an unset textcolor keeps stock appearance.
+		ce->setOverrideColor(style.getColor(StyleSpec::TEXTCOLOR,
+				Environment->getSkin()->getColor(gui::EGDC_BUTTON_TEXT)));
+		ce->drop();
+		e = ce;
+	}
+#else
+	e = Environment->addCheckBox(fselected, rect,
 			data->current_parent, spec.fid, spec.flabel.c_str());
-
-	auto style = getDefaultStyleForElement("checkbox", name);
+#endif
 
 	spec.sound = style.get(StyleSpec::Property::SOUND, "");
 
