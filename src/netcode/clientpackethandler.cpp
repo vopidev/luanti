@@ -541,6 +541,24 @@ void Client::handleCommand_ViewBobbing(NetworkPacket *pkt)
 	player->setViewBobbing({ amount, is_multiplier, transition_time });
 	m_camera->notifyViewBobbingChange();
 }
+
+void Client::handleCommand_SetTouchButtons(NetworkPacket *pkt)
+{
+	u32 flags, mask;
+
+	*pkt >> flags >> mask;
+
+	LocalPlayer *player = m_env.getLocalPlayer();
+	assert(player != NULL);
+
+	player->touch_hidden_mask &= ~mask;
+	player->touch_hidden_mask |= flags;
+
+	// Apply immediately. game.cpp also re-pushes the mask every frame, so the
+	// state survives a TouchControls recreation (e.g. on pointer-type change).
+	if (g_touchcontrols)
+		g_touchcontrols->setHiddenButtons(player->touch_hidden_mask);
+}
 #endif
 
 void Client::handleCommand_HP(NetworkPacket *pkt)

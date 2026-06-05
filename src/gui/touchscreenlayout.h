@@ -29,6 +29,10 @@ enum TouchInteractionStyle : u8
 };
 extern const struct EnumString es_TouchInteractionStyle[];
 
+// NOTE: enum order is load-bearing. The positional arrays button_names[],
+// button_titles[], button_image_names[] (touchscreenlayout.cpp) and, on VOPI,
+// es_TouchGuiButton[] (script/lua_api/l_object.cpp) are indexed by these ids
+// and MUST be kept in sync when adding/reordering buttons.
 enum touch_gui_button_id : u8
 {
 	dig_id = 0,

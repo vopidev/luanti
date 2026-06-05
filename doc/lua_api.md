@@ -9030,6 +9030,23 @@ child will follow movement and rotation of that bone.
     * If a flag equals `nil`, the flag is not modified
 * `hud_get_flags()`: returns a table of player HUD flags with boolean values.
     * See `hud_set_flags` for a list of flags that can be toggled.
+* `set_touch_buttons(buttons)` (VOPI only): show or hide individual on-screen
+  touch control buttons for this player.
+    * `buttons`: a table with button names set to boolean values
+      (`true` = visible, `false` = hidden). A name set to `nil` is not modified.
+    * Available button names: `dig`, `place`, `jump`, `sneak`, `zoom`, `aux1`,
+      `overflow`, `chat`, `inventory`, `drop`, `exit` (the pause button), `fly`,
+      `fast`, `noclip`, `debug`, `camera`, `range`, `minimap`, `toggle_chat`.
+    * Only affects the on-screen button. It does not disable the underlying
+      action (e.g. hiding `dig` does not stop tap-to-dig in tap interaction
+      style; hiding `exit` does not block the OS pause path).
+    * Has no effect on non-touch clients.
+    * Like `hud_set_flags`, state is only synced on change and resets when a
+      client (re)connects: re-apply it in `register_on_joinplayer` / after
+      respawn to (re)establish it for a (re)connecting client.
+* `get_touch_buttons()` (VOPI only): returns a table of touch button names with
+  boolean values (`true` = visible).
+    * See `set_touch_buttons` for the list of names.
 * `hud_set_hotbar_itemcount(count)`: sets number of items in builtin hotbar
     * `count`: number of items, must be between `1` and `32`
     * If `count` exceeds the `"main"` list size, the list size will be used instead.

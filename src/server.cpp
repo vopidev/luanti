@@ -2103,6 +2103,16 @@ void Server::SendPlayerViewBobbing(session_t peer_id)
 
 	Send(&pkt);
 }
+
+void Server::SendSetTouchButtons(session_t peer_id, u32 flags, u32 mask)
+{
+	NetworkPacket pkt(TOCLIENT_SET_TOUCH_BUTTONS, 4 + 4, peer_id);
+
+	pkt << flags << mask;
+
+	Send(&pkt);
+}
+
 #endif
 
 void Server::SendLocalPlayerAnimations(session_t peer_id, v2f animation_frames[4],
@@ -3555,6 +3565,23 @@ bool Server::hudSetFlags(RemotePlayer *player, u32 flags, u32 mask)
 	m_script->player_event(playersao, "hud_changed");
 	return true;
 }
+
+#if IS_VOPI_ENGINE
+bool Server::setTouchButtons(RemotePlayer *player, u32 flags, u32 mask)
+{
+	if (!player)
+		return false;
+
+	u32 new_mask = (player->touch_hidden_mask & ~mask) | flags;
+	if (new_mask == player->touch_hidden_mask) // no change
+		return true;
+
+	player->touch_hidden_mask = new_mask;
+	SendSetTouchButtons(player->getPeerId(), flags, mask);
+
+	return true;
+}
+#endif
 
 bool Server::hudSetHotbarItemcount(RemotePlayer *player, s32 hotbar_itemcount)
 {

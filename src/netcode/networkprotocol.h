@@ -711,7 +711,15 @@ enum ToClientCommand : u16
 		f32 transition_time
 	*/
 
-	TOCLIENT_NUM_MSG_TYPES = 0x66,
+	TOCLIENT_SET_TOUCH_BUTTONS = 0x66,
+	/*
+		Sets which on-screen touch buttons are hidden for the player.
+
+		u32 flags  (bit set = button hidden; bit index = touch_gui_button_id)
+		u32 mask   (which bits this update touches)
+	*/
+
+	TOCLIENT_NUM_MSG_TYPES = 0x67,
 #else
 	TOCLIENT_NUM_MSG_TYPES = 0x65,
 #endif

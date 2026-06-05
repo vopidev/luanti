@@ -271,6 +271,13 @@ public:
 	u32 hud_flags;
 	s32 hud_hotbar_itemcount;
 
+#if IS_VOPI_ENGINE
+	// VOPI: bitmask of hidden on-screen touch buttons.
+	// Bit index = touch_gui_button_id (see gui/touchscreenlayout.h);
+	// bit set = that button is hidden. Default 0 = all visible.
+	u32 touch_hidden_mask = 0;
+#endif
+
 	// Get actual usable number of hotbar items (clamped to size of "main" list)
 	u16 getMaxHotbarItemcount();
 
