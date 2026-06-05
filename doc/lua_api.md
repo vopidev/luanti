@@ -3528,12 +3528,31 @@ Elements
     * `true`: Selected item index
     * `false` (default): Selected item value
 
-### `checkbox[<X>,<Y>;<name>;<label>;<selected>]`
+### `checkbox[<X>,<Y>;<name>;<label>;<selected>;<image>;<image checked>;<align>;<box size>;<label voffset>]`
 
 * Show a checkbox
 * `name` fieldname data is transferred to Lua
 * `label` to be shown left of checkbox
 * `selected` (optional): `true`/`false`
+* `image` (optional): texture drawn for the unchecked state instead of the
+  default skin box. (VOPI Engine extension.)
+* `image checked` (optional): texture drawn for the checked state. (VOPI Engine
+  extension.)
+    * Both `image` and `image checked` must be supplied to enable custom
+      rendering; if either is empty the checkbox uses the default skin box.
+    * The images are scaled into the checkbox square; the label keeps its usual
+      position to the right.
+* `align` (optional): `left` (default), `center` or `right` — anchors the whole
+  box + label group horizontally on `X` (instead of only left-aligning).
+  (VOPI Engine extension.)
+* `box size` (optional): box edge length in coordinate units, overriding the
+  skin checkbox width. Affects both layout and the drawn box. (VOPI Engine
+  extension.)
+* `label voffset` (optional): vertical nudge of the label in coordinate units
+  (`+` = down), to line it up with the box despite font metrics. (VOPI Engine
+  extension.)
+* The label font and colour follow `style[<name>;font=...;font_size=...;textcolor=...]`,
+  matching other formspec elements. (VOPI Engine extension.)
 * **Note**: If the new coordinate system is enabled, checkboxes are
   positioned from the center of the checkbox, not the top.
 
