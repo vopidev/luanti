@@ -2005,8 +2005,14 @@ void GUIFormSpecMenu::parseHyperText(parserData *data, const std::string &elemen
 	auto style = getDefaultStyleForElement("hypertext", spec.fname);
 	spec.sound = style.get(StyleSpec::Property::SOUND, "");
 
+#if IS_VOPI_ENGINE
+	// VOPI: pass m_font_scale so hypertext fonts track the UI size like other text.
+	GUIHyperText *e = new GUIHyperText(spec.flabel.c_str(), Environment,
+			data->current_parent, spec.fid, rect, m_client, m_tsrc, m_font_scale);
+#else
 	GUIHyperText *e = new GUIHyperText(spec.flabel.c_str(), Environment,
 			data->current_parent, spec.fid, rect, m_client, m_tsrc);
+#endif
 	e->drop();
 
 	m_fields.push_back(spec);
