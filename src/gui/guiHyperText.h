@@ -20,7 +20,13 @@ class GUIScrollBar;
 class ParsedText
 {
 public:
+#if IS_VOPI_ENGINE
+	// VOPI: font_scale (= formspec m_font_scale) makes hypertext fonts track the
+	// UI size like every other formspec font. Default 1.0 = upstream behaviour.
+	ParsedText(const wchar_t *text, float font_scale = 1.0f);
+#else
 	ParsedText(const wchar_t *text);
+#endif
 	~ParsedText();
 
 	enum ElementType
@@ -98,7 +104,11 @@ public:
 
 		s32 margin = 10;
 
+#if IS_VOPI_ENGINE
+		void setStyle(StyleList &style, float font_scale = 1.0f);
+#else
 		void setStyle(StyleList &style);
+#endif
 	};
 
 	struct Paragraph
@@ -119,6 +129,13 @@ public:
 	video::SColor background_color;
 
 	Tag m_root_tag;
+
+#if IS_VOPI_ENGINE
+	// VOPI: formspec font scale (imgsize-proportional, = formspec m_font_scale).
+	// Applied to element font sizes so hypertext tracks the UI size like every
+	// other formspec font.
+	float m_font_scale = 1.0f;
+#endif
 
 protected:
 	typedef enum { ER_NONE, ER_TAG, ER_NEWLINE } EndReason;
@@ -156,8 +173,13 @@ protected:
 class TextDrawer
 {
 public:
+#if IS_VOPI_ENGINE
+	TextDrawer(const wchar_t *text, Client *client, gui::IGUIEnvironment *environment,
+			ISimpleTextureSource *tsrc, float font_scale = 1.0f);
+#else
 	TextDrawer(const wchar_t *text, Client *client, gui::IGUIEnvironment *environment,
 			ISimpleTextureSource *tsrc);
+#endif
 
 	void place(const core::rect<s32> &dest_rect);
 	inline s32 getHeight() { return m_height; };
@@ -186,10 +208,17 @@ class GUIHyperText : public gui::IGUIElement
 {
 public:
 	//! constructor
+#if IS_VOPI_ENGINE
+	GUIHyperText(const wchar_t *text, gui::IGUIEnvironment *environment,
+			gui::IGUIElement *parent, s32 id,
+			const core::rect<s32> &rectangle, Client *client,
+			ISimpleTextureSource *tsrc, float font_scale = 1.0f);
+#else
 	GUIHyperText(const wchar_t *text, gui::IGUIEnvironment *environment,
 			gui::IGUIElement *parent, s32 id,
 			const core::rect<s32> &rectangle, Client *client,
 			ISimpleTextureSource *tsrc);
+#endif
 
 	//! destructor
 	virtual ~GUIHyperText();

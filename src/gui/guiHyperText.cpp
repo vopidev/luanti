@@ -38,7 +38,11 @@ static bool check_integer(const std::string &str)
 // -----------------------------------------------------------------------------
 // ParsedText - A text parser
 
+#if IS_VOPI_ENGINE
+void ParsedText::Element::setStyle(StyleList &style, float font_scale)
+#else
 void ParsedText::Element::setStyle(StyleList &style)
+#endif
 {
 	this->underline = is_yes(style["underline"]);
 
@@ -58,7 +62,16 @@ void ParsedText::Element::setStyle(StyleList &style)
 	// hypertext[] only accepts absolute font size values and has a hardcoded
 	// default font size of 16. This is the only way to make hypertext[]
 	// respect font size settings that I can think of.
+#if IS_VOPI_ENGINE
+	// VOPI: `font_scale` is the formspec's m_font_scale. It makes hypertext fonts
+	// track the UI size (imgsize) exactly like a label's `font_size=*N`, so
+	// `size=16` == `*1.0` and `size = 16 * N` == `*N`. Without it hypertext
+	// scaled by screen density only, looking different per device from every
+	// other formspec text.
+	font_size = myround(font_size / 16.0f * g_fontengine->getFontSize(font_mode) * font_scale);
+#else
 	font_size = myround(font_size / 16.0f * g_fontengine->getFontSize(font_mode));
+#endif
 
 	FontSpec spec(font_size, font_mode,
 		is_yes(style["bold"]), is_yes(style["italic"]));
@@ -85,8 +98,17 @@ void ParsedText::Paragraph::setStyle(StyleList &style)
 		this->halign = HALIGN_LEFT;
 }
 
+#if IS_VOPI_ENGINE
+ParsedText::ParsedText(const wchar_t *text, float font_scale)
+#else
 ParsedText::ParsedText(const wchar_t *text)
+#endif
 {
+#if IS_VOPI_ENGINE
+	// Stored before parse() so element font sizing (setStyle) can apply it.
+	m_font_scale = font_scale;
+#endif
+
 	// Default style
 	m_root_tag.name = "root";
 	m_root_tag.style["fontsize"] = "16";
@@ -266,7 +288,11 @@ void ParsedText::enterElement(ElementType type)
 		m_element = &m_paragraph->elements.back();
 		m_element->type = type;
 		m_element->tags = m_active_tags;
+#if IS_VOPI_ENGINE
+		m_element->setStyle(m_style, m_font_scale);
+#else
 		m_element->setStyle(m_style);
+#endif
 	}
 }
 
@@ -617,9 +643,17 @@ u32 ParsedText::parseTag(const wchar_t *text, u32 cursor)
 // -----------------------------------------------------------------------------
 // Text Drawer
 
+#if IS_VOPI_ENGINE
+TextDrawer::TextDrawer(const wchar_t *text, Client *client,
+		gui::IGUIEnvironment *environment, ISimpleTextureSource *tsrc,
+		float font_scale) :
+		m_text(text, font_scale), m_client(client), m_tsrc(tsrc),
+		m_guienv(environment)
+#else
 TextDrawer::TextDrawer(const wchar_t *text, Client *client,
 		gui::IGUIEnvironment *environment, ISimpleTextureSource *tsrc) :
 		m_text(text), m_client(client), m_tsrc(tsrc), m_guienv(environment)
+#endif
 {
 	// Size all elements
 	for (auto &p : m_text.m_paragraphs) {
@@ -1007,12 +1041,22 @@ void TextDrawer::draw(const core::rect<s32> &clip_rect,
 // GUIHyperText - The formated text area formspec item
 
 //! constructor
+#if IS_VOPI_ENGINE
+GUIHyperText::GUIHyperText(const wchar_t *text, IGUIEnvironment *environment,
+		IGUIElement *parent, s32 id, const core::rect<s32> &rectangle,
+		Client *client, ISimpleTextureSource *tsrc, float font_scale) :
+		IGUIElement(EGUIET_ELEMENT, environment, parent, id, rectangle),
+		m_tsrc(tsrc), m_vscrollbar(nullptr),
+		m_drawer(text, client, environment, tsrc, font_scale),
+		m_text_scrollpos(0, 0)
+#else
 GUIHyperText::GUIHyperText(const wchar_t *text, IGUIEnvironment *environment,
 		IGUIElement *parent, s32 id, const core::rect<s32> &rectangle,
 		Client *client, ISimpleTextureSource *tsrc) :
 		IGUIElement(EGUIET_ELEMENT, environment, parent, id, rectangle),
 		m_tsrc(tsrc), m_vscrollbar(nullptr),
 		m_drawer(text, client, environment, tsrc), m_text_scrollpos(0, 0)
+#endif
 {
 
 	IGUISkin *skin = 0;
