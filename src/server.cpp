@@ -1848,6 +1848,7 @@ void Server::SendHUDAdd(session_t peer_id, u32 id, HudElement *form)
 	pkt << (s32)form->middle.UpperLeftCorner.X << (s32)form->middle.UpperLeftCorner.Y
 		<< (s32)form->middle.LowerRightCorner.X << (s32)form->middle.LowerRightCorner.Y
 		<< form->middle_scale;
+	pkt << form->touchable << form->pressed_text;
 #endif
 
 	Send(&pkt);

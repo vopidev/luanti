@@ -55,6 +55,8 @@ struct ClientEventHudAdd
 #if IS_VOPI_ENGINE
 	core::rect<s32> middle;
 	f32 middle_scale = 1.0f;
+	bool touchable = false;
+	std::string pressed_text;
 #endif
 };
 

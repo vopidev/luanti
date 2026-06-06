@@ -516,10 +516,61 @@ void TouchControls::setInventoryButtonRect(const recti &rect)
 	if (m_inventory_btn)
 		m_inventory_btn->setRelativePosition(rect);
 }
+
+void TouchControls::pushTouchableHudRects(std::vector<std::pair<u32, recti>> rects)
+{
+	m_touchable_hud_rects = std::move(rects);
+}
+
+bool TouchControls::isTouchableHudButton(const SEvent &event)
+{
+	if (m_has_hud_btn_id)
+		return false; // track one HUD button press at a time
+
+	const v2s32 touch_pos = v2s32(event.TouchInput.X, event.TouchInput.Y);
+	for (const auto &[id, rect] : m_touchable_hud_rects) {
+		if (rect.isPointInside(touch_pos)) {
+			m_has_hud_btn_id = true;
+			m_hud_btn_id     = event.TouchInput.ID;
+			m_hud_btn_hud_id = id;
+			m_hud_btn_rect   = rect;
+			m_hud_btn_inside = true;
+			return true;
+		}
+	}
+	return false;
+}
+
+std::optional<u32> TouchControls::getPressedHudButton() const
+{
+	if (m_has_hud_btn_id && m_hud_btn_inside)
+		return m_hud_btn_hud_id;
+	return std::nullopt;
+}
+
+std::optional<u32> TouchControls::getHudButtonClick()
+{
+	auto click = m_hud_btn_click;
+	m_hud_btn_click = std::nullopt;
+	return click;
+}
 #endif
 
 void TouchControls::handleReleaseEvent(size_t pointer_id)
 {
+#if IS_VOPI_ENGINE
+	// Release of a Lua-defined tappable HUD button: fire on release-inside.
+	if (m_has_hud_btn_id && pointer_id == m_hud_btn_id) {
+		if (m_hud_btn_inside)
+			m_hud_btn_click = m_hud_btn_hud_id;
+		m_has_hud_btn_id = false;
+		m_hud_btn_inside = false;
+		m_pointer_downpos.erase(pointer_id);
+		m_pointer_pos.erase(pointer_id);
+		return;
+	}
+#endif
+
 	// By the way: Android reuses pointer IDs, so m_pointer_pos[pointer_id]
 	// will be overwritten soon anyway.
 	m_pointer_downpos.erase(pointer_id);
@@ -638,6 +689,13 @@ void TouchControls::translateEvent(const SEvent &event)
 		if (buttonsHandlePress(m_buttons, pointer_id, element))
 			return;
 
+#if IS_VOPI_ENGINE
+		// handle Lua-defined tappable HUD buttons (before hotbar/joystick so a
+		// button overlaying them takes priority)
+		if (isTouchableHudButton(event))
+			return;
+#endif
+
 		// handle hotbar
 		if (isHotbarButton(event))
 			// already handled in isHotbarButton()
@@ -684,6 +742,16 @@ void TouchControls::translateEvent(const SEvent &event)
 		handleReleaseEvent(event.TouchInput.ID);
 	} else {
 		assert(event.TouchInput.Event == ETIE_MOVED);
+
+#if IS_VOPI_ENGINE
+		// Track whether the finger holding a HUD button is still inside it
+		// (drives the pressed visual and release-inside firing).
+		if (m_has_hud_btn_id && event.TouchInput.ID == m_hud_btn_id) {
+			m_hud_btn_inside = m_hud_btn_rect.isPointInside(touch_pos);
+			m_pointer_pos[event.TouchInput.ID] = touch_pos;
+			return;
+		}
+#endif
 
 		if (!(m_has_joystick_id && m_fixed_joystick) &&
 				m_pointer_pos[event.TouchInput.ID] == touch_pos)

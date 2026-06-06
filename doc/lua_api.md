@@ -1858,6 +1858,16 @@ Displays an image on the HUD.
   Only used when `middle` is set.
 * `size`: When using 9-slice (`middle` is set), specifies the target size in pixels.
   The image will be scaled to this size using 9-slice rendering.
+* `touchable` (VOPI only): if `true`, the image acts as a tappable button on
+  touchscreens. A tap (press + release inside the image) is delivered to
+  server-side Lua via `core.register_on_player_receive_fields` with an empty
+  form name and a field `__vopi_hud_click = "<hud id>"` (the id returned by
+  `hud_add`). The tap is consumed before the joystick / dig, and movement,
+  jump, sneak and the other touch buttons are unaffected. No effect on
+  non-touch clients.
+* `pressed_texture` (VOPI only): texture name shown while the `touchable` image
+  is held down (instant local feedback, no network round-trip). If empty, the
+  normal `text` texture is used while pressed.
 
 ### `text`
 
