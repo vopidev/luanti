@@ -329,6 +329,12 @@ private:
 
 	// get_touch_buttons(self)
 	static int l_get_touch_buttons(lua_State *L);
+
+	// set_block_interaction(self, blocked)
+	static int l_set_block_interaction(lua_State *L);
+
+	// get_block_interaction(self)
+	static int l_get_block_interaction(lua_State *L);
 #endif
 
 	// hud_set_hotbar_itemcount(self, hotbar_itemcount)

@@ -559,6 +559,23 @@ void Client::handleCommand_SetTouchButtons(NetworkPacket *pkt)
 	if (g_touchcontrols)
 		g_touchcontrols->setHiddenButtons(player->touch_hidden_mask);
 }
+
+void Client::handleCommand_SetInteractionBlock(NetworkPacket *pkt)
+{
+	bool blocked;
+
+	*pkt >> blocked;
+
+	LocalPlayer *player = m_env.getLocalPlayer();
+	assert(player != NULL);
+
+	player->block_interaction = blocked;
+
+	// Apply immediately; game.cpp also re-pushes every frame so the state
+	// survives a TouchControls recreation.
+	if (g_touchcontrols)
+		g_touchcontrols->setInteractionBlocked(blocked);
+}
 #endif
 
 void Client::handleCommand_HP(NetworkPacket *pkt)

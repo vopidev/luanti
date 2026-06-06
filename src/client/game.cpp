@@ -1440,6 +1440,7 @@ void Game::processUserInput(f32 dtime)
 			// Re-assert per-button visibility every frame so it survives a
 			// TouchControls recreation (the mask lives on the player, not here).
 			g_touchcontrols->setHiddenButtons(touch_player->touch_hidden_mask);
+			g_touchcontrols->setInteractionBlocked(touch_player->block_interaction);
 #else
 			g_touchcontrols->show();
 #endif

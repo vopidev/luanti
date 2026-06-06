@@ -2113,6 +2113,15 @@ void Server::SendSetTouchButtons(session_t peer_id, u32 flags, u32 mask)
 	Send(&pkt);
 }
 
+void Server::SendSetInteractionBlock(session_t peer_id, bool blocked)
+{
+	NetworkPacket pkt(TOCLIENT_SET_INTERACTION_BLOCK, 1, peer_id);
+
+	pkt << blocked;
+
+	Send(&pkt);
+}
+
 #endif
 
 void Server::SendLocalPlayerAnimations(session_t peer_id, v2f animation_frames[4],
@@ -3578,6 +3587,20 @@ bool Server::setTouchButtons(RemotePlayer *player, u32 flags, u32 mask)
 
 	player->touch_hidden_mask = new_mask;
 	SendSetTouchButtons(player->getPeerId(), flags, mask);
+
+	return true;
+}
+
+bool Server::setBlockInteraction(RemotePlayer *player, bool blocked)
+{
+	if (!player)
+		return false;
+
+	if (player->block_interaction == blocked) // no change
+		return true;
+
+	player->block_interaction = blocked;
+	SendSetInteractionBlock(player->getPeerId(), blocked);
 
 	return true;
 }

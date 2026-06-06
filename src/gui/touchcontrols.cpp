@@ -943,12 +943,30 @@ void TouchControls::setHiddenButtons(u32 mask)
 	m_hidden_mask = mask;
 	updateVisibility();
 }
+
+void TouchControls::setInteractionBlocked(bool blocked)
+{
+	m_interaction_blocked = blocked;
+}
 #endif
 
 void TouchControls::applyContextControls(const TouchInteractionMode &mode)
 {
 	if (m_interaction_style == BUTTONS_CROSSHAIR)
 		return;
+
+#if IS_VOPI_ENGINE
+	// VOPI: when world interaction is blocked, never initiate dig/place. Reuse
+	// resetTapState() so any in-progress tap is cancelled AND the held finger is
+	// marked as "moved" -- otherwise a finger held across the unblock transition
+	// would be promoted to a long tap and fire a stray dig/place the instant
+	// control returns. (In BUTTONS_CROSSHAIR style dig/place are real buttons
+	// handled above; there the server-side gate and hiding those buttons apply.)
+	if (m_interaction_blocked) {
+		resetTapState();
+		return;
+	}
+#endif
 
 	// Since the pointed thing has already been determined when this function
 	// is called, we cannot use this function to update the shootline.

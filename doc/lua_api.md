@@ -9047,6 +9047,17 @@ child will follow movement and rotation of that bone.
 * `get_touch_buttons()` (VOPI only): returns a table of touch button names with
   boolean values (`true` = visible).
     * See `set_touch_buttons` for the list of names.
+* `set_block_interaction(blocked)` (VOPI only): when `blocked` is `true`, the
+  player cannot dig, place, punch or use anything in the world.
+    * Enforced server-side (authoritative -- the interaction packet is rejected
+      and any predicted change reverted) and, in the default tap interaction
+      style, also client-side (no dig feedback at all).
+    * Movement, jump, sneak and the touch buttons are unaffected.
+    * Like other player flags, state is only synced on change and resets when a
+      client (re)connects: re-apply it in `register_on_joinplayer` / after
+      respawn.
+* `get_block_interaction()` (VOPI only): returns `true` if world interaction is
+  currently blocked for the player.
 * `hud_set_hotbar_itemcount(count)`: sets number of items in builtin hotbar
     * `count`: number of items, must be between `1` and `32`
     * If `count` exceeds the `"main"` list size, the list size will be used instead.

@@ -2083,6 +2083,35 @@ int ObjectRef::l_get_touch_buttons(lua_State *L)
 	}
 	return 1;
 }
+
+// set_block_interaction(self, blocked)
+// When blocked, the player cannot dig/place/punch/use the world.
+int ObjectRef::l_set_block_interaction(lua_State *L)
+{
+	NO_MAP_LOCK_REQUIRED;
+	ObjectRef *ref = checkObject<ObjectRef>(L, 1);
+	RemotePlayer *player = getplayer(ref);
+	if (player == nullptr)
+		return 0;
+
+	bool blocked = readParam<bool>(L, 2);
+	getServer(L)->setBlockInteraction(player, blocked);
+
+	return 0;
+}
+
+// get_block_interaction(self)
+int ObjectRef::l_get_block_interaction(lua_State *L)
+{
+	NO_MAP_LOCK_REQUIRED;
+	ObjectRef *ref = checkObject<ObjectRef>(L, 1);
+	RemotePlayer *player = getplayer(ref);
+	if (player == nullptr)
+		return 0;
+
+	lua_pushboolean(L, player->block_interaction);
+	return 1;
+}
 #endif
 
 // hud_set_hotbar_itemcount(self, hotbar_itemcount)
@@ -3080,6 +3109,8 @@ luaL_Reg ObjectRef::methods[] = {
 #if IS_VOPI_ENGINE
 	luamethod(ObjectRef, set_touch_buttons),
 	luamethod(ObjectRef, get_touch_buttons),
+	luamethod(ObjectRef, set_block_interaction),
+	luamethod(ObjectRef, get_block_interaction),
 #endif
 	luamethod(ObjectRef, hud_set_hotbar_itemcount),
 	luamethod(ObjectRef, hud_get_hotbar_itemcount),

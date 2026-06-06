@@ -719,7 +719,14 @@ enum ToClientCommand : u16
 		u32 mask   (which bits this update touches)
 	*/
 
-	TOCLIENT_NUM_MSG_TYPES = 0x67,
+	TOCLIENT_SET_INTERACTION_BLOCK = 0x67,
+	/*
+		Blocks/unblocks all world interaction (dig/place/punch/use) for the player.
+
+		u8 blocked  (1 = blocked, 0 = allowed)
+	*/
+
+	TOCLIENT_NUM_MSG_TYPES = 0x68,
 #else
 	TOCLIENT_NUM_MSG_TYPES = 0x65,
 #endif

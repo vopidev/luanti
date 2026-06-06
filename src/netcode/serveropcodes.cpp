@@ -216,5 +216,6 @@ const ClientCommandFactory clientCommandFactoryTable[TOCLIENT_NUM_MSG_TYPES] =
 #if IS_VOPI_ENGINE
 	{ "TOCLIENT_VIEW_BOBBING",             0, true }, // 0x65
 	{ "TOCLIENT_SET_TOUCH_BUTTONS",        0, true }, // 0x66
+	{ "TOCLIENT_SET_INTERACTION_BLOCK",    0, true }, // 0x67
 #endif
 };

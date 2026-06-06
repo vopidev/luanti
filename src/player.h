@@ -276,6 +276,11 @@ public:
 	// Bit index = touch_gui_button_id (see gui/touchscreenlayout.h);
 	// bit set = that button is hidden. Default 0 = all visible.
 	u32 touch_hidden_mask = 0;
+
+	// VOPI: when true, the player cannot dig/place/punch/use the world.
+	// Enforced client-side (TouchControls::applyContextControls is skipped) and
+	// server-side (handleCommand_Interact rejects the action). Default false.
+	bool block_interaction = false;
 #endif
 
 	// Get actual usable number of hotbar items (clamped to size of "main" list)

@@ -978,6 +978,27 @@ void Server::handleCommand_Interact(NetworkPacket *pkt)
 		return;
 	}
 
+#if IS_VOPI_ENGINE
+	// VOPI: world interaction can be blocked per-player (e.g. onboarding).
+	// Mirror the no-interact-priv handling above: reject every interaction
+	// (dig/place/punch/use/activate) and revert the client-side prediction so no
+	// block change sticks. INTERACT_ACTIVATE (rightclick-air secondary use) is
+	// included so a modified/non-touch client cannot fire item on_secondary_use.
+	if (player->block_interaction &&
+			(action == INTERACT_START_DIGGING || action == INTERACT_DIGGING_COMPLETED ||
+			action == INTERACT_PLACE || action == INTERACT_USE ||
+			action == INTERACT_ACTIVATE)) {
+		if (pointed.type == POINTEDTHING_NODE) {
+			RemoteClient *client = getClient(peer_id);
+			if (action == INTERACT_DIGGING_COMPLETED)
+				client->SetBlockNotSent(getNodeBlockPos(pointed.node_undersurface));
+			else if (action == INTERACT_PLACE)
+				client->SetBlockNotSent(getNodeBlockPos(pointed.node_abovesurface));
+		}
+		return;
+	}
+#endif
+
 	/*
 		Check that target is reasonably close
 	*/

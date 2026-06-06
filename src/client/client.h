@@ -181,6 +181,7 @@ public:
 #if IS_VOPI_ENGINE
 	void handleCommand_ViewBobbing(NetworkPacket *pkt);
 	void handleCommand_SetTouchButtons(NetworkPacket *pkt);
+	void handleCommand_SetInteractionBlock(NetworkPacket *pkt);
 #endif
 	void handleCommand_HP(NetworkPacket* pkt);
 	void handleCommand_Breath(NetworkPacket* pkt);
