@@ -57,6 +57,7 @@ struct ClientEventHudAdd
 	f32 middle_scale = 1.0f;
 	bool touchable = false;
 	std::string pressed_text;
+	bool anchor_above_hotbar = false;
 #endif
 };
 

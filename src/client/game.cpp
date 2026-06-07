@@ -2399,6 +2399,7 @@ void Game::handleClientEvent_HudAdd(ClientEvent *event, CameraOrientation *cam)
 	e->middle_scale = event->hudadd->middle_scale;
 	e->touchable    = event->hudadd->touchable;
 	e->pressed_text = event->hudadd->pressed_text;
+	e->anchor_above_hotbar = event->hudadd->anchor_above_hotbar;
 #endif
 	m_hud_server_to_client[server_id] = player->addHud(e);
 

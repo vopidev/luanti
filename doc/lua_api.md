@@ -1868,6 +1868,13 @@ Displays an image on the HUD.
 * `pressed_texture` (VOPI only): texture name shown while the `touchable` image
   is held down (instant local feedback, no network round-trip). If empty, the
   normal `text` texture is used while pressed.
+* `anchor_above_hotbar` (VOPI only): if `true`, the element's vertical reference
+  is the hotbar's top edge instead of the screen bottom, so it stays a fixed
+  distance above the hotbar regardless of the device's hotbar size (DPI /
+  `hud_scaling`). `position.y` is ignored; `alignment`, `offset` and the x
+  position apply as usual. When the hotbar is hidden, it falls back to the
+  screen bottom. Resolved client-side, so the clickable area of a `touchable`
+  element stays aligned with the drawn image.
 
 ### `text`
 

@@ -122,6 +122,10 @@ struct HudElement {
 	// Tappable HUD image button support (see Hud::getTouchableHudRects).
 	bool touchable = false;
 	std::string pressed_text; // texture shown while the button is held
+	// Anchor this image's vertical position to the hotbar's top edge instead of
+	// the screen bottom (falls back to the screen bottom when the hotbar is
+	// hidden). See Hud::getImageElementRect.
+	bool anchor_above_hotbar = false;
 #endif
 };
 

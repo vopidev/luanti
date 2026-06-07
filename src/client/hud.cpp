@@ -347,6 +347,15 @@ core::rect<s32> Hud::getImageElementRect(const HudElement *e, v2s32 pos) const
 			? core::dimension2di(texture->getOriginalSize())
 			: core::dimension2di(0, 0);
 
+	// Anchor above the hotbar: replace the vertical reference with the hotbar's
+	// top edge (or the screen bottom when the hotbar is hidden). x / alignment /
+	// offset then apply as usual, so the element sits a fixed gap above the
+	// hotbar on every device regardless of DPI / hud_scaling.
+	if (e->anchor_above_hotbar) {
+		pos.Y = (player->hud_flags & HUD_FLAG_HOTBAR_VISIBLE)
+				? m_hotbar_top_y : (s32) m_screensize.Y;
+	}
+
 	v2s32 dstsize(imgsize.Width * e->scale.X * m_scale_factor,
 			imgsize.Height * e->scale.Y * m_scale_factor);
 	if (e->scale.X < 0)
@@ -447,6 +456,15 @@ void Hud::drawLuaElements(const v3s16 &camera_offset)
 
 		v2s32 pos(floor(e->pos.X * (float) m_screensize.X + 0.5),
 				floor(e->pos.Y * (float) m_screensize.Y + 0.5));
+#if IS_VOPI_ENGINE
+		// Anchor above the hotbar for ALL element types (text labels included),
+		// not just images. getImageElementRect re-applies the same override for
+		// the IMAGE path (idempotent) and for hit-testing via getTouchableHudRects.
+		if (e->anchor_above_hotbar) {
+			pos.Y = (player->hud_flags & HUD_FLAG_HOTBAR_VISIBLE)
+					? m_hotbar_top_y : (s32) m_screensize.Y;
+		}
+#endif
 		switch (e->type) {
 			case HUD_ELEM_TEXT: {
 				unsigned int font_size = g_fontengine->getDefaultFontSize();
@@ -941,6 +959,13 @@ void Hud::drawHotbar(const v2s32 &pos, const v2f &offset, u16 dir, const v2f &al
 	}
 
 #if IS_VOPI_ENGINE
+	// Cache the hotbar's top edge for anchor_above_hotbar HUD elements
+	// (Hud::getImageElementRect). Same expression as the inventory-button
+	// row_y_top below; single-row layout is the only layout in use.
+	m_hotbar_top_y = hotbar_pos.Y
+			+ (s32) std::round(screen_offset.Y * m_scale_factor)
+			- slot_size;
+
 	// Anchor the inventory touch button at the right edge of the (lower) row.
 	// Derived from the same math drawItems uses for placement so the button
 	// stays perfectly aligned across hud_scaling, hud_hotbar_bottom_margin,
@@ -1188,5 +1213,12 @@ void Hud::resizeHotbar() {
 		m_padding = m_hotbar_imagesize / 12;
 		m_screensize = window_size;
 		m_displaycenter = v2s32(m_screensize.X/2,m_screensize.Y/2);
+#if IS_VOPI_ENGINE
+		// Seed the hotbar top-edge cache (used by anchor_above_hotbar elements)
+		// so it is valid before the first drawHotbar and survives drawHotbar's
+		// mainlist==NULL early-return. drawHotbar refines it to the exact edge
+		// (incl. bottom margin) each frame the hotbar is drawn.
+		m_hotbar_top_y = (s32) m_screensize.Y - (m_hotbar_imagesize + m_padding * 2);
+#endif
 	}
 }

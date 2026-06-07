@@ -2429,6 +2429,7 @@ void read_hud_element(lua_State *L, HudElement *elem)
 
 	elem->touchable = getboolfield_default(L, 2, "touchable", false);
 	elem->pressed_text = getstringfield_default(L, 2, "pressed_texture", "");
+	elem->anchor_above_hotbar = getboolfield_default(L, 2, "anchor_above_hotbar", false);
 #endif
 
 	/* check for known deprecated element usage */
@@ -2516,6 +2517,8 @@ void push_hud_element(lua_State *L, HudElement *elem)
 	lua_setfield(L, -2, "touchable");
 	lua_pushstring(L, elem->pressed_text.c_str());
 	lua_setfield(L, -2, "pressed_texture");
+	lua_pushboolean(L, elem->anchor_above_hotbar);
+	lua_setfield(L, -2, "anchor_above_hotbar");
 #endif
 }
 
