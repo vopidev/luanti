@@ -88,6 +88,7 @@ enum HudElementStat : u8 {
 	HUD_STAT_STYLE,
 #if IS_VOPI_ENGINE
 	HUD_STAT_MIDDLE,
+	HUD_STAT_MAX_WIDTH,
 #endif
 	HudElementStat_END // Dummy for validity check
 };
@@ -126,6 +127,22 @@ struct HudElement {
 	// the screen bottom (falls back to the screen bottom when the hotbar is
 	// hidden). See Hud::getImageElementRect.
 	bool anchor_above_hotbar = false;
+	// Word-wrap width in logical HUD pixels for HUD_ELEM_TEXT. 0 disables
+	// wrapping (text only breaks on explicit newlines, the upstream behavior).
+	// When > 0 the client wraps the text in the real font and reports the
+	// measured block size back to server-side Lua (see Game::processUserInput
+	// and the __vopi_hud_measured field), so the mod can size 9-slice
+	// backgrounds and stack panels in real pixels instead of guessing.
+	s32 max_width = 0;
+	// Extra vertical gap (logical pixels, may be negative) inserted between
+	// wrapped lines of a HUD_ELEM_TEXT. Only used on the max_width wrapping path
+	// and included in the reported measured height. Set at hud_add time only:
+	// there is no HUD_STAT for it, so it cannot be changed via hud_change.
+	s32 line_spacing = 0;
+	// Client-only scratch (NEVER serialized): the last measured wrapped-text
+	// size in logical pixels, and whether it changed since the last readback.
+	v2s32 measured_size = v2s32(-1, -1);
+	bool measured_dirty = false;
 #endif
 };
 

@@ -2430,6 +2430,8 @@ void read_hud_element(lua_State *L, HudElement *elem)
 	elem->touchable = getboolfield_default(L, 2, "touchable", false);
 	elem->pressed_text = getstringfield_default(L, 2, "pressed_texture", "");
 	elem->anchor_above_hotbar = getboolfield_default(L, 2, "anchor_above_hotbar", false);
+	elem->max_width = getintfield_default(L, 2, "max_width", 0);
+	elem->line_spacing = getintfield_default(L, 2, "line_spacing", 0);
 #endif
 
 	/* check for known deprecated element usage */
@@ -2519,6 +2521,10 @@ void push_hud_element(lua_State *L, HudElement *elem)
 	lua_setfield(L, -2, "pressed_texture");
 	lua_pushboolean(L, elem->anchor_above_hotbar);
 	lua_setfield(L, -2, "anchor_above_hotbar");
+	lua_pushinteger(L, elem->max_width);
+	lua_setfield(L, -2, "max_width");
+	lua_pushinteger(L, elem->line_spacing);
+	lua_setfield(L, -2, "line_spacing");
 #endif
 }
 
@@ -2599,6 +2605,10 @@ bool read_hud_change(lua_State *L, HudElementStat &stat, HudElement *elem, void 
 				elem->middle = core::rect<s32>(x, y, w, h);
 			}
 			*value = &elem->middle;
+			break;
+		case HUD_STAT_MAX_WIDTH:
+			elem->max_width = luaL_checknumber(L, 4);
+			*value = &elem->max_width;
 			break;
 #endif
 		case HudElementStat_END:
