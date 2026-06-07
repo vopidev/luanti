@@ -472,7 +472,7 @@ void Hud::drawLuaElements(const v3s16 &camera_offset)
 				if (e->size.X > 0)
 					font_size *= e->size.X;
 
-#if defined(__ANDROID__) || defined(__IOS__)
+#if !IS_VOPI_ENGINE && (defined(__ANDROID__) || defined(__IOS__))
 				// The text size on Android is not proportional with the actual scaling
 				// FIXME: why do we have such a weird unportable hack??
 				if (font_size > 3 && e->offset.X < -20)
