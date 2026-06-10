@@ -503,32 +503,7 @@ void Client::step(float dtime)
 			mapblock_limit, &deleted_blocks);
 
 		// Send info to server
-
-		auto i = deleted_blocks.begin();
-		std::vector<v3s16> sendlist;
-		for(;;) {
-			if(sendlist.size() == 255 || i == deleted_blocks.end()) {
-				if(sendlist.empty())
-					break;
-				/*
-					[0] u16 command
-					[2] u8 count
-					[3] v3s16 pos_0
-					[3+6] v3s16 pos_1
-					...
-				*/
-
-				sendDeletedBlocks(sendlist);
-
-				if(i == deleted_blocks.end())
-					break;
-
-				sendlist.clear();
-			}
-
-			sendlist.push_back(*i);
-			++i;
-		}
+		sendDeletedBlocksChunked(deleted_blocks);
 	}
 
 	/*
@@ -821,6 +796,17 @@ void Client::step(float dtime)
 			const bool moved = !m_map_harvest_done || c != m_map_harvest_last_center;
 			const bool periodic = (m_map_harvest_ticks % 6) == 0;
 			if (moved || periodic) {
+				ScopeProfiler sp_harvest(g_profiler,
+					"Client: map canvas harvest [ms]", SPT_AVG, PRECISION_MILLI);
+				u32 columns_deep_scanned = 0;
+				// Per-sweep deep-scan cap. Columns near the loaded-area edge can
+				// never record (their top blocks are unloaded, see air_above in
+				// scanSurfaceColumn) and would otherwise be re-deep-scanned in
+				// full every periodic sweep — a large, permanent background cost.
+				// The cap bounds each sweep; unscanned columns are picked up by
+				// later sweeps (nearest-the-player first, see the sweep order
+				// below, so visible map area never starves).
+				const u32 deep_scan_budget = 8192;
 				// Capture the previous sweep center/state BEFORE overwriting, so a
 				// move-sweep can skip the window the last sweep already covered.
 				const v3s16 prev_center = m_map_harvest_last_center;
@@ -858,13 +844,49 @@ void Client::step(float dtime)
 				const s16 sz0 = getContainerPos((s16)(c.Z - harvest_radius), (s16)MAP_BLOCKSIZE);
 				const s16 sz1 = getContainerPos((s16)(c.Z + harvest_radius), (s16)MAP_BLOCKSIZE);
 
+				// Sweeps walk the box under a budget, so the SCAN ORDER decides
+				// what records first when fresh work exceeds the budget. Plain
+				// row order always restarted from the same corner, starving the
+				// opposite edge — visible as map fog where the world is loaded
+				// (e.g. right after a teleport, whose first sweep is a MOVED
+				// sweep over a fully fresh box, or at the frontier when walking
+				// +Z). Scan sectors NEAREST the player first on EVERY sweep:
+				// the area under/around the player fills before the budget can
+				// run out, and the permanently-unrecordable far ring only
+				// consumes whatever budget is left. (For walking move-sweeps
+				// the band is tiny and order is irrelevant; the sort of a few
+				// hundred entries is negligible.)
+				std::vector<v2s16> sweep_sectors;
+				sweep_sectors.reserve((size_t)(sx1 - sx0 + 1) * (size_t)(sz1 - sz0 + 1));
 				for (s16 sz = sz0; sz <= sz1; sz++)
-				for (s16 sx = sx0; sx <= sx1; sx++) {
+				for (s16 sx = sx0; sx <= sx1; sx++)
+					sweep_sectors.emplace_back(sx, sz);
+				{
+					const s16 csx = getContainerPos(c.X, (s16)MAP_BLOCKSIZE);
+					const s16 csz = getContainerPos(c.Z, (s16)MAP_BLOCKSIZE);
+					std::sort(sweep_sectors.begin(), sweep_sectors.end(),
+						[&](const v2s16 &a, const v2s16 &b) {
+							const s32 da = std::max(std::abs((s32)a.X - csx),
+								std::abs((s32)a.Y - csz));
+							const s32 db = std::max(std::abs((s32)b.X - csx),
+								std::abs((s32)b.Y - csz));
+							return da < db;
+						});
+				}
+
+				for (const v2s16 &sweep_sc : sweep_sectors) {
+					if (columns_deep_scanned >= deep_scan_budget)
+						break;
+					const s16 sx = sweep_sc.X;
+					const s16 sz = sweep_sc.Y;
 					if (!map.getSectorNoGenerateNoLock(v2s16(sx, sz)))
 						continue; // sector not loaded — skip all 256 of its columns
 
 					const s16 base_x = sx * MAP_BLOCKSIZE;
 					const s16 base_z = sz * MAP_BLOCKSIZE;
+					// Budget is checked at sector granularity only (top of the
+					// sweep_sectors loop) — overshoot is bounded by one sector
+					// (256 columns), which is fine for an 8192 budget.
 					for (s16 oz = 0; oz < MAP_BLOCKSIZE; oz++)
 					for (s16 ox = 0; ox < MAP_BLOCKSIZE; ox++) {
 						const s16 wx = base_x + ox;
@@ -898,11 +920,25 @@ void Client::step(float dtime)
 
 						u32 argb;
 						s16 h;
+						columns_deep_scanned++;
 						if (scanSurfaceColumn(map, m_nodedef, wx, wz,
 								y_top, y_bottom, argb, h))
 							canvas->setCell(wx, wz, argb, h);
 					}
 				}
+
+				// Drop tiles outside the harvest window now that the sweep is
+				// done — eviction must never run mid-sweep (the `seen` pointer
+				// above stays valid only until evictFarTiles, see MapCanvas).
+				const s16 keep_radius_tiles =
+					(s16)(harvest_radius / MAPCANVAS_TILE_NODES) + 2;
+				canvas->evictFarTiles(MapCanvas::tileCoord(c.X),
+					MapCanvas::tileCoord(c.Z), keep_radius_tiles);
+
+				g_profiler->avg("Client: map canvas deep scans [#]",
+					columns_deep_scanned);
+				g_profiler->avg("Client: map canvas resident tiles [#]",
+					(float)canvas->residentTileCount());
 			} // moved || periodic
 		}
 		if (canvas)
@@ -1380,6 +1416,44 @@ void Client::sendDeletedBlocks(std::vector<v3s16> &blocks)
 
 	Send(&pkt);
 }
+
+void Client::sendDeletedBlocksChunked(const std::vector<v3s16> &blocks)
+{
+	std::vector<v3s16> sendlist;
+	for (size_t i = 0; i < blocks.size(); i += 255) {
+		const size_t n = std::min<size_t>(255, blocks.size() - i);
+		sendlist.assign(blocks.begin() + i, blocks.begin() + i + n);
+		sendDeletedBlocks(sendlist);
+	}
+}
+
+#if IS_VOPI_ENGINE
+void Client::flushFarBlocksIfTeleported(v3f old_pos, v3f new_pos)
+{
+	// A forced move far beyond the view range is a teleport. Drop the old
+	// area's blocks from the cache right away: otherwise they linger for
+	// client_unload_unused_data_timeout and several teleports in a row peg
+	// the cache at client_mapblock_limit, costing memory and frame time
+	// (severe on mobile).
+	const float view_range_bs =
+		(float)g_settings->getS16("viewing_range") * BS;
+	const float jump_threshold_bs = 3.0f * view_range_bs;
+	if (old_pos.getDistanceFrom(new_pos) <= jump_threshold_bs)
+		return;
+
+	const float keep_range_nodes =
+		2.0f * (float)g_settings->getS16("viewing_range");
+	std::vector<v3s16> deleted_blocks;
+	const u32 n = m_env.getClientMap().unloadFarBlocks(new_pos,
+		keep_range_nodes, &deleted_blocks);
+
+	infostream << "Client: teleport detected ("
+		<< old_pos.getDistanceFrom(new_pos) / BS << " nodes), dropped "
+		<< n << " far blocks" << std::endl;
+
+	sendDeletedBlocksChunked(deleted_blocks);
+}
+#endif
 
 void Client::sendGotBlocks(const std::vector<v3s16> &blocks)
 {

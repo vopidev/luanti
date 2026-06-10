@@ -31,7 +31,6 @@ struct MapTile
 	s16 height[CELLS];  // surface height; MAPCANVAS_NO_HEIGHT means unexplored
 
 	bool dirty = false;       // written since last disk flush
-	u64 last_used_ms = 0;     // for LRU eviction
 
 	MapTile()
 	{
@@ -80,22 +79,51 @@ public:
 
 	// Return the resident tile for tile-coords (tx, tz), lazy-loading it from
 	// disk on a cache miss. Returns nullptr if the tile was never explored
-	// (no file on disk). The pointer is valid until the next setCell /
-	// findTileReadonly that could trigger eviction, so use it immediately.
+	// (no file on disk).
+	//
+	// POINTER VALIDITY: setCell / findTileReadonly never evict, so returned
+	// pointers stay valid until the next evictFarTiles() call. Callers that
+	// cache tile pointers across a scan (the harvest sweep, the map render)
+	// must only call evictFarTiles() after the scan is done.
 	const MapTile *findTileReadonly(s16 tx, s16 tz);
+
+	// Evict resident tiles whose Chebyshev distance (in tiles) from
+	// (center_tx, center_tz) exceeds keep_radius_tiles, saving dirty ones.
+	// Tiles inside a recently announced render window (setRenderWindowHint)
+	// are kept too. If the resident count still exceeds the hard cap
+	// afterwards, evict the farthest tiles down to the cap. Call OUTSIDE any
+	// scan that caches tile pointers (see findTileReadonly). This is the ONLY
+	// eviction point: the old per-insert LRU eviction could free a tile
+	// mid-sweep while the harvest still held a pointer to it (use-after-free)
+	// and thrashed the cache once the resident count crossed the cap after
+	// several teleports.
+	void evictFarTiles(s16 center_tx, s16 center_tz, s16 keep_radius_tiles);
+
+	// Announce the window the map UI is currently rendering (tile coords +
+	// radius), so the player-centered eviction keeps those tiles resident even
+	// when the map is focused far from the player. Cleared explicitly when the
+	// map element goes away; the TTL is only a leak backstop in case it never
+	// gets the chance.
+	void setRenderWindowHint(s16 center_tx, s16 center_tz, s16 radius_tiles);
+	void clearRenderWindowHint() { m_hint_radius = 0; }
 
 	// Flush dirty tiles to disk no more often than the internal interval.
 	void maybeFlush(f32 dtime);
 	// Flush every dirty tile now (call on shutdown).
 	void flushAll();
 
+	// Number of tiles currently resident in RAM (profiling/diagnostics).
+	size_t residentTileCount() const { return m_tiles.size(); }
+
+	// True when the resident count exceeds the hard cap — i.e. an eviction
+	// pass is overdue (see evictFarTiles).
+	bool overResidentCap() const;
+
 	// Convert a world node coord to its tile coord (floor division).
 	static s16 tileCoord(s16 w);
 
 private:
 	MapTile *getOrCreateTile(s16 tx, s16 tz);
-	void touch(MapTile *t);
-	void evictIfNeeded();
 	bool loadTile(s16 tx, s16 tz, MapTile &out) const;
 	void saveTile(s16 tx, s16 tz, const MapTile &t) const;
 	std::string tilePath(s16 tx, s16 tz) const;
@@ -112,4 +140,9 @@ private:
 	bool m_dir_ready = false;          // created lazily on first save
 	std::unordered_map<v2s16, std::unique_ptr<MapTile>, V2s16Hash> m_tiles;
 	f32 m_flush_timer = 0.0f;
+
+	// Render-window keep hint (see setRenderWindowHint).
+	v2s16 m_hint_center{0, 0};
+	s16 m_hint_radius = 0;
+	u64 m_hint_set_ms = 0;
 };

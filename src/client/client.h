@@ -486,8 +486,18 @@ private:
 	void sendInit(const std::string &playerName);
 	void startAuth(AuthMechanism chosen_auth_mechanism);
 	void sendDeletedBlocks(std::vector<v3s16> &blocks);
+	// Splits into TOSERVER_DELETEDBLOCKS packets of <= 255 entries
+	// (the protocol's count field is u8).
+	void sendDeletedBlocksChunked(const std::vector<v3s16> &blocks);
 	void sendGotBlocks(const std::vector<v3s16> &blocks);
 	void sendRemovedSounds(const std::vector<s32> &soundList);
+#if IS_VOPI_ENGINE
+	// Drop the previous area's blocks from the client cache after a forced
+	// far move (teleport) and report them to the server. dist_nodes is the
+	// jump distance, new_pos the landing position (both BS-scaled handled
+	// inside). No-op for moves below the teleport threshold.
+	void flushFarBlocksIfTeleported(v3f old_pos, v3f new_pos);
+#endif
 
 	bool canSendChatMessage() const;
 
