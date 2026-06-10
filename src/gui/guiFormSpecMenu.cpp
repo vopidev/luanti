@@ -2068,8 +2068,12 @@ void GUIFormSpecMenu::parseLabel(parserData* data, const std::string &element)
 
 	bool has_size = false;
 #if IS_VOPI_ENGINE
-	// Check if parts[1] contains a comma - if so, it's size
-	if (parts.size() >= 3 && parts[1].find(',') != std::string::npos) {
+	// parts[1] is a size iff it splits into exactly two tokens on UNESCAPED
+	// commas. A plain find(',') also matches escaped commas ("\,") inside
+	// label text, which misreads the text as a size and rejects the whole
+	// element — label text legitimately contains commas (user input,
+	// translations), escaped via formspec_escape.
+	if (parts.size() >= 3 && split(parts[1], ',').size() == 2) {
 		has_size = true;
 	}
 #else
