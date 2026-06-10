@@ -643,6 +643,10 @@ void Client::handleCommand_MovePlayer(NetworkPacket* pkt)
 
 	*pkt >> pos >> pitch >> yaw;
 
+#if IS_VOPI_ENGINE
+	const v3f old_pos = player->getPosition();
+#endif
+
 	player->setPosition(pos);
 
 	infostream << "Client got TOCLIENT_MOVE_PLAYER"
@@ -650,6 +654,10 @@ void Client::handleCommand_MovePlayer(NetworkPacket* pkt)
 			<< " pitch=" << pitch
 			<< " yaw=" << yaw
 			<< std::endl;
+
+#if IS_VOPI_ENGINE
+	flushFarBlocksIfTeleported(old_pos, pos);
+#endif
 
 	/*
 		Add to ClientEvent queue.
@@ -672,7 +680,18 @@ void Client::handleCommand_MovePlayerRel(NetworkPacket *pkt)
 
 	LocalPlayer *player = m_env.getLocalPlayer();
 	assert(player);
+
+#if IS_VOPI_ENGINE
+	const v3f old_pos = player->getPosition();
+#endif
+
 	player->addPosition(added_pos);
+
+#if IS_VOPI_ENGINE
+	// player:add_pos() can teleport too (servers use the REL packet for it
+	// on modern protocols) — same far-block flush as handleCommand_MovePlayer.
+	flushFarBlocksIfTeleported(old_pos, old_pos + added_pos);
+#endif
 }
 
 void Client::handleCommand_DeathScreenLegacy(NetworkPacket* pkt)

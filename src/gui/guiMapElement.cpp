@@ -74,6 +74,13 @@ GUIMapElement::~GUIMapElement()
 {
 	if (m_texture)
 		m_driver->removeTexture(m_texture);
+
+	// Release the canvas keep-window we announced from rebuildTexture, so the
+	// harvest's eviction stops protecting our (now dead) render window.
+	if (m_client) {
+		if (MapCanvas *canvas = m_client->getMapCanvas())
+			canvas->clearRenderWindowHint();
+	}
 }
 
 void GUIMapElement::setViewNodes(s32 nodes)
@@ -148,6 +155,18 @@ void GUIMapElement::draw()
 void GUIMapElement::rebuildTexture(v3s16 center)
 {
 	MapCanvas *canvas = m_client->getMapCanvas();
+
+	// Tell the canvas which window we are about to read, so the harvest's
+	// player-centered eviction keeps these tiles resident even when the map
+	// is focused far away from the player (pinned POI). +1 slack only: at the
+	// widest zoom (1024 nodes) this gives an 11x11 hinted window, safely under
+	// the canvas' resident cap.
+	if (canvas) {
+		const s16 radius_tiles =
+			(s16)(m_view_nodes / 2 / MAPCANVAS_TILE_NODES) + 1;
+		canvas->setRenderWindowHint(MapCanvas::tileCoord(center.X),
+			MapCanvas::tileCoord(center.Z), radius_tiles);
+	}
 
 	video::IImage *img = m_driver->createImage(video::ECF_A8R8G8B8,
 		core::dimension2du(MAP_PX, MAP_PX));
@@ -355,6 +374,17 @@ void GUIMapElement::rebuildTexture(v3s16 center)
 	m_texture = m_driver->addTexture(name.c_str(), img);
 	img->drop();
 	m_has_texture = (m_texture != nullptr);
+
+	// Fast pan/zoom can load many tiles between harvest sweeps (the regular
+	// eviction point). If we ballooned past the resident cap, trim around our
+	// own window now — the pixel loop above is done, so no cached tile
+	// pointers are live and eviction is safe.
+	if (canvas && canvas->overResidentCap()) {
+		const s16 radius_tiles =
+			(s16)(m_view_nodes / 2 / MAPCANVAS_TILE_NODES) + 1;
+		canvas->evictFarTiles(MapCanvas::tileCoord(center.X),
+			MapCanvas::tileCoord(center.Z), radius_tiles);
+	}
 }
 
 void GUIMapElement::drawMarkers(const core::rect<s32> &rect, v3s16 center)

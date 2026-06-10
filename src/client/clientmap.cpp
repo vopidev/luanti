@@ -802,6 +802,70 @@ void ClientMap::touchMapBlocks()
 	g_profiler->avg("MapBlocks loaded [#]", blocks_loaded);
 }
 
+#if IS_VOPI_ENGINE
+u32 ClientMap::unloadFarBlocks(v3f center_pos, float keep_range_nodes,
+		std::vector<v3s16> *deleted_blocks)
+{
+	// Drop the draw lists first: they hold refGrab'd references on every block
+	// that was VISIBLE at the old location (updateDrawList only rebuilds later
+	// in the frame), and referenced blocks are skipped below — without this
+	// the flush would miss exactly the meshed blocks it exists to free.
+	// Safe here: we run on the main thread between frames, and the rebuild is
+	// forced via m_needs_update_drawlist before the next render.
+	clearDrawList();
+	clearDrawListShadow();
+	m_needs_update_drawlist = true;
+
+	const v3s16 center_block = getNodeBlockPos(floatToInt(center_pos, BS));
+	// Compare in block coordinates, with one block of slack so blocks right
+	// at the boundary are kept.
+	const s32 keep_range_blocks =
+		((s32)keep_range_nodes + MAP_BLOCKSIZE - 1) / MAP_BLOCKSIZE + 1;
+	const s64 keep_range_sq = (s64)keep_range_blocks * keep_range_blocks;
+
+	u32 deleted_count = 0;
+	std::vector<v2s16> sector_deletion_queue;
+	MapBlockVect blocks;
+
+	for (auto &sector_it : m_sectors) {
+		MapSector *sector = sector_it.second;
+
+		blocks.clear();
+		sector->getBlocks(blocks);
+
+		for (MapBlock *block : blocks) {
+			const v3s16 d = block->getPos() - center_block;
+			const s64 dist_sq = (s64)d.X * d.X + (s64)d.Y * d.Y
+				+ (s64)d.Z * d.Z;
+			if (dist_sq <= keep_range_sq)
+				continue;
+			// Blocks referenced by the drawlist or queued mesh jobs are
+			// skipped; the periodic timerUpdate() will catch them later.
+			if (block->refGet() != 0)
+				continue;
+
+			// Drop merged-buffer cache entries built from this mesh before
+			// its buffers are freed (same as the mesh replacement path).
+			if (block->mesh)
+				invalidateMapBlockMesh(block->mesh);
+
+			const v3s16 p = block->getPos();
+			sector->deleteBlock(block);
+			if (deleted_blocks)
+				deleted_blocks->push_back(p);
+			deleted_count++;
+		}
+
+		if (sector->empty())
+			sector_deletion_queue.push_back(sector_it.first);
+	}
+
+	deleteSectors(sector_deletion_queue);
+
+	return deleted_count;
+}
+#endif
+
 void MeshBufListMaps::addFromBlock(v3s16 block_pos, MapBlockMesh *block_mesh,
 	video::IVideoDriver *driver)
 {

@@ -99,6 +99,23 @@ public:
 	/// @brief Calculate statistics about the map and keep the blocks alive
 	void touchMapBlocks();
 
+#if IS_VOPI_ENGINE
+	/// @brief Immediately delete all unreferenced blocks farther than
+	/// keep_range_nodes from center_pos (center_pos in BS units).
+	///
+	/// Used when the local player teleports: without this the previous
+	/// area's blocks, meshes and GPU buffers sit in the cache until
+	/// client_unload_unused_data_timeout evicts them, and a few teleports in
+	/// a row peg the cache at client_mapblock_limit — which on mobile costs
+	/// memory and frame time for minutes. (VOPI Engine extension.)
+	///
+	/// @param deleted_blocks output: positions of the deleted blocks, to be
+	///        reported to the server (TOSERVER_DELETEDBLOCKS)
+	/// @return number of deleted blocks
+	u32 unloadFarBlocks(v3f center_pos, float keep_range_nodes,
+			std::vector<v3s16> *deleted_blocks);
+#endif
+
 	void updateDrawListShadow(v3f shadow_light_pos, v3f shadow_light_dir, float radius, float length);
 	void clearDrawListShadow();
 

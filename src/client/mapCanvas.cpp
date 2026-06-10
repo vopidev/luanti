@@ -4,6 +4,8 @@
 
 #include "mapCanvas.h"
 
+#include <algorithm>
+#include <cstdlib>
 #include <sstream>
 #include "client/node_visuals.h"
 #include "constants.h"
@@ -14,22 +16,35 @@
 #include "mapnode.h"
 #include "nodedef.h"
 #include "porting.h"
+#include "profiler.h"
 #include "serialization.h"
 #include "util/numeric.h"
 #include "util/serialize.h"
 
 namespace {
 
-// In-RAM resident-tile cap. At the widest zoom (VIEW_NODES_MAX = 1024, tile =
-// 128 nodes) a single rebuildTexture touches up to ~10x10 = 100 distinct tiles.
-// The cap MUST exceed that worst case: if eviction fires mid-rebuild it drops a
-// tile the row-major loop is about to re-use and re-reads it from disk (zstd,
-// ~96 KiB each) many times per rebuild — a multi-hundred-ms stall on mobile.
-// 160 * 96 KiB = ~15 MiB, comfortably above the worst case.
-constexpr size_t MAX_RESIDENT_TILES = 160;
+// In-RAM resident-tile cap (hard backstop only — the regular bound is the
+// distance-based evictFarTiles pass). 128 * 96 KiB = ~12 MiB. The map render
+// window at the widest zoom (1024 nodes => 9x9 = 81 explored tiles, ~121
+// hinted with slack) plus the harvest keep window (~25-49 tiles) can brush
+// against this cap; pass 2 below prefers non-hinted tiles so the windows
+// being actively read are evicted last.
+constexpr size_t MAX_RESIDENT_TILES = 128;
+
+// How long a render-window keep hint stays in force after the map UI last
+// rendered (ms). Outlives a few rebuild throttles (REBUILD_STALE_MS = 2 s in
+// guiMapElement.cpp), then far tiles get evicted.
+constexpr u64 RENDER_HINT_TTL_MS = 10000;
 
 // Flush dirty tiles to disk at most this often (seconds).
 constexpr f32 FLUSH_INTERVAL_S = 10.0f;
+
+// Saving a dirty tile costs a 96 KiB zstd compression + a file write on the
+// MAIN thread, so both the eviction pass and the periodic flush bound how
+// many tiles they save per call; the remainder stays resident/dirty and is
+// drained by the following calls (sweeps run every 0.5-3 s; durability is
+// soft — the authoritative data is the world itself).
+constexpr u32 MAX_TILE_SAVES_PER_CALL = 4;
 
 // On-disk tile header.
 const char TILE_MAGIC[4] = {'K', 'C', 'M', 'T'};
@@ -181,11 +196,6 @@ std::string MapCanvas::tilePath(s16 tx, s16 tz) const
 		std::to_string(tz) + ".bin";
 }
 
-void MapCanvas::touch(MapTile *t)
-{
-	t->last_used_ms = porting::getTimeMs();
-}
-
 void MapCanvas::setCell(s16 wx, s16 wz, u32 argb, s16 height)
 {
 	const s16 tx = tileCoord(wx);
@@ -199,16 +209,13 @@ void MapCanvas::setCell(s16 wx, s16 wz, u32 argb, s16 height)
 	t->colour[idx] = argb;
 	t->height[idx] = height;
 	t->dirty = true;
-	touch(t);
 }
 
 const MapTile *MapCanvas::findTileReadonly(s16 tx, s16 tz)
 {
 	auto it = m_tiles.find(v2s16(tx, tz));
-	if (it != m_tiles.end()) {
-		touch(it->second.get());
+	if (it != m_tiles.end())
 		return it->second.get();
-	}
 
 	// Cold miss. Cheaply check the file exists BEFORE allocating a 96 KiB tile:
 	// most lookups for unexplored area miss, and a 96 KiB alloc + memset per
@@ -217,13 +224,16 @@ const MapTile *MapCanvas::findTileReadonly(s16 tx, s16 tz)
 		return nullptr;
 
 	auto tile = std::make_unique<MapTile>();
-	if (!loadTile(tx, tz, *tile))
-		return nullptr;
+	{
+		ScopeProfiler sp(g_profiler,
+			"Client: map canvas tile load [ms]", SPT_AVG, PRECISION_MILLI);
+		if (!loadTile(tx, tz, *tile))
+			return nullptr;
+	}
 
-	touch(tile.get());
 	const MapTile *raw = tile.get();
 	m_tiles[v2s16(tx, tz)] = std::move(tile);
-	evictIfNeeded();
+	// No eviction here — see evictFarTiles() / the pointer-validity contract.
 	return raw;
 }
 
@@ -233,6 +243,7 @@ MapTile *MapCanvas::getOrCreateTile(s16 tx, s16 tz)
 	if (it != m_tiles.end())
 		return it->second.get();
 
+	g_profiler->add("Client: map canvas create insert [#]", 1);
 	auto tile = std::make_unique<MapTile>();
 	// Seed from disk if this tile was explored in a previous session, so we
 	// extend rather than overwrite saved progress.
@@ -240,30 +251,90 @@ MapTile *MapCanvas::getOrCreateTile(s16 tx, s16 tz)
 
 	MapTile *raw = tile.get();
 	m_tiles[v2s16(tx, tz)] = std::move(tile);
-	evictIfNeeded();
+	// No eviction here — see evictFarTiles() / the pointer-validity contract.
 	return raw;
 }
 
-void MapCanvas::evictIfNeeded()
+void MapCanvas::setRenderWindowHint(s16 center_tx, s16 center_tz, s16 radius_tiles)
 {
-	if (m_tiles.size() <= MAX_RESIDENT_TILES)
-		return;
+	m_hint_center = v2s16(center_tx, center_tz);
+	m_hint_radius = radius_tiles;
+	m_hint_set_ms = porting::getTimeMs();
+}
 
-	// Find the least-recently-used tile (linear scan is fine at this size).
-	auto lru = m_tiles.end();
-	u64 oldest = U64_MAX;
-	for (auto it = m_tiles.begin(); it != m_tiles.end(); ++it) {
-		if (it->second->last_used_ms < oldest) {
-			oldest = it->second->last_used_ms;
-			lru = it;
+bool MapCanvas::overResidentCap() const
+{
+	return m_tiles.size() > MAX_RESIDENT_TILES;
+}
+
+void MapCanvas::evictFarTiles(s16 center_tx, s16 center_tz, s16 keep_radius_tiles)
+{
+	const auto tile_dist = [&](const v2s16 &p) -> s32 {
+		return std::max(std::abs((s32)p.X - center_tx),
+			std::abs((s32)p.Y - center_tz));
+	};
+
+	const bool hint_active = m_hint_radius > 0 &&
+		porting::getTimeMs() - m_hint_set_ms < RENDER_HINT_TTL_MS;
+	const auto in_hint_window = [&](const v2s16 &p) -> bool {
+		if (!hint_active)
+			return false;
+		return std::max(std::abs((s32)p.X - m_hint_center.X),
+			std::abs((s32)p.Y - m_hint_center.Y)) <= m_hint_radius;
+	};
+
+	// Saving a dirty tile is main-thread zstd + file I/O; bound it per call.
+	// A dirty tile that would exceed the budget is NOT evicted this call — it
+	// stays resident and is drained by the next sweep (pass 2's hard cap is
+	// exempt: RAM bounding there outranks the I/O smoothing).
+	u32 saves_left = MAX_TILE_SAVES_PER_CALL;
+	const auto evict_tile = [&](decltype(m_tiles)::iterator it, bool obey_save_budget)
+			-> decltype(m_tiles)::iterator {
+		if (it->second->dirty) {
+			if (obey_save_budget && saves_left == 0)
+				return std::next(it); // keep for a later call
+			if (saves_left > 0)
+				saves_left--;
+			ScopeProfiler sp(g_profiler,
+				"Client: map canvas evict save [ms]", SPT_AVG, PRECISION_MILLI);
+			saveTile(it->first.X, it->first.Y, *it->second);
 		}
-	}
-	if (lru == m_tiles.end())
-		return;
+		g_profiler->add("Client: map canvas evictions [#]", 1);
+		return m_tiles.erase(it);
+	};
 
-	if (lru->second->dirty)
-		saveTile(lru->first.X, lru->first.Y, *lru->second);
-	m_tiles.erase(lru);
+	// Pass 1: drop everything outside the caller's working window (but keep
+	// the map UI's announced render window).
+	for (auto it = m_tiles.begin(); it != m_tiles.end(); ) {
+		if (tile_dist(it->first) > keep_radius_tiles && !in_hint_window(it->first))
+			it = evict_tile(it, true);
+		else
+			++it;
+	}
+
+	// Pass 2 (hard-cap backstop): a huge working window (e.g. the map zoomed
+	// all the way out) can itself exceed the resident cap — evict the farthest
+	// tiles down to the cap so RAM stays bounded either way. Prefer non-hinted
+	// tiles so the windows being actively read are evicted last.
+	while (m_tiles.size() > MAX_RESIDENT_TILES) {
+		auto farthest = m_tiles.end();
+		s32 best = -1;
+		bool best_hinted = true;
+		for (auto it = m_tiles.begin(); it != m_tiles.end(); ++it) {
+			const bool hinted = in_hint_window(it->first);
+			const s32 d = tile_dist(it->first);
+			// A non-hinted tile always outranks a hinted one; among equals,
+			// take the farthest from the player.
+			if ((best_hinted && !hinted) || (best_hinted == hinted && d > best)) {
+				best = d;
+				best_hinted = hinted;
+				farthest = it;
+			}
+		}
+		if (farthest == m_tiles.end())
+			break;
+		evict_tile(farthest, false);
+	}
 }
 
 void MapCanvas::maybeFlush(f32 dtime)
@@ -271,12 +342,34 @@ void MapCanvas::maybeFlush(f32 dtime)
 	m_flush_timer += dtime;
 	if (m_flush_timer < FLUSH_INTERVAL_S)
 		return;
-	m_flush_timer = 0.0f;
-	flushAll();
+
+	// Budgeted flush: writing a tile is main-thread zstd + file I/O, so write
+	// at most a few per call instead of every dirty tile in one frame. If
+	// dirty tiles remain, retry shortly rather than waiting a full interval.
+	ScopeProfiler sp(g_profiler,
+		"Client: map canvas flush [ms]", SPT_AVG, PRECISION_MILLI);
+	u32 written = 0;
+	bool dirty_left = false;
+	for (auto &entry : m_tiles) {
+		if (!entry.second->dirty)
+			continue;
+		if (written >= MAX_TILE_SAVES_PER_CALL) {
+			dirty_left = true;
+			break;
+		}
+		saveTile(entry.first.X, entry.first.Y, *entry.second);
+		entry.second->dirty = false;
+		written++;
+	}
+	g_profiler->avg("Client: map canvas flush tiles written [#]", written);
+
+	m_flush_timer = dirty_left ? FLUSH_INTERVAL_S - 1.0f : 0.0f;
 }
 
 void MapCanvas::flushAll()
 {
+	// Unbudgeted: writes every dirty tile. Only for shutdown (destructor),
+	// where losing the in-RAM canvas matters more than one slow frame.
 	for (auto &entry : m_tiles) {
 		if (entry.second->dirty) {
 			saveTile(entry.first.X, entry.first.Y, *entry.second);
