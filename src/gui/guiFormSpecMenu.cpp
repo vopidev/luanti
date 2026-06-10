@@ -106,11 +106,16 @@ gui::IGUIFont *GUIFormSpecMenu::getScaledTooltipFont() const
 #if IS_VOPI_ENGINE
 	// VOPI: tooltips otherwise use m_font (the imgsize-scaled UI font), which is
 	// oversized on fullscreen formspecs. Render the tooltip at a fraction of that
-	// size so hint popups stay smaller than the surrounding UI. Falls back to
-	// m_font when font scaling is inactive (m_font_scale == 1, e.g. upstream path).
+	// size so hint popups stay smaller than the surrounding UI. The main menu and
+	// the in-game formspecs have a different imgsize, so they need separate ratios
+	// to look right: use the in-game ratio when a Client exists (inventory/craft),
+	// the menu ratio otherwise. Falls back to m_font when font scaling is inactive
+	// (m_font_scale == 1, e.g. the upstream path).
 	if (m_font_scale != 1.0f) {
+		const float ratio = m_client ? VOPI_TOOLTIP_FONT_RATIO_INGAME
+		                             : VOPI_TOOLTIP_FONT_RATIO;
 		const unsigned base_size = g_fontengine->getFontSize(FM_Standard);
-		FontSpec spec((unsigned)std::round(base_size * m_font_scale * VOPI_TOOLTIP_FONT_RATIO),
+		FontSpec spec((unsigned)std::round(base_size * m_font_scale * ratio),
 			FM_Standard, false, false);
 		return g_fontengine->getFont(spec);
 	}

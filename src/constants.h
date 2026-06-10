@@ -121,12 +121,16 @@
 // multipliers (font_size=*N) scale relative to it. Tune once on desktop.
 #define VOPI_FONT_IMGSIZE_RATIO (0.45f)
 
-// VOPI: tooltip font size as a fraction of the main formspec font. Tooltips
-// render with m_font (the imgsize-scaled UI font ≈ VOPI_FONT_IMGSIZE_RATIO *
-// imgsize), which makes them oversized on fullscreen menus. This scales the
-// tooltip font down so popup hint text stays smaller than the surrounding UI.
+// VOPI: tooltip font size as a fraction of the main formspec font (m_font, the
+// imgsize-scaled UI font ≈ VOPI_FONT_IMGSIZE_RATIO * imgsize). Tooltips render
+// with m_font by default, which makes them oversized on fullscreen menus, so
+// these scale the tooltip font down. Two separate knobs because the main menu
+// and the in-game formspecs (inventory/craft) have a different imgsize, so the
+// same ratio looks different in each: the menu uses _RATIO, in-game uses
+// _RATIO_INGAME (picked in getScaledTooltipFont by whether a Client exists).
 // Lower for smaller tooltips, raise for bigger; 1.0 restores the old m_font size.
-#define VOPI_TOOLTIP_FONT_RATIO (0.54f)
+#define VOPI_TOOLTIP_FONT_RATIO (0.6f)
+#define VOPI_TOOLTIP_FONT_RATIO_INGAME (1.08f)
 
 // Minimum texture size enforced/checked for enabling linear filtering
 // This serves as the minimum for `texture_min_size`.
