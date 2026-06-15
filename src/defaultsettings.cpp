@@ -12,9 +12,12 @@
 #include "util/string.h"
 #include "server.h"
 
-// VOPI Engine: iOS-specific settings
+// VOPI Engine: platform-specific settings
 #ifdef __IOS__
 #include "default_ios_settings.h"
+#endif
+#if defined(__ANDROID__) && VOPI_ANDROID_PROJECT
+#include "default_android_settings.h"
 #endif
 
 /*
@@ -613,8 +616,11 @@ void set_default_settings()
 	// Tablets >= 6.0 use non-Android defaults for these settings
 #endif
 
-	// VOPI Engine: Apply iOS-specific settings
+	// VOPI Engine: Apply platform-specific settings
 #ifdef __IOS__
 	vopi::set_ios_settings(settings);
+#endif
+#if defined(__ANDROID__) && VOPI_ANDROID_PROJECT
+	vopi::set_android_settings(settings);
 #endif
 }
