@@ -165,7 +165,7 @@ void GUIOpenURLMenu::drawMenu()
 	driver->draw2DRectangle(bgcolor, AbsoluteRect, &AbsoluteClippingRect);
 
 	gui::IGUIElement::draw();
-#ifdef __ANDROID__
+#if defined(__ANDROID__) || defined(__IOS__)
 	getAndroidUIInput();
 #endif
 }

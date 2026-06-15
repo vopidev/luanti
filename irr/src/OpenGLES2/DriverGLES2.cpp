@@ -60,12 +60,10 @@ void COpenGLES2Driver::initFeatures()
 		// NOTE a recent (2024) revision of EXT_texture_format_BGRA8888 also
 		// adds a sized format GL_BGRA8_EXT. Because we can't rely on that we
 		// have stupid workarounds in place on texture creation...
+		// In ES 3.0+, the internal format must be a sized format (GL_RGBA8),
+		// not GL_BGRA. The pixel format can still be GL_BGRA for upload.
 		if (FeatureAvailable[IRR_GL_EXT_texture_format_BGRA8888] || FeatureAvailable[IRR_GL_APPLE_texture_format_BGRA8888])
-#ifdef _IRR_IOS_PLATFORM_
 			TextureFormats[ECF_A8R8G8B8] = {GL_RGBA8, GL_BGRA, GL_UNSIGNED_BYTE};
-#else
-			TextureFormats[ECF_A8R8G8B8] = {GL_BGRA, GL_BGRA, GL_UNSIGNED_BYTE};
-#endif
 
 		// OpenGL ES 3 doesn't include a GL_DEPTH_COMPONENT32, so still use
 		// OES_depth_texture for 32-bit depth texture support.
@@ -86,11 +84,7 @@ void COpenGLES2Driver::initFeatures()
 		TextureFormats[ECF_A8R8G8B8] = {GL_RGBA, GL_RGBA, GL_UNSIGNED_BYTE, CColorConverter::convert_A8R8G8B8toA8B8G8R8};
 
 		if (FeatureAvailable[IRR_GL_EXT_texture_format_BGRA8888] || FeatureAvailable[IRR_GL_APPLE_texture_format_BGRA8888])
-#ifdef _IRR_IOS_PLATFORM_
-			TextureFormats[ECF_A8R8G8B8] = {GL_RGBA, GL_BGRA, GL_UNSIGNED_BYTE};
-#else
 			TextureFormats[ECF_A8R8G8B8] = {GL_BGRA, GL_BGRA, GL_UNSIGNED_BYTE};
-#endif
 
 		if (FeatureAvailable[IRR_GL_OES_texture_half_float]) {
 			TextureFormats[ECF_A16B16G16R16F] = {GL_RGBA, GL_RGBA, HALF_FLOAT_OES};
@@ -142,6 +136,7 @@ void COpenGLES2Driver::initFeatures()
 	static_assert(MATERIAL_MAX_TEXTURES <= 8, "Only up to 8 textures are guaranteed");
 	Feature.BlendOperation = true;
 #ifdef _IRR_IOS_PLATFORM_
+	// On iOS, glTexStorage2D causes text rendering issues (glyphs not displayed).
 	Feature.TexStorage = false;
 #else
 	Feature.TexStorage = Version.Major >= 3 || queryExtension("GL_ARB_texture_storage");

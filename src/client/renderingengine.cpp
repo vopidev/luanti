@@ -26,6 +26,10 @@
 #include "irrlicht_changes/static_text.h"
 #include "irr_ptr.h"
 
+#ifdef __IOS__
+#include "CIrrDeviceSDL.h"
+#endif
+
 RenderingEngine *RenderingEngine::s_singleton = nullptr;
 
 /* Helper classes */
@@ -163,7 +167,7 @@ RenderingEngine::RenderingEngine(MyEventReceiver *receiver)
 
 	// Resolution selection
 	bool fullscreen = g_settings->getBool("fullscreen");
-#ifdef __ANDROID__
+#if defined(__ANDROID__) || defined(__IOS__)
 	u16 screen_w = 0, screen_h = 0;
 	bool window_maximized = false;
 #else
@@ -219,6 +223,15 @@ RenderingEngine::RenderingEngine(MyEventReceiver *receiver)
 
 	g_settings->registerChangedCallback("fullscreen", settingChangedCallback, this);
 	g_settings->registerChangedCallback("window_maximized", settingChangedCallback, this);
+	
+#ifdef __IOS__
+	if (m_device) {
+		CIrrDeviceSDL* dev = dynamic_cast<CIrrDeviceSDL*>(m_device);
+		if (dev) {
+			porting::setViewController(dev->getViewController());
+		}
+	}
+#endif
 }
 
 RenderingEngine::~RenderingEngine()
@@ -332,7 +345,7 @@ void RenderingEngine::draw_load_screen(const std::wstring &text,
 				tsrc->getTexture("progress_bar_bg.png");
 
 		if (progress_img && progress_img_bg) {
-#ifndef __ANDROID__
+#if !defined(__ANDROID__) && !defined(__IOS__)
 			const core::dimension2d<u32> &img_size =
 					progress_img_bg->getSize();
 			float density = g_settings->getFloat("gui_scaling", 0.5f, 20.0f) *
@@ -429,7 +442,7 @@ void RenderingEngine::showErrorMessageBox(const std::string &message)
 float RenderingEngine::getDisplayDensity()
 {
 	float user_factor = g_settings->getFloat("display_density_factor", 0.5f, 5.0f);
-#ifndef __ANDROID__
+#if !defined(__ANDROID__) && !defined(__IOS__)
 	float dpi = get_raw_device()->getDisplayDensity();
 	if (dpi == 0.0f)
 		dpi = 96.0f;
