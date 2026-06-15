@@ -102,6 +102,12 @@ static const char* MSVC_LocaleLookup(const char* raw_shortname)
 
 static void MSVC_LocaleWorkaround(int argc, char* argv[])
 {
+	// Safety net: the process restart below dereferences argv[0], so a null
+	// argv (e.g. coming from a runtime callback rather than main()) must never
+	// reach here. Bail out instead of crashing with an access violation.
+	if (argc < 1 || argv == nullptr || argv[0] == nullptr)
+		return;
+
 	errorstream << "MSVC localization workaround active.  "
 		"Restarting " PROJECT_NAME_C " in a new environment!" << std::endl;
 
@@ -172,8 +178,13 @@ void init_gettext(const char *path, const std::string &configured_language,
 #if CHECK_CLIENT_BUILD()
 		// Hack to force gettext to see the right environment
 		if (current_language != configured_language) {
+			// argv is only valid on the initial call from main(). The VOPI
+			// runtime language-change callback passes argv=nullptr, where
+			// restarting the process is neither possible nor wanted.
+			if (argv == nullptr)
+				actionstream << "Runtime language change; skipping MSVC_LocaleWorkaround." << std::endl;
 			// Disabled when debugger is present as it can break debugging
-			if (!IsDebuggerPresent())
+			else if (!IsDebuggerPresent())
 				MSVC_LocaleWorkaround(argc, argv);
 			else
 				actionstream << "Debugger detected. Skipping MSVC_LocaleWorkaround." << std::endl;
