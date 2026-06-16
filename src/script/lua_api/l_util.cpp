@@ -800,11 +800,6 @@ void ModApiUtil::Initialize(lua_State *L, int top)
 	API_FCT(is_valid_player_name);
 	API_FCT(strip_escapes);
 
-#if IS_VOPI_ENGINE
-	// Chat HUD visibility API (available on all platforms)
-	API_FCT(is_chat_open);
-#endif
-
 	LuaSettings::create(L, g_settings, g_settings_path);
 	lua_setfield(L, top, "settings");
 }
@@ -841,7 +836,9 @@ void ModApiUtil::InitializeClient(lua_State *L, int top)
 	API_FCT(strip_escapes);
 
 #if IS_VOPI_ENGINE
-	// Chat HUD visibility API (available on all platforms)
+	// Chat HUD visibility API — client-side (CSM) only. Reads the client
+	// GameUI, so it must NOT be registered in the server Lua env (Initialize):
+	// a server-thread call would race the main thread (data race / UB).
 	API_FCT(is_chat_open);
 #endif
 
