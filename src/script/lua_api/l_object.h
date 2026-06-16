@@ -323,6 +323,20 @@ private:
 	// hud_get_flags()
 	static int l_hud_get_flags(lua_State *L);
 
+#if IS_VOPI_ENGINE
+	// set_touch_buttons(self, buttons)
+	static int l_set_touch_buttons(lua_State *L);
+
+	// get_touch_buttons(self)
+	static int l_get_touch_buttons(lua_State *L);
+
+	// set_block_interaction(self, blocked)
+	static int l_set_block_interaction(lua_State *L);
+
+	// get_block_interaction(self)
+	static int l_get_block_interaction(lua_State *L);
+#endif
+
 	// hud_set_hotbar_itemcount(self, hotbar_itemcount)
 	static int l_hud_set_hotbar_itemcount(lua_State *L);
 

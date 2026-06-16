@@ -114,6 +114,8 @@ const ToClientCommandHandler toClientCommandTable[TOCLIENT_NUM_MSG_TYPES] =
 	{ "TOCLIENT_SPAWN_PARTICLE_BATCH",     TOCLIENT_STATE_CONNECTED, &Client::handleCommand_SpawnParticleBatch }, // 0x64,
 #if IS_VOPI_ENGINE
 	{ "TOCLIENT_VIEW_BOBBING",             TOCLIENT_STATE_CONNECTED, &Client::handleCommand_ViewBobbing }, // 0x65,
+	{ "TOCLIENT_SET_TOUCH_BUTTONS",        TOCLIENT_STATE_CONNECTED, &Client::handleCommand_SetTouchButtons }, // 0x66,
+	{ "TOCLIENT_SET_INTERACTION_BLOCK",    TOCLIENT_STATE_CONNECTED, &Client::handleCommand_SetInteractionBlock }, // 0x67,
 #endif
 };
 

@@ -9201,6 +9201,34 @@ child will follow movement and rotation of that bone.
     * If a flag equals `nil`, the flag is not modified
 * `hud_get_flags()`: returns a table of player HUD flags with boolean values.
     * See `hud_set_flags` for a list of flags that can be toggled.
+* `set_touch_buttons(buttons)` (VOPI only): show or hide individual on-screen
+  touch control buttons for this player.
+    * `buttons`: a table with button names set to boolean values
+      (`true` = visible, `false` = hidden). A name set to `nil` is not modified.
+    * Available button names: `dig`, `place`, `jump`, `sneak`, `zoom`, `aux1`,
+      `overflow`, `chat`, `inventory`, `drop`, `exit` (the pause button), `fly`,
+      `fast`, `noclip`, `debug`, `camera`, `range`, `minimap`, `toggle_chat`.
+    * Only affects the on-screen button. It does not disable the underlying
+      action (e.g. hiding `dig` does not stop tap-to-dig in tap interaction
+      style; hiding `exit` does not block the OS pause path).
+    * Has no effect on non-touch clients.
+    * Like `hud_set_flags`, state is only synced on change and resets when a
+      client (re)connects: re-apply it in `register_on_joinplayer` / after
+      respawn to (re)establish it for a (re)connecting client.
+* `get_touch_buttons()` (VOPI only): returns a table of touch button names with
+  boolean values (`true` = visible).
+    * See `set_touch_buttons` for the list of names.
+* `set_block_interaction(blocked)` (VOPI only): when `blocked` is `true`, the
+  player cannot dig, place, punch or use anything in the world.
+    * Enforced server-side (authoritative -- the interaction packet is rejected
+      and any predicted change reverted) and, in the default tap interaction
+      style, also client-side (no dig feedback at all).
+    * Movement, jump, sneak and the touch buttons are unaffected.
+    * Like other player flags, state is only synced on change and resets when a
+      client (re)connects: re-apply it in `register_on_joinplayer` / after
+      respawn.
+* `get_block_interaction()` (VOPI only): returns `true` if world interaction is
+  currently blocked for the player.
 * `hud_set_hotbar_itemcount(count)`: sets amount of items in builtin hotbar
     * `count`: number of items, must be an integer in range [1, 32]
     * If `count` exceeds the `"main"` list size, the list size will be used instead.

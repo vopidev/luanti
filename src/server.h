@@ -374,6 +374,13 @@ public:
 	bool hudRemove(RemotePlayer *player, u32 id);
 	bool hudChange(RemotePlayer *player, u32 id, HudElementStat stat, void *value);
 	bool hudSetFlags(RemotePlayer *player, u32 flags, u32 mask);
+#if IS_VOPI_ENGINE
+	// VOPI: toggle visibility of individual on-screen touch buttons.
+	// flags = hidden bits to set, mask = bits this call touches.
+	bool setTouchButtons(RemotePlayer *player, u32 flags, u32 mask);
+	// VOPI: block/unblock all world interaction (dig/place/punch/use).
+	bool setBlockInteraction(RemotePlayer *player, bool blocked);
+#endif
 	bool hudSetHotbarItemcount(RemotePlayer *player, s32 hotbar_itemcount);
 	void hudSetHotbarImage(RemotePlayer *player, const std::string &name);
 	void hudSetHotbarSelectedImage(RemotePlayer *player, const std::string &name);
@@ -423,6 +430,8 @@ public:
 	void SendPlayerFov(session_t peer_id);
 #if IS_VOPI_ENGINE
 	void SendPlayerViewBobbing(session_t peer_id);
+	void SendSetTouchButtons(session_t peer_id, u32 flags, u32 mask);
+	void SendSetInteractionBlock(session_t peer_id, bool blocked);
 #endif
 	void SendCamera(session_t peer_id, Player *player);
 

@@ -2015,6 +2015,112 @@ int ObjectRef::l_hud_get_flags(lua_State *L)
 	return 1;
 }
 
+#if IS_VOPI_ENGINE
+// VOPI: maps on-screen touch button names to their bit in Player::touch_hidden_mask.
+// The bit index MUST match enum touch_gui_button_id in gui/touchscreenlayout.h
+// (gui/ is client-only, so the names are duplicated here to keep server builds linkable).
+static const EnumString es_TouchGuiButton[] =
+{
+	{1 << 0,  "dig"},
+	{1 << 1,  "place"},
+	{1 << 2,  "jump"},
+	{1 << 3,  "sneak"},
+	{1 << 4,  "zoom"},
+	{1 << 5,  "aux1"},
+	{1 << 6,  "overflow"},
+	{1 << 7,  "chat"},
+	{1 << 8,  "inventory"},
+	{1 << 9,  "drop"},
+	{1 << 10, "exit"},
+	{1 << 11, "fly"},
+	{1 << 12, "fast"},
+	{1 << 13, "noclip"},
+	{1 << 14, "debug"},
+	{1 << 15, "camera"},
+	{1 << 16, "range"},
+	{1 << 17, "minimap"},
+	{1 << 18, "toggle_chat"},
+	// joystick_off/bg/center (ids 19-21) are intentionally not exposed: the
+	// joystick is rendered via a separate path, not the m_buttons mask loop.
+	{0, NULL},
+};
+
+// set_touch_buttons(self, buttons)
+// buttons is a table { name = visible_bool, ... }; false hides the button.
+int ObjectRef::l_set_touch_buttons(lua_State *L)
+{
+	NO_MAP_LOCK_REQUIRED;
+	ObjectRef *ref = checkObject<ObjectRef>(L, 1);
+	RemotePlayer *player = getplayer(ref);
+	if (player == nullptr)
+		return 0;
+
+	u32 flags = 0; // bits to set as hidden
+	u32 mask  = 0; // bits this call touches
+	bool visible;
+
+	const EnumString *esp = es_TouchGuiButton;
+	for (int i = 0; esp[i].str; i++) {
+		if (getboolfield(L, 2, esp[i].str, visible)) {
+			mask |= esp[i].num;
+			if (!visible)
+				flags |= esp[i].num;
+		}
+	}
+	getServer(L)->setTouchButtons(player, flags, mask);
+
+	return 0;
+}
+
+// get_touch_buttons(self)
+int ObjectRef::l_get_touch_buttons(lua_State *L)
+{
+	NO_MAP_LOCK_REQUIRED;
+	ObjectRef *ref = checkObject<ObjectRef>(L, 1);
+	RemotePlayer *player = getplayer(ref);
+	if (player == nullptr)
+		return 0;
+
+	lua_newtable(L);
+	const EnumString *esp = es_TouchGuiButton;
+	for (int i = 0; esp[i].str; i++) {
+		// true = visible (bit not set in the hidden mask)
+		lua_pushboolean(L, (player->touch_hidden_mask & esp[i].num) == 0);
+		lua_setfield(L, -2, esp[i].str);
+	}
+	return 1;
+}
+
+// set_block_interaction(self, blocked)
+// When blocked, the player cannot dig/place/punch/use the world.
+int ObjectRef::l_set_block_interaction(lua_State *L)
+{
+	NO_MAP_LOCK_REQUIRED;
+	ObjectRef *ref = checkObject<ObjectRef>(L, 1);
+	RemotePlayer *player = getplayer(ref);
+	if (player == nullptr)
+		return 0;
+
+	bool blocked = readParam<bool>(L, 2);
+	getServer(L)->setBlockInteraction(player, blocked);
+
+	return 0;
+}
+
+// get_block_interaction(self)
+int ObjectRef::l_get_block_interaction(lua_State *L)
+{
+	NO_MAP_LOCK_REQUIRED;
+	ObjectRef *ref = checkObject<ObjectRef>(L, 1);
+	RemotePlayer *player = getplayer(ref);
+	if (player == nullptr)
+		return 0;
+
+	lua_pushboolean(L, player->block_interaction);
+	return 1;
+}
+#endif
+
 // hud_set_hotbar_itemcount(self, hotbar_itemcount)
 int ObjectRef::l_hud_set_hotbar_itemcount(lua_State *L)
 {
@@ -3018,6 +3124,12 @@ luaL_Reg ObjectRef::methods[] = {
 	luamethod(ObjectRef, hud_get_all),
 	luamethod(ObjectRef, hud_set_flags),
 	luamethod(ObjectRef, hud_get_flags),
+#if IS_VOPI_ENGINE
+	luamethod(ObjectRef, set_touch_buttons),
+	luamethod(ObjectRef, get_touch_buttons),
+	luamethod(ObjectRef, set_block_interaction),
+	luamethod(ObjectRef, get_block_interaction),
+#endif
 	luamethod(ObjectRef, hud_set_hotbar_itemcount),
 	luamethod(ObjectRef, hud_get_hotbar_itemcount),
 	luamethod(ObjectRef, hud_set_hotbar_image),

@@ -113,6 +113,17 @@ public:
 	void hide();
 	void show();
 
+#if IS_VOPI_ENGINE
+	// Hide/show individual buttons. mask bit index = touch_gui_button_id;
+	// bit set = that button is hidden. Re-pushed every frame from game.cpp
+	// so the state survives a TouchControls recreation.
+	void setHiddenButtons(u32 mask);
+
+	// When true, tap-to-dig/place is suppressed (applyContextControls). Re-pushed
+	// every frame from game.cpp so it survives a TouchControls recreation.
+	void setInteractionBlocked(bool blocked);
+#endif
+
 	void resetHotbarRects();
 	void registerHotbarRect(u16 index, const recti &rect);
 	std::optional<u16> getHotbarSelection();
@@ -126,6 +137,13 @@ private:
 	IEventReceiver *m_receiver = nullptr;
 	ISimpleTextureSource *m_texturesource = nullptr;
 	bool m_visible = true;
+
+#if IS_VOPI_ENGINE
+	// Bitmask of hidden buttons (see setHiddenButtons). Default 0 = all visible.
+	u32 m_hidden_mask = 0;
+	// When true, tap-to-dig/place is suppressed. Default false.
+	bool m_interaction_blocked = false;
+#endif
 
 	// changes to these two values are handled in TouchControls::step
 	v2u32 m_screensize;

@@ -66,6 +66,15 @@ void TouchControls::buttonEmitAction(button_info &btn, bool action)
 	}
 }
 
+#if IS_VOPI_ENGINE
+// The VOPI set_touch_buttons Lua API duplicates the touch_gui_button_id ordinals
+// as a name->bit table (es_TouchGuiButton[] in script/lua_api/l_object.cpp),
+// because gui/ is client-only and cannot be included server-side. If this fires,
+// a button id was added/removed — update that table to match (and re-check order).
+static_assert(touch_gui_button_id_END == 22,
+		"touch_gui_button_id changed; update es_TouchGuiButton[] in l_object.cpp");
+#endif
+
 bool TouchControls::buttonsHandlePress(std::vector<button_info> &buttons, size_t pointer_id, IGUIElement *element)
 {
 	if (!element)
@@ -73,6 +82,13 @@ bool TouchControls::buttonsHandlePress(std::vector<button_info> &buttons, size_t
 
 	for (button_info &btn : buttons) {
 		if (btn.gui_button.get() == element) {
+			// A hidden button must never emit an action, even if it was
+			// hit-tested. The overflow-menu press path matches by rect (see
+			// translateEvent), not via getElementFromPoint, so it can match an
+			// invisible button; guard here to cover every press path.
+			if (!btn.gui_button->isVisible())
+				return false;
+
 			// Allow moving the camera with the same finger that holds dig/place.
 			bool absorb = btn.id != dig_id && btn.id != place_id;
 
@@ -697,9 +713,22 @@ void TouchControls::toggleOverflowMenu()
 void TouchControls::updateVisibility()
 {
 	bool regular_visible = m_visible && !m_overflow_open;
-	for (auto &button : m_buttons)
+	for (auto &button : m_buttons) {
+#if IS_VOPI_ENGINE
+		bool hidden = (m_hidden_mask & (1u << button.id)) != 0;
+		button.gui_button->setVisible(regular_visible && !hidden);
+#else
 		button.gui_button->setVisible(regular_visible);
-	m_overflow_btn->setVisible(regular_visible);
+#endif
+	}
+	if (m_overflow_btn) {
+#if IS_VOPI_ENGINE
+		bool overflow_hidden = (m_hidden_mask & (1u << overflow_id)) != 0;
+		m_overflow_btn->setVisible(regular_visible && !overflow_hidden);
+#else
+		m_overflow_btn->setVisible(regular_visible);
+#endif
+	}
 
 	m_joystick_btn_off->setVisible(regular_visible && !m_has_joystick_id);
 	m_joystick_btn_bg->setVisible(regular_visible && m_has_joystick_id);
@@ -707,10 +736,20 @@ void TouchControls::updateVisibility()
 
 	bool overflow_visible = m_visible && m_overflow_open;
 	m_overflow_bg->setVisible(overflow_visible);
-	for (auto &button : m_overflow_buttons)
-		button.gui_button->setVisible(overflow_visible);
-	for (auto &text : m_overflow_button_titles)
-		text->setVisible(overflow_visible);
+	// m_overflow_buttons and m_overflow_button_titles are populated 1:1 in the
+	// same loop (the layout_button_grid callback in applyLayout), so they
+	// share indices.
+	for (size_t i = 0; i < m_overflow_buttons.size(); i++) {
+#if IS_VOPI_ENGINE
+		bool hidden = (m_hidden_mask & (1u << m_overflow_buttons[i].id)) != 0;
+		bool vis = overflow_visible && !hidden;
+#else
+		bool vis = overflow_visible;
+#endif
+		m_overflow_buttons[i].gui_button->setVisible(vis);
+		if (i < m_overflow_button_titles.size())
+			m_overflow_button_titles[i]->setVisible(vis);
+	}
 }
 
 void TouchControls::releaseAll()
@@ -740,10 +779,42 @@ void TouchControls::show()
 	setVisible(true);
 }
 
+#if IS_VOPI_ENGINE
+void TouchControls::setHiddenButtons(u32 mask)
+{
+	if (m_hidden_mask == mask)
+		return;
+
+	m_hidden_mask = mask;
+	updateVisibility();
+}
+
+void TouchControls::setInteractionBlocked(bool blocked)
+{
+	m_interaction_blocked = blocked;
+}
+#endif
+
 void TouchControls::applyContextControls(const TouchInteractionMode &mode)
 {
 	if (m_interaction_style == BUTTONS_CROSSHAIR)
 		return;
+
+#if IS_VOPI_ENGINE
+	// VOPI: when world interaction is blocked, never initiate dig/place. Cancel
+	// any in-progress tap AND mark the held finger as "moved" -- otherwise a
+	// finger held across the unblock transition would be promoted to a long tap
+	// and fire a stray dig/place the instant control returns. (In
+	// BUTTONS_CROSSHAIR style dig/place are real buttons handled above; there the
+	// server-side gate and hiding those buttons apply.)
+	if (m_interaction_blocked) {
+		m_tap_state = TapState::None;
+		m_dig_pressed_until = 0;
+		m_place_pressed_until = 0;
+		m_move_has_really_moved = true;
+		return;
+	}
+#endif
 
 	// Since the pointed thing has already been determined when this function
 	// is called, we cannot use this function to update the shootline.
