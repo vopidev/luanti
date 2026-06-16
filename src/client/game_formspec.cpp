@@ -309,7 +309,7 @@ void GameFormSpec::showNodeFormspec(const std::string &formspec, const v3s16 &no
 	m_formspec->setFormSpec(formspec, inventoryloc);
 }
 
-void GameFormSpec::showPlayerInventory(const std::string *fs_override)
+bool GameFormSpec::showPlayerInventory(const std::string *fs_override)
 {
 	/*
 	 * Don't permit to open inventory is CAO or player doesn't exists.
@@ -318,7 +318,7 @@ void GameFormSpec::showPlayerInventory(const std::string *fs_override)
 
 	LocalPlayer *player = m_client->getEnv().getLocalPlayer();
 	if (!player || !player->getCAO())
-		return;
+		return false;
 
 	infostream << "Game: Launching inventory" << std::endl;
 
@@ -337,11 +337,11 @@ void GameFormSpec::showPlayerInventory(const std::string *fs_override)
 
 	// If prevented by Client-Side Mods
 	if (m_client->modsLoaded() && m_client->getScript()->on_inventory_open(m_client->getInventory(inventoryloc)))
-		return;
+		return false;
 
 	// Empty formspec -> do not show.
 	if (fs_src->getForm().empty())
-		return;
+		return false;
 
 	TextDest *txt_dst = new TextDestPlayerInventory(m_client);
 
@@ -351,6 +351,7 @@ void GameFormSpec::showPlayerInventory(const std::string *fs_override)
 
 	m_formspec->setFormSpec(fs_src->getForm(), inventoryloc);
 	fs_src.release(); // owned by GUIFormSpecMenu
+	return true;
 }
 
 #define SIZE_TAG "size[11,5.5,true]" // Fixed size (ignored in touchscreen mode)

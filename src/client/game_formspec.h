@@ -35,7 +35,9 @@ struct GameFormSpec
 	void showNodeFormspec(const std::string &formspec, const v3s16 &nodepos);
 	/// If `!fs_override`: Uses `player->inventory_formspec`.
 	/// If ` fs_override`: Uses a temporary formspec until an update is received.
-	void showPlayerInventory(const std::string *fs_override);
+	/// Returns true if the inventory actually opened (false on early-return
+	/// paths: no player/CAO, blocked by CSM, or empty formspec).
+	bool showPlayerInventory(const std::string *fs_override);
 	void showDeathFormspecLegacy();
 	// Shows the hardcoded "main" pause menu.
 	void showPauseMenu();

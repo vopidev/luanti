@@ -1479,17 +1479,22 @@ void Game::processKeyInput()
 		if (g_settings->getBool("continuous_forward"))
 			toggleAutoforward();
 	} else if (wasKeyDown(KeyType::INVENTORY)) {
-		m_game_formspec.showPlayerInventory(nullptr);
 #if IS_VOPI_ENGINE
 		// VOPI: notify server-side Lua that the inventory/tablet was opened, so it
 		// can rebuild the formspec with fresh data and play an open sound. Reuses
 		// the formspec-fields channel (empty form name), like __vopi_hud_click.
 		// Covers both the desktop key and the touch inventory button (both reach
-		// here). The client still opens the cached formspec above, so the open is
-		// instant; the refresh live-updates it one push later.
-		StringMap inv_open_fields;
-		inv_open_fields["__vopi_inventory_open"] = "1";
-		client->sendInventoryFields("", inv_open_fields);
+		// here). Only signal if the inventory actually opened — showPlayerInventory
+		// early-returns when there is no player/CAO, a CSM blocked it, or the
+		// formspec is empty. The client opens the cached formspec instantly; the
+		// refresh live-updates it one push later.
+		if (m_game_formspec.showPlayerInventory(nullptr)) {
+			StringMap inv_open_fields;
+			inv_open_fields["__vopi_inventory_open"] = "1";
+			client->sendInventoryFields("", inv_open_fields);
+		}
+#else
+		m_game_formspec.showPlayerInventory(nullptr);
 #endif
 	} else if (input->cancelPressed()) {
 #if defined(__ANDROID__) || defined(__IOS__)
