@@ -30,8 +30,25 @@ void OGLBufferObject::upload(const void *data, size_t size, size_t offset,
 		assert(offset == 0);
 		GL.BufferData(m_target, size, data, usage);
 		m_size = size;
+		m_usage = usage;
 	} else {
+#if defined(_IRR_IOS_PLATFORM_)
+		// Buffer rename pattern: on Apple's GL→Metal translation layer
+		// BufferSubData can stall the CPU on gldFinishObject while the
+		// GPU is still using the buffer for a previous frame. For full
+		// rewrites, calling BufferData with the same size hints to the
+		// driver that the old contents are not needed — it hands us a
+		// fresh allocation and frees the old one once the GPU is done.
+		// Other GL drivers already implement buffer ghosting in hardware
+		// so this is iOS-only.
+		if (offset == 0 && size == m_size) {
+			GL.BufferData(m_target, size, data, m_usage);
+		} else {
+			GL.BufferSubData(m_target, offset, size, data);
+		}
+#else
 		GL.BufferSubData(m_target, offset, size, data);
+#endif
 	}
 
 	GL.BindBuffer(m_target, 0);

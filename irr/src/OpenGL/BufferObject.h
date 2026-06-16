@@ -55,6 +55,7 @@ private:
 
 	GLuint m_name = 0;
 	size_t m_size = 0;
+	GLenum m_usage = 0;
 	Target m_target;
 };
 
