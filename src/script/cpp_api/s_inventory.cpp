@@ -87,9 +87,18 @@ int ScriptApiDetached::detached_inventory_AllowTake(
 	lua_pushinteger(L, ma.from_i + 1);       // index
 	LuaItemStack::create(L, stack);          // stack
 	objectrefGetOrCreate(L, player);         // player
-	InvRef::create(L, ma.to_inv);            // to_inv
-	lua_pushstring(L, ma.to_list.c_str());   // to_list
-	lua_pushinteger(L, ma.to_i + 1);         // to_index (1-based for Lua)
+	// On drop (IDropAction) there is no destination: to_inv is UNDEFINED,
+	// to_list empty and to_i == -1. Pass nil for all three so Lua can tell a
+	// drop from a real move instead of seeing a bogus to_index == 0.
+	if (ma.to_inv.type != InventoryLocation::UNDEFINED) {
+		InvRef::create(L, ma.to_inv);            // to_inv
+		lua_pushstring(L, ma.to_list.c_str());   // to_list
+		lua_pushinteger(L, ma.to_i + 1);         // to_index (1-based for Lua)
+	} else {
+		lua_pushnil(L);                          // to_inv (drop)
+		lua_pushnil(L);                          // to_list (drop)
+		lua_pushnil(L);                          // to_index (drop)
+	}
 	PCALL_RES(lua_pcall(L, 8, 1, error_handler));
 #else
 	// Call function(inv, listname, index, stack, player)
@@ -178,9 +187,17 @@ void ScriptApiDetached::detached_inventory_OnTake(
 	lua_pushinteger(L, ma.from_i + 1);       // index
 	LuaItemStack::create(L, stack);          // stack
 	objectrefGetOrCreate(L, player);         // player
-	InvRef::create(L, ma.to_inv);            // to_inv
-	lua_pushstring(L, ma.to_list.c_str());   // to_list
-	lua_pushinteger(L, ma.to_i + 1);         // to_index (1-based for Lua)
+	// See allow_take above: a drop has no destination, so pass nil for to_*
+	// rather than a bogus to_index == 0 / UNDEFINED inventory.
+	if (ma.to_inv.type != InventoryLocation::UNDEFINED) {
+		InvRef::create(L, ma.to_inv);            // to_inv
+		lua_pushstring(L, ma.to_list.c_str());   // to_list
+		lua_pushinteger(L, ma.to_i + 1);         // to_index (1-based for Lua)
+	} else {
+		lua_pushnil(L);                          // to_inv (drop)
+		lua_pushnil(L);                          // to_list (drop)
+		lua_pushnil(L);                          // to_index (drop)
+	}
 	PCALL_RES(lua_pcall(L, 8, 0, error_handler));
 #else
 	// Call function(inv, listname, index, stack, player)
