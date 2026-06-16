@@ -609,6 +609,12 @@ void LocalPlayer::applyControl(float dtime, Environment *env)
 		if (control.aux1) {
 			if (free_move) {
 				// In free movement mode, aux1 descends
+				// VOPI: Don't descend into liquid while flying
+#if IS_VOPI_ENGINE
+				if (in_liquid || in_liquid_stable) {
+					// Block descent — hover at water surface
+				} else
+#endif
 				if (fast_move)
 					speedV.Y = -speed_fast;
 				else
@@ -641,6 +647,12 @@ void LocalPlayer::applyControl(float dtime, Environment *env)
 			// Descend player in freemove mode, liquids and climbable nodes by sneak key, only if jump key is released
 			if (free_move) {
 				// In free movement mode, sneak descends
+				// VOPI: Don't descend into liquid while flying
+#if IS_VOPI_ENGINE
+				if (in_liquid || in_liquid_stable) {
+					// Block descent — hover at water surface
+				} else
+#endif
 				if (fast_move && (control.aux1 || always_fly_fast))
 					speedV.Y = -speed_fast;
 				else
@@ -1240,14 +1252,48 @@ void LocalPlayer::handleAutojump(f32 dtime, Environment *env,
 	if (!horizontal_collision)
 		return;
 
+	const NodeDefManager *ndef = env->getGameDef()->ndef();
+	bool is_position_valid;
+
+#if IS_VOPI_ENGINE
+	// Check that obstacle is not too high to jump over.
+	// At the wall's XZ position, check if the node one above the player's
+	// feet level is walkable. If so, the wall is at least 2 nodes high
+	// relative to the player and cannot be jumped over.
+	// Use initial_position (before collision/step-height resolution) so that
+	// step-height elevation from adjacent short obstacles doesn't shift the check.
+	//
+	// Also check headroom at landing position: if the obstacle is 1 block high
+	// but the node at feet+2 is walkable, there's not enough vertical space
+	// for the player (~1.8 blocks tall) to stand on top.
+	{
+		v3s16 feet_pos = floatToInt(initial_position, BS);
+		for (const auto &colinfo : result.collisions) {
+			if (colinfo.type == COLLISION_NODE && colinfo.axis != COLLISION_AXIS_Y) {
+				v3s16 check_xz(colinfo.node_p.X, 0, colinfo.node_p.Z);
+
+				// Check wall height: if feet+1 is walkable, wall is 2+ blocks
+				MapNode n = env->getMap().getNode(
+					v3s16(check_xz.X, feet_pos.Y + 1, check_xz.Z), &is_position_valid);
+				if (is_position_valid && ndef->get(n).walkable)
+					return; // obstacle too high
+
+				// Check landing headroom: if feet+2 is walkable, player can't fit
+				n = env->getMap().getNode(
+					v3s16(check_xz.X, feet_pos.Y + 2, check_xz.Z), &is_position_valid);
+				if (is_position_valid && ndef->get(n).walkable)
+					return; // not enough headroom on top of obstacle
+			}
+		}
+	}
+#endif
+
 	// check for nodes above
 	v3f headpos_min = m_position + m_collisionbox.MinEdge * 0.99f;
 	v3f headpos_max = m_position + m_collisionbox.MaxEdge * 0.99f;
 	headpos_min.Y = headpos_max.Y; // top face of collision box
 	v3s16 ceilpos_min = floatToInt(headpos_min, BS) + v3s16(0, 1, 0);
 	v3s16 ceilpos_max = floatToInt(headpos_max, BS) + v3s16(0, 1, 0);
-	const NodeDefManager *ndef = env->getGameDef()->ndef();
-	bool is_position_valid;
 	for (s16 z = ceilpos_min.Z; z <= ceilpos_max.Z; ++z) {
 		for (s16 x = ceilpos_min.X; x <= ceilpos_max.X; ++x) {
 			MapNode n = env->getMap().getNode(v3s16(x, ceilpos_max.Y, z), &is_position_valid);
