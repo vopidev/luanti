@@ -320,8 +320,35 @@ void LocalPlayer::move(f32 dtime, Environment *env,
 
 	// Player object property step height is multiplied by BS in
 	// /src/script/common/c_content.cpp and /src/content_sao.cpp
+#if IS_VOPI_ENGINE
+	// Allow full step height when swimming at the water surface,
+	// so the player can exit water onto land.
+	// "At surface" = player is in liquid but the node at head level is not liquid.
+	bool at_liquid_surface = false;
+	if (in_liquid && !touching_ground) {
+		v3s16 head_pos = floatToInt(position + v3f(0.0f,
+			m_collisionbox.MaxEdge.Y, 0.0f), BS);
+		MapNode head_node = map->getNode(head_pos, &is_valid_position);
+		if (is_valid_position)
+			at_liquid_surface = !nodemgr->get(head_node.getContent()).liquid_move_physics;
+	}
+	float player_stepheight;
+	if (m_cao == nullptr) {
+		player_stepheight = 0.0f;
+	} else if (at_liquid_surface) {
+		// Larger step height to climb out of water onto shore.
+		// Must exceed NECK_OFFSET (~1.1 blocks) since the player's feet
+		// are that far below the water surface when floating.
+		player_stepheight = 1.2f * BS;
+	} else if (touching_ground) {
+		player_stepheight = m_cao->getStepHeight();
+	} else {
+		player_stepheight = 0.2f * BS;
+	}
+#else
 	float player_stepheight = (m_cao == nullptr) ? 0.0f :
 		(touching_ground ? m_cao->getStepHeight() : (0.2f * BS));
+#endif
 
 	// (BS * 0.6f) is the default stepheight while standing on ground
 	const float sneak_stepheight = 0.6f * BS;
@@ -619,11 +646,17 @@ void LocalPlayer::applyControl(float dtime, Environment *env)
 				else
 					speedV.Y = -speed_walk;
 			} else if ((in_liquid || in_liquid_stable) && !m_disable_descend) {
+#if IS_VOPI_ENGINE
+				if (!physics_override.disable_swim_down) {
+#endif
 				if (fast_climb)
 					speedV.Y = -speed_fast;
 				else
 					speedV.Y = -speed_walk;
 				swimming_vertical = true;
+#if IS_VOPI_ENGINE
+				}
+#endif
 			} else if (is_climbing && !m_disable_descend) {
 				if (fast_climb)
 					speedV.Y = -speed_fast;
@@ -659,7 +692,12 @@ void LocalPlayer::applyControl(float dtime, Environment *env)
 						speedV.Y = speed_walk;
 				}
 			}
+#if IS_VOPI_ENGINE
+		// VOPI: Don't allow ground jump in liquid when swim_up is disabled
+		} else if (m_can_jump && !(in_liquid && physics_override.disable_swim_up)) {
+#else
 		} else if (m_can_jump) {
+#endif
 			/*
 				NOTE: The d value in move() affects jump height by
 				raising the height at which the jump speed is kept
@@ -672,11 +710,17 @@ void LocalPlayer::applyControl(float dtime, Environment *env)
 				m_client->getEventManager()->put(new SimpleTriggerEvent(MtEvent::PLAYER_JUMP));
 			}
 		} else if (in_liquid && !m_disable_jump && !control.sneak) {
+#if IS_VOPI_ENGINE
+			if (!physics_override.disable_swim_up) {
+#endif
 			if (fast_climb)
 				speedV.Y = speed_fast;
 			else
 				speedV.Y = speed_walk;
 			swimming_vertical = true;
+#if IS_VOPI_ENGINE
+			}
+#endif
 		} else if (is_climbing && !m_disable_jump && !control.sneak) {
 			if (fast_climb)
 				speedV.Y = speed_fast;

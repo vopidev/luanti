@@ -1762,6 +1762,10 @@ int ObjectRef::l_set_physics_override(lua_State *L)
 	getfloatfield(L, 2, "speed_fast", phys.speed_fast);
 	getfloatfield(L, 2, "acceleration_fast", phys.acceleration_fast);
 	getfloatfield(L, 2, "speed_walk", phys.speed_walk);
+#if IS_VOPI_ENGINE
+	getboolfield(L, 2, "disable_swim_up", phys.disable_swim_up);
+	getboolfield(L, 2, "disable_swim_down", phys.disable_swim_down);
+#endif
 
 	if (phys != old)
 		playersao->m_physics_override_sent = false;
@@ -1811,6 +1815,12 @@ int ObjectRef::l_get_physics_override(lua_State *L)
 	lua_setfield(L, -2, "acceleration_fast");
 	lua_pushnumber(L, phys.speed_walk);
 	lua_setfield(L, -2, "speed_walk");
+#if IS_VOPI_ENGINE
+	lua_pushboolean(L, phys.disable_swim_up);
+	lua_setfield(L, -2, "disable_swim_up");
+	lua_pushboolean(L, phys.disable_swim_down);
+	lua_setfield(L, -2, "disable_swim_down");
+#endif
 	return 1;
 }
 
