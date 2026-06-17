@@ -1993,7 +1993,7 @@ Displays an image on the HUD.
 * `text`: The name of the texture that is displayed.
 * `alignment`: The alignment of the image.
 * `offset`: offset in pixels from position.
-* `middle`: 9-slice (9-patch) definition table `{x, y, w, h}` for scalable images.
+* `middle`: 9-slice (9-patch) definition table `{x=, y=, w=, h=}` for scalable images.
   When set, the image is rendered using 9-slice scaling, which preserves corners
   and stretches only the middle regions. This is useful for UI elements like
   buttons, panels, and notification backgrounds.

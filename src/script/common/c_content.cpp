@@ -2451,14 +2451,14 @@ void read_hud_element(lua_State *L, HudElement *elem)
 #if IS_VOPI_ENGINE
 	lua_getfield(L, 2, "middle");
 	if (lua_istable(L, -1)) {
-		lua_rawgeti(L, -1, 1); s32 mx = lua_tointeger(L, -1); lua_pop(L, 1);
-		lua_rawgeti(L, -1, 2); s32 my = lua_tointeger(L, -1); lua_pop(L, 1);
-		lua_rawgeti(L, -1, 3); s32 mw = lua_tointeger(L, -1); lua_pop(L, 1);
-		lua_rawgeti(L, -1, 4); s32 mh = lua_tointeger(L, -1); lua_pop(L, 1);
+		// 9-slice middle rect uses key-style fields {x=, y=, w=, h=} to match
+		// the documented API (lua_api.md) and Minetest's vector convention.
 		// Clamp to a sane range to avoid signed-overflow in the 9-slice math.
-		elem->middle = core::rect<s32>(rangelim(mx, -4096, 4096),
-				rangelim(my, -4096, 4096), rangelim(mw, -4096, 4096),
-				rangelim(mh, -4096, 4096));
+		elem->middle = core::rect<s32>(
+				rangelim(getintfield_default(L, -1, "x", 0), -4096, 4096),
+				rangelim(getintfield_default(L, -1, "y", 0), -4096, 4096),
+				rangelim(getintfield_default(L, -1, "w", 0), -4096, 4096),
+				rangelim(getintfield_default(L, -1, "h", 0), -4096, 4096));
 	}
 	lua_pop(L, 1);
 	elem->middle_scale = getfloatfield_default(L, 2, "middle_scale", 1.0f);
@@ -2533,13 +2533,13 @@ void push_hud_element(lua_State *L, HudElement *elem)
 #if IS_VOPI_ENGINE
 	lua_newtable(L);
 	lua_pushinteger(L, elem->middle.UpperLeftCorner.X);
-	lua_rawseti(L, -2, 1);
+	lua_setfield(L, -2, "x");
 	lua_pushinteger(L, elem->middle.UpperLeftCorner.Y);
-	lua_rawseti(L, -2, 2);
+	lua_setfield(L, -2, "y");
 	lua_pushinteger(L, elem->middle.LowerRightCorner.X);
-	lua_rawseti(L, -2, 3);
+	lua_setfield(L, -2, "w");
 	lua_pushinteger(L, elem->middle.LowerRightCorner.Y);
-	lua_rawseti(L, -2, 4);
+	lua_setfield(L, -2, "h");
 	lua_setfield(L, -2, "middle");
 
 	lua_pushnumber(L, elem->middle_scale);
@@ -2617,11 +2617,12 @@ bool read_hud_change(lua_State *L, HudElementStat &stat, HudElement *elem, void 
 #if IS_VOPI_ENGINE
 		case HUD_STAT_MIDDLE:
 			if (lua_istable(L, 4)) {
-				lua_rawgeti(L, 4, 1); s32 mx = lua_tointeger(L, -1); lua_pop(L, 1);
-				lua_rawgeti(L, 4, 2); s32 my = lua_tointeger(L, -1); lua_pop(L, 1);
-				lua_rawgeti(L, 4, 3); s32 mw = lua_tointeger(L, -1); lua_pop(L, 1);
-				lua_rawgeti(L, 4, 4); s32 mh = lua_tointeger(L, -1); lua_pop(L, 1);
-				elem->middle = core::rect<s32>(mx, my, mw, mh);
+				// key-style {x=, y=, w=, h=}; clamp to avoid 9-slice overflow.
+				elem->middle = core::rect<s32>(
+						rangelim(getintfield_default(L, 4, "x", 0), -4096, 4096),
+						rangelim(getintfield_default(L, 4, "y", 0), -4096, 4096),
+						rangelim(getintfield_default(L, 4, "w", 0), -4096, 4096),
+						rangelim(getintfield_default(L, 4, "h", 0), -4096, 4096));
 			}
 			*value = &elem->middle;
 			break;
