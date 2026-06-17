@@ -1605,21 +1605,13 @@ void GenericCAO::processMessage(const std::string &data)
 
 #if IS_VOPI_ENGINE
 		// VOPI: disable swim controls for custom swimming behavior
-		bool override_disable_swim_up = readU8(is);
-		if (is.eof()) {
-			override_disable_swim_up = false;
-		}
-		bool override_disable_swim_down = readU8(is);
-		if (is.eof()) {
-			override_disable_swim_down = false;
+		if (canRead(is)) {
+			phys.disable_swim_up = readU8(is);
+			phys.disable_swim_down = readU8(is);
 		}
 #endif
 
 		if (m_is_local_player) {
-#if IS_VOPI_ENGINE
-			phys.disable_swim_up = override_disable_swim_up;
-			phys.disable_swim_down = override_disable_swim_down;
-#endif
 			m_env->getLocalPlayer()->physics_override = phys;
 		}
 	} else if (cmd == AO_CMD_SET_ANIMATION) {

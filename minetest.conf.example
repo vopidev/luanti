@@ -1303,6 +1303,11 @@
 #    type: int min: 1 max: 65535
 # chat_message_limit_trigger_kick = 50
 
+#    [VOPI Engine] Maximum age of chat messages in seconds before they auto-disappear.
+#    Useful for mobile devices to prevent chat clutter.
+#    type: float min: 5 max: 300
+# chat_message_max_age = 60.0
+
 #    [VOPI Engine] Default player name for singleplayer mode.
 #    Used automatically when starting a singleplayer game. If empty or
 #    invalid, it falls back to "singleplayer".

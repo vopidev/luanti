@@ -47,7 +47,7 @@ void sanity_check_fn(const char *assertion, const char *file,
 		"\" in file: " + std::string(file) + ":" + std::to_string(line) +
 		" (" + std::string(function) + ")";
 	porting::finishGame(capture);
-	//std::terminate(); // Add this line to ensure the function doesn't return CHECK
+	std::terminate();
 #else
 	abort();
 #endif
@@ -70,7 +70,7 @@ void fatal_error_fn(const char *msg, const char *file,
 	"\" in file: " + std::string(file) + ":" + std::to_string(line) +
 	" (" + std::string(function) + ")";
 	porting::finishGame(capture);
-	//std::terminate(); // Add this line to ensure the function doesn't return
+	std::terminate();
 #else
 	abort();
 #endif

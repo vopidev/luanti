@@ -2795,12 +2795,9 @@ void Game::processPlayerInteraction(f32 dtime, bool show_hud)
 #if IS_VOPI_ENGINE
 	// Reset tap state when the wielded item changes (prevents dig from starting
 	// after eating food while the finger is still held).
-	{
-		static std::string prev_wielded_item_name;
-		if (g_touchcontrols && tool_item.name != prev_wielded_item_name) {
-			g_touchcontrols->resetTapState();
-			prev_wielded_item_name = tool_item.name;
-		}
+	if (g_touchcontrols && tool_item.name != prev_wielded_item_name) {
+		g_touchcontrols->resetTapState();
+		prev_wielded_item_name = tool_item.name;
 	}
 #endif
 
