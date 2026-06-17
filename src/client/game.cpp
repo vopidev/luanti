@@ -3862,6 +3862,9 @@ void the_game(volatile std::sig_atomic_t *kill,
 		error_message = strgettext("A serialization error occurred:") +"\n"
 				+ e.what() + "\n\n" + ver_err;
 		errorstream << error_message << std::endl;
+#if IS_VOPI_ENGINE && (defined(__ANDROID__) || defined(__IOS__))
+		porting::handleError("SerializationError", error_message);
+#endif
 	} catch (ServerError &e) {
 		error_message = e.what();
 		errorstream << "ServerError: " << error_message << std::endl;
@@ -3880,13 +3883,13 @@ void the_game(volatile std::sig_atomic_t *kill,
 		error_message = gettext("Connection error (timed out?)");
 		errorstream << error_message << std::endl;
 #if IS_VOPI_ENGINE && (defined(__ANDROID__) || defined(__IOS__))
-		porting::handleError("PeerNotFoundException: ", error_message);
+		porting::handleError("PeerNotFoundException", error_message);
 #endif
 	} catch (ShaderException &e) {
 		error_message = e.what();
 		errorstream << error_message << std::endl;
 #if IS_VOPI_ENGINE && (defined(__ANDROID__) || defined(__IOS__))
-		porting::handleError("ShaderException: ", error_message);
+		porting::handleError("ShaderException", error_message);
 #endif
 	}
 
