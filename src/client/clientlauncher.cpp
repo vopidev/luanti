@@ -506,7 +506,11 @@ bool ClientLauncher::launch_game(std::string &error_message,
 
 	// If using simple singleplayer mode, override
 	if (start_data.isSinglePlayer()) {
+#if IS_VOPI_ENGINE
+		start_data.name = g_settings->get("default_player_name");
+#else
 		start_data.name = "singleplayer";
+#endif
 		start_data.password = "";
 		start_data.socket_port = myrand_range(49152, 65535);
 	} else {

@@ -572,8 +572,33 @@ void set_default_settings()
 	settings->setDefault("touch_punch_gesture", "short_tap");
 	settings->setDefault("clickable_chat_weblinks", "true");
 
+#if IS_VOPI_ENGINE
+	// Game defaults
+	settings->setDefault("default_game", "kawaii_craft");
+	settings->setDefault("default_stack_max", "64");
+	settings->setDefault("default_player_name", "");
+#ifndef NDEBUG
+	settings->setDefault("debug_mode", "true");
+#else
+	settings->setDefault("debug_mode", "false");
+#endif
+
+	// Main menu appearance
+	settings->setDefault("main_menu_bg", "bg_1080.png");
+
+	// Audio
+	settings->setDefault("mute_music", "false");
+	settings->setDefault("mute_ui_sound", "false");
+
+	// HUD
+	settings->setDefault("hud_hotbar_padding", "5");
+
+	// Chat
+	settings->setDefault("chat_message_max_age", "60.0");
+#endif
+
 	// Altered settings for Android
-#ifdef __ANDROID__
+#if defined(__ANDROID__) && !IS_VOPI_ENGINE
 	settings->setDefault("screen_w", "0");
 	settings->setDefault("screen_h", "0");
 	settings->setDefault("performance_tradeoffs", "true");
