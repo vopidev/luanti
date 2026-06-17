@@ -1840,7 +1840,11 @@ void GUIFormSpecMenu::parseLabel(parserData* data, const std::string &element)
 				v2s32 pos = getRealCoordinateBasePos(v_pos);
 
 				// Labels are positioned by their center, not their top.
+#if IS_VOPI_ENGINE
+				pos.Y += (((float) imgsize.Y) / -2) + (((float) imgsize.Y) * i / 3.5f);
+#else
 				pos.Y += (((float) imgsize.Y) / -2) + (((float) imgsize.Y) * i / 2);
+#endif
 
 				rect = core::rect<s32>(
 					pos.X, pos.Y,

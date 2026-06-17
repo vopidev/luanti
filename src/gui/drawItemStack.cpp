@@ -36,6 +36,23 @@ void drawItemStack(
 {
 	static MeshTimeInfo rotation_time_infos[IT_ROT_NONE];
 
+#if IS_VOPI_ENGINE
+	// Cache padding settings — read from settings only once at first call.
+	// Values are in percent, clamped to 0-90 to avoid div-by-zero / inverted
+	// scale in the projection below.
+	static bool padding_settings_loaded = false;
+	static f32 mesh_icon_padding_percent = 5.0f;
+	static f32 image_icon_padding_percent = 5.0f;
+
+	if (!padding_settings_loaded) {
+		mesh_icon_padding_percent = rangelim(
+				g_settings->getFloat("mesh_icon_padding_percent"), 0.0f, 90.0f);
+		image_icon_padding_percent = rangelim(
+				g_settings->getFloat("image_icon_padding_percent"), 0.0f, 90.0f);
+		padding_settings_loaded = true;
+	}
+#endif
+
 	if (item.empty()) {
 		if (rotation_kind < IT_ROT_NONE && rotation_kind != IT_ROT_OTHER) {
 			rotation_time_infos[rotation_kind].mesh = NULL;
@@ -84,13 +101,33 @@ void drawItemStack(
 		core::matrix4 oldProjMat = driver->getTransform(video::ETS_PROJECTION);
 		core::matrix4 oldViewMat = driver->getTransform(video::ETS_VIEW);
 
+#if IS_VOPI_ENGINE
+		// Convert percent to a projection scale (5% -> 0.05). Clamped above.
+		f32 mesh_padding = mesh_icon_padding_percent / 100.0f;
+		f32 width_factor = 2.0f / (1.0f - mesh_padding);
+		f32 height_factor = 2.0f / (1.0f - mesh_padding);
+#endif
+
 		core::matrix4 ProjMatrix;
+#if IS_VOPI_ENGINE
+		ProjMatrix.buildProjectionMatrixOrthoLH(width_factor, height_factor, -1.0f, 100.0f);
+#else
 		ProjMatrix.buildProjectionMatrixOrthoLH(2.0f, 2.0f, -1.0f, 100.0f);
+#endif
 
 		core::matrix4 ViewMatrix;
+#if IS_VOPI_ENGINE
+		if (viewrect.getHeight() <= 0 || viewrect.getWidth() <= 0)
+			return; // skip rendering if the cutoff area is empty
+#endif
 		ViewMatrix.buildProjectionMatrixOrthoLH(
+#if IS_VOPI_ENGINE
+			width_factor * viewrect.getWidth() / rect.getWidth(),
+			height_factor * viewrect.getHeight() / rect.getHeight(),
+#else
 			2.0f * viewrect.getWidth() / rect.getWidth(),
 			2.0f * viewrect.getHeight() / rect.getHeight(),
+#endif
 			-1.0f,
 			100.0f);
 		ViewMatrix.setTranslation(core::vector3df(
@@ -173,11 +210,30 @@ void drawItemStack(
 				return;
 		}
 
+#if IS_VOPI_ENGINE
+		// Inset the 2D inventory image by the configured padding percent.
+		f32 avg_slot_size = (rect.getWidth() + rect.getHeight()) / 2.0f;
+		f32 image_padding_px = avg_slot_size * (image_icon_padding_percent / 100.0f);
+
+		const core::dimension2d texture_dim = inventory_texture->getOriginalSize();
+		const core::rect<s32> source_rect(0, 0, texture_dim.Width, texture_dim.Height);
+		const core::rect<s32> dest_rect(
+			rect.UpperLeftCorner.X + image_padding_px,
+			rect.UpperLeftCorner.Y + image_padding_px,
+			rect.LowerRightCorner.X - image_padding_px,
+			rect.LowerRightCorner.Y - image_padding_px
+		);
+#endif
+
 		const video::SColor colors[] = { color, color, color, color };
 
+#if IS_VOPI_ENGINE
+		draw2DImageFilterScaled(driver, inventory_texture, dest_rect, source_rect, clip, colors, true);
+#else
 		draw2DImageFilterScaled(driver, inventory_texture, rect,
 			core::rect<s32>({0, 0}, core::dimension2di(inventory_texture->getOriginalSize())),
 			clip, colors, true);
+#endif
 
 		draw_overlay = true;
 	}

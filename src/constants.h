@@ -98,7 +98,11 @@
 // the file attempting to ensure a unique filename
 #define SCREENSHOT_MAX_SERIAL_TRIES 1000
 
+#if IS_VOPI_ENGINE && (defined(__ANDROID__) || defined(__IOS__))
+#define TTF_DEFAULT_FONT_SIZE (14)
+#else
 #define TTF_DEFAULT_FONT_SIZE (16)
+#endif
 
 // Minimum texture size enforced/checked for enabling linear filtering
 // This serves as the minimum for `texture_min_size`.
