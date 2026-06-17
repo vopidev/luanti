@@ -2368,6 +2368,10 @@ void Game::handleClientEvent_HudAdd(ClientEvent *event, CameraOrientation *cam)
 	e->z_index   = event->hudadd->z_index;
 	e->text2     = event->hudadd->text2;
 	e->style     = event->hudadd->style;
+#if IS_VOPI_ENGINE
+	e->middle       = event->hudadd->middle;
+	e->middle_scale = event->hudadd->middle_scale;
+#endif
 	m_hud_server_to_client[server_id] = player->addHud(e);
 
 	delete event->hudadd;
@@ -2435,6 +2439,10 @@ void Game::handleClientEvent_HudChange(ClientEvent *event, CameraOrientation *ca
 		CASE_SET(HUD_STAT_TEXT2, text2, sdata);
 
 		CASE_SET(HUD_STAT_STYLE, style, data);
+
+#if IS_VOPI_ENGINE
+		CASE_SET(HUD_STAT_MIDDLE, middle, rectdata);
+#endif
 
 		case HudElementStat_END:
 			break;

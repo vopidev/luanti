@@ -177,7 +177,11 @@ void draw2DImageFilterScaled(video::IVideoDriver *driver, video::ITexture *txr,
 void draw2DImage9Slice(video::IVideoDriver *driver, video::ITexture *texture,
 		const core::rect<s32> &destrect, const core::rect<s32> &srcrect,
 		const core::rect<s32> &middlerect, const core::rect<s32> *cliprect,
+#if IS_VOPI_ENGINE
+		const video::SColor *const colors, f32 border_scale)
+#else
 		const video::SColor *const colors)
+#endif
 {
 	// `-x` is interpreted as `w - x`
 	core::rect<s32> middle = middlerect;
@@ -187,8 +191,22 @@ void draw2DImage9Slice(video::IVideoDriver *driver, video::ITexture *texture,
 	if (middlerect.LowerRightCorner.Y < 0)
 		middle.LowerRightCorner.Y += srcrect.getHeight();
 
+#if IS_VOPI_ENGINE
+	// Source border sizes in texture pixels
+	s32 src_left   = middle.UpperLeftCorner.X;
+	s32 src_top    = middle.UpperLeftCorner.Y;
+	s32 src_right  = srcrect.getWidth() - middle.LowerRightCorner.X;
+	s32 src_bottom = srcrect.getHeight() - middle.LowerRightCorner.Y;
+
+	// Destination border sizes scaled by border_scale
+	s32 dest_left   = (s32)(src_left   * border_scale);
+	s32 dest_top    = (s32)(src_top    * border_scale);
+	s32 dest_right  = (s32)(src_right  * border_scale);
+	s32 dest_bottom = (s32)(src_bottom * border_scale);
+#else
 	core::vector2di lower_right_offset = core::vector2di(srcrect.getWidth(),
 			srcrect.getHeight()) - middle.LowerRightCorner;
+#endif
 
 	for (int y = 0; y < 3; ++y) {
 		for (int x = 0; x < 3; ++x) {
@@ -197,39 +215,73 @@ void draw2DImage9Slice(video::IVideoDriver *driver, video::ITexture *texture,
 
 			switch (x) {
 			case 0:
+#if IS_VOPI_ENGINE
+				dest.LowerRightCorner.X = destrect.UpperLeftCorner.X + dest_left;
+				src.LowerRightCorner.X = srcrect.UpperLeftCorner.X + src_left;
+#else
 				dest.LowerRightCorner.X = destrect.UpperLeftCorner.X + middle.UpperLeftCorner.X;
 				src.LowerRightCorner.X = srcrect.UpperLeftCorner.X + middle.UpperLeftCorner.X;
+#endif
 				break;
 
 			case 1:
+#if IS_VOPI_ENGINE
+				dest.UpperLeftCorner.X += dest_left;
+				dest.LowerRightCorner.X -= dest_right;
+				src.UpperLeftCorner.X += src_left;
+				src.LowerRightCorner.X -= src_right;
+#else
 				dest.UpperLeftCorner.X += middle.UpperLeftCorner.X;
 				dest.LowerRightCorner.X -= lower_right_offset.X;
 				src.UpperLeftCorner.X += middle.UpperLeftCorner.X;
 				src.LowerRightCorner.X -= lower_right_offset.X;
+#endif
 				break;
 
 			case 2:
+#if IS_VOPI_ENGINE
+				dest.UpperLeftCorner.X = destrect.LowerRightCorner.X - dest_right;
+				src.UpperLeftCorner.X = srcrect.LowerRightCorner.X - src_right;
+#else
 				dest.UpperLeftCorner.X = destrect.LowerRightCorner.X - lower_right_offset.X;
 				src.UpperLeftCorner.X = srcrect.LowerRightCorner.X - lower_right_offset.X;
+#endif
 				break;
 			}
 
 			switch (y) {
 			case 0:
+#if IS_VOPI_ENGINE
+				dest.LowerRightCorner.Y = destrect.UpperLeftCorner.Y + dest_top;
+				src.LowerRightCorner.Y = srcrect.UpperLeftCorner.Y + src_top;
+#else
 				dest.LowerRightCorner.Y = destrect.UpperLeftCorner.Y + middle.UpperLeftCorner.Y;
 				src.LowerRightCorner.Y = srcrect.UpperLeftCorner.Y + middle.UpperLeftCorner.Y;
+#endif
 				break;
 
 			case 1:
+#if IS_VOPI_ENGINE
+				dest.UpperLeftCorner.Y += dest_top;
+				dest.LowerRightCorner.Y -= dest_bottom;
+				src.UpperLeftCorner.Y += src_top;
+				src.LowerRightCorner.Y -= src_bottom;
+#else
 				dest.UpperLeftCorner.Y += middle.UpperLeftCorner.Y;
 				dest.LowerRightCorner.Y -= lower_right_offset.Y;
 				src.UpperLeftCorner.Y += middle.UpperLeftCorner.Y;
 				src.LowerRightCorner.Y -= lower_right_offset.Y;
+#endif
 				break;
 
 			case 2:
+#if IS_VOPI_ENGINE
+				dest.UpperLeftCorner.Y = destrect.LowerRightCorner.Y - dest_bottom;
+				src.UpperLeftCorner.Y = srcrect.LowerRightCorner.Y - src_bottom;
+#else
 				dest.UpperLeftCorner.Y = destrect.LowerRightCorner.Y - lower_right_offset.Y;
 				src.UpperLeftCorner.Y = srcrect.LowerRightCorner.Y - lower_right_offset.Y;
+#endif
 				break;
 			}
 

@@ -494,14 +494,29 @@ void Hud::drawLuaElements(const v3s16 &camera_offset)
 					dstsize.X = m_screensize.X * (e->scale.X * -0.01);
 				if (e->scale.Y < 0)
 					dstsize.Y = m_screensize.Y * (e->scale.Y * -0.01);
+#if IS_VOPI_ENGINE
+				// Use explicit size for 9-slice images if size is set
+				if ((e->middle.getWidth() != 0 || e->middle.getHeight() != 0) && e->size.X > 0 && e->size.Y > 0) {
+					dstsize.X = e->size.X * m_scale_factor;
+					dstsize.Y = e->size.Y * m_scale_factor;
+				}
+#endif
 				v2s32 offset((e->align.X - 1.0) * dstsize.X / 2,
 				             (e->align.Y - 1.0) * dstsize.Y / 2);
 				core::rect<s32> rect(0, 0, dstsize.X, dstsize.Y);
 				rect += pos + offset + v2s32(e->offset.X * m_scale_factor,
 				                             e->offset.Y * m_scale_factor);
+				core::rect<s32> srcrect(core::position2d<s32>(0, 0), imgsize);
+#if IS_VOPI_ENGINE
+				if (e->middle.getWidth() != 0 || e->middle.getHeight() != 0) {
+				  draw2DImage9Slice(driver, texture, rect, srcrect, e->middle, NULL, colors, e->middle_scale);
+				} else {
+				  draw2DImageFilterScaled(driver, texture, rect, srcrect, NULL, colors, true);
+				}
+#else
 				draw2DImageFilterScaled(driver, texture, rect,
-					core::rect<s32>(core::position2d<s32>(0,0), imgsize),
-					NULL, colors, true);
+				  srcrect, NULL, colors, true);
+#endif
 				break; }
 			case HUD_ELEM_COMPASS: {
 				video::ITexture *texture = tsrc->getTexture(e->text);

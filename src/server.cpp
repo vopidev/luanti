@@ -1886,6 +1886,12 @@ void Server::SendHUDAdd(session_t peer_id, u32 id, HudElement *form)
 
 	pkt << form->z_index << form->text2 << form->style;
 
+#if IS_VOPI_ENGINE
+	pkt << (s32)form->middle.UpperLeftCorner.X << (s32)form->middle.UpperLeftCorner.Y
+		<< (s32)form->middle.LowerRightCorner.X << (s32)form->middle.LowerRightCorner.Y
+		<< form->middle_scale;
+#endif
+
 	Send(&pkt);
 }
 
@@ -1924,6 +1930,14 @@ void Server::SendHUDChange(session_t peer_id, u32 id, HudElementStat stat, void 
 				pkt << v2s32::from(*v);
 			break;
 		}
+#if IS_VOPI_ENGINE
+		case HUD_STAT_MIDDLE: {
+			core::rect<s32> *r = (core::rect<s32> *) value;
+			pkt << (s32)r->UpperLeftCorner.X << (s32)r->UpperLeftCorner.Y
+				<< (s32)r->LowerRightCorner.X << (s32)r->LowerRightCorner.Y;
+			break;
+		}
+#endif
 		default: // all other types
 			pkt << *(u32 *) value;
 			break;
