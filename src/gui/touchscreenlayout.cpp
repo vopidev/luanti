@@ -85,30 +85,54 @@ const char *button_image_names[] = {
 	"dig_btn.png",
 	"place_btn.png",
 
+#if IS_VOPI_ENGINE
+	"gui_buttons/gui_jump_btn.png",
+	"gui_buttons/gui_down_btn.png",
+	"gui_buttons/gui_fly_btn.png",
+	"gui_buttons/gui_fast_btn.png",
+#else
 	"jump_btn.png",
 	"down.png",
 	"zoom.png",
 	"aux1_btn.png",
+#endif
 	"overflow_btn.png",
 
+#if IS_VOPI_ENGINE
+	"gui_buttons/gui_chat_btn.png",
+	"gui_buttons/gui_inventory_btn.png",
+	"gui_buttons/gui_drop_btn.png",
+	"gui_buttons/gui_exit_btn.png",
+#else
 	"chat_btn.png",
 	"inventory_btn.png",
 	"drop_btn.png",
 	"exit_btn.png",
+#endif
 
 	"fly_btn.png",
 	"fast_btn.png",
 	"noclip_btn.png",
 	"debug_btn.png",
+#if IS_VOPI_ENGINE
+	"gui_buttons/gui_camera_btn.png",
+#else
 	"camera_btn.png",
+#endif
 	"rangeview_btn.png",
 	"minimap_btn.png",
 	// toggle button: switches between "chat_hide_btn.png" and "chat_show_btn.png"
 	"chat_hide_btn.png",
 
+#if IS_VOPI_ENGINE
+	"gui_buttons/gui_joystick_off.png",
+	"gui_buttons/gui_joystick_bg.png",
+	"gui_buttons/gui_joystick_center.png",
+#else
 	"joystick_off.png",
 	"joystick_bg.png",
 	"joystick_center.png",
+#endif
 };
 
 v2s32 ButtonMeta::getPos(v2u32 screensize, s32 button_size) const
@@ -149,6 +173,17 @@ static const char *buttons_crosshair = enum_to_string(es_TouchInteractionStyle, 
 
 bool ButtonLayout::isButtonAllowed(touch_gui_button_id id)
 {
+#if IS_VOPI_ENGINE
+	// VOPI mobile UI does not expose these buttons; they are hard-disabled
+	// here. Note: this makes the P4 per-player touch_hidden_mask bits for
+	// these ids no-ops (the buttons are never created), which is intended.
+	if (id == fly_id || id == fast_id || id == noclip_id ||
+			id == debug_id || id == range_id || id == minimap_id ||
+			id == toggle_chat_id) {
+		return false;
+	}
+#endif
+
 	if (id == dig_id || id == place_id)
 		return g_settings->get("touch_interaction_style") == buttons_crosshair;
 	if (id == aux1_id)
@@ -172,30 +207,90 @@ const ButtonLayout::ButtonMap ButtonLayout::default_data {
 	{dig_id, {
 		v2f(1.0f, 1.0f),
 		v2f(-2.0f, -2.75f),
+#if IS_VOPI_ENGINE
+		1.0f,
+#endif
 	}},
 	{place_id, {
 		v2f(1.0f, 1.0f),
 		v2f(-2.0f, -4.25f),
+#if IS_VOPI_ENGINE
+		1.0f,
+#endif
 	}},
 	{jump_id, {
+#if IS_VOPI_ENGINE
+		v2f(1.0f, 1.0f),
+		v2f(-2.5f, -2.5f),
+		1.5f,
+#else
 		v2f(1.0f, 1.0f),
 		v2f(-1.0f, -0.5f),
+#endif
 	}},
 	{sneak_id, {
+#if IS_VOPI_ENGINE
+		v2f(1.0f, 1.0f),
+		v2f(-2.5f, -0.85f),
+		1.0f
+#else
 		v2f(1.0f, 1.0f),
 		v2f(-2.5f, -0.5f),
+#endif
 	}},
 	{zoom_id, {
+#if IS_VOPI_ENGINE
+		v2f(1.0f, 1.0f),
+		v2f(-0.87f, -2.5f),    // to the right of aux (-0.9 > -1.25) and above (-1.8 < -1.4)
+		1.0f
+#else
 		v2f(1.0f, 1.0f),
 		v2f(-0.75f, -3.5f),
+#endif
 	}},
 	{aux1_id, {
+#if IS_VOPI_ENGINE
+		v2f(1.0f, 1.0f),
+		v2f(-1.33f, -1.34f),
+		1.0f
+#else
 		v2f(1.0f, 1.0f),
 		v2f(-0.75f, -2.0f),
+#endif
 	}},
+#if IS_VOPI_ENGINE
+	{inventory_id, {
+		v2f(1.0f, 0.5f),
+		v2f(-0.4f, -0.41f),
+		0.8f
+	}},
+	{drop_id, {
+		v2f(1.0f, 0.5f),
+		v2f(-0.4f, 0.41f),
+		0.8f
+	}},
+	{exit_id, {
+		v2f(0.5f, 0.0f),
+		v2f(-0.824f, 0.4f),
+		0.8f
+	}},
+	{camera_id, {
+		v2f(0.5f, 0.0f),
+		v2f(0.0f, 0.4f),
+		0.8f
+	}},
+	{chat_id, {
+		v2f(0.5f, 0.0f),
+		v2f(0.824f, 0.4f),
+		0.8f
+	}},
+#endif
 	{overflow_id, {
 		v2f(1.0f, 1.0f),
 		v2f(-0.75f, -5.0f),
+#if IS_VOPI_ENGINE
+		1.0f,
+#endif
 	}},
 };
 
@@ -262,8 +357,21 @@ core::recti ButtonLayout::getRect(touch_gui_button_id btn,
 	const ButtonMeta &meta = layout.at(btn);
 	v2s32 pos = meta.getPos(screensize, button_size);
 
-	v2u32 orig_size = getTexture(btn, tsrc)->getOriginalSize();
+	auto *tex = getTexture(btn, tsrc);
+#if IS_VOPI_ENGINE
+	// Guard against missing custom button textures (gui_buttons/): a null
+	// texture would otherwise crash on getOriginalSize() during layout.
+	if (!tex)
+		return core::recti(pos - v2s32(button_size, button_size) / 2,
+				core::dimension2di(button_size, button_size));
+#endif
+	v2u32 orig_size = tex->getOriginalSize();
 	v2s32 size((button_size * orig_size.X) / orig_size.Y, button_size);
+
+#if IS_VOPI_ENGINE
+	size.X *= meta.scale;
+	size.Y *= meta.scale;
+#endif
 
 	return core::recti(pos - size / 2, core::dimension2di(size));
 }
@@ -292,6 +400,9 @@ void ButtonLayout::serializeJson(std::ostream &os) const
 			button["position_y"] = meta.position.Y;
 			button["offset_x"] = meta.offset.X;
 			button["offset_y"] = meta.offset.Y;
+#if IS_VOPI_ENGINE
+			button["scale"] = meta.scale;
+#endif
 
 			root["layout"][button_names[id]] = button;
 		}
@@ -347,6 +458,12 @@ ButtonLayout::ButtonMap ButtonLayout::deserializeJson(std::istream &is)
 			throw Json::RuntimeError("invalid type for offset_x or offset_y in button metadata");
 		meta.offset.X = value["offset_x"].asFloat();
 		meta.offset.Y = value["offset_y"].asFloat();
+#if IS_VOPI_ENGINE
+		if (value["scale"].isNumeric())
+			meta.scale = value["scale"].asFloat();
+		else
+			meta.scale = 1.0f;
+#endif
 
 		data.emplace(id, meta);
 	}

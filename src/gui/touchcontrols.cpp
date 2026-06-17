@@ -254,6 +254,10 @@ void TouchControls::applyLayout(const ButtonLayout &layout)
 	m_overflow_button_titles.clear();
 	m_overflow_button_rects.clear();
 
+#if IS_VOPI_ENGINE
+	m_joystick_center_size = m_button_size * 1.5f;
+#endif
+
 	// Initialize joystick display "button".
 	// Joystick is placed on the bottom left of screen.
 	if (m_fixed_joystick) {
@@ -265,8 +269,13 @@ void TouchControls::applyLayout(const ButtonLayout &layout)
 	} else {
 		m_joystick_btn_off = grab_gui_element<IGUIImage>(makeButtonDirect(joystick_off_id,
 				recti(m_button_size,
+#if IS_VOPI_ENGINE
+						m_screensize.Y - m_button_size * 4,
+						m_button_size * 4,
+#else
 						m_screensize.Y - m_button_size * 3,
 						m_button_size * 3,
+#endif
 						m_screensize.Y - m_button_size), true));
 	}
 
@@ -277,7 +286,11 @@ void TouchControls::applyLayout(const ButtonLayout &layout)
 					m_screensize.Y - m_button_size), false));
 
 	m_joystick_btn_center = grab_gui_element<IGUIImage>(makeButtonDirect(joystick_center_id,
+#if IS_VOPI_ENGINE
+			recti(0, 0, m_joystick_center_size, m_joystick_center_size), false));
+#else
 			recti(0, 0, m_button_size, m_button_size), false));
+#endif
 
 	for (const auto &[id, meta] : m_layout.layout) {
 		if (!mayAddButton(id))
@@ -348,6 +361,11 @@ bool TouchControls::mayAddButton(touch_gui_button_id id)
 {
 	assert(ButtonLayout::isButtonValid(id));
 	assert(ButtonLayout::isButtonAllowed(id));
+#if IS_VOPI_ENGINE
+	// VOPI UI does not use the overflow menu button.
+	if (id == overflow_id)
+		return false;
+#endif
 	// The overflow button doesn't need a keycode to be valid.
 	return id == overflow_id || id_to_action(id) < KeyType::INTERNAL_ENUM_COUNT;
 }
@@ -484,7 +502,7 @@ void TouchControls::translateEvent(const SEvent &event)
 
 		// handle overflow menu
 		if (!m_overflow_open) {
-			if (element == m_overflow_btn.get())  {
+			if (m_overflow_btn && element == m_overflow_btn.get()) {
 				toggleOverflowMenu();
 				return;
 			}
@@ -704,6 +722,10 @@ void TouchControls::setVisible(bool visible)
 
 void TouchControls::toggleOverflowMenu()
 {
+#if IS_VOPI_ENGINE
+	if (!m_overflow_btn)
+		return;
+#endif
 	// no releaseAll here so that you can e.g. continue holding the joystick
 	// while the overflow menu is open
 	m_overflow_open = !m_overflow_open;
@@ -897,3 +919,26 @@ void TouchControls::applyContextControls(const TouchInteractionMode &mode)
 		m_place_pressed = false;
 	}
 }
+
+#if IS_VOPI_ENGINE
+void TouchControls::resetTapState()
+{
+	m_tap_state = TapState::None;
+	m_dig_pressed_until = 0;
+	m_place_pressed_until = 0;
+
+	// Mark the current touch as "moved" so a long tap is not re-detected —
+	// prevents dig from starting after eating food while the finger is held.
+	m_move_has_really_moved = true;
+
+	// Release any pressed keys so actions don't continue after the item change.
+	if (m_dig_pressed) {
+		emitGameKeyEvent(id_to_action(dig_id), false);
+		m_dig_pressed = false;
+	}
+	if (m_place_pressed) {
+		emitGameKeyEvent(id_to_action(place_id), false);
+		m_place_pressed = false;
+	}
+}
+#endif

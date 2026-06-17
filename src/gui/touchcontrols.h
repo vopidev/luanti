@@ -76,6 +76,11 @@ public:
 	void translateEvent(const SEvent &event);
 	void applyContextControls(const TouchInteractionMode &mode);
 
+#if IS_VOPI_ENGINE
+	// Reset tap state when the wielded item changes (prevents dig after eating).
+	void resetTapState();
+#endif
+
 	double getYawChange()
 	{
 		double res = m_camera_yaw_change;
@@ -148,6 +153,10 @@ private:
 	// changes to these two values are handled in TouchControls::step
 	v2u32 m_screensize;
 	s32 m_button_size;
+
+#if IS_VOPI_ENGINE
+	s32 m_joystick_center_size = 0;
+#endif
 
 	// cached settings
 	TouchInteractionStyle m_interaction_style;

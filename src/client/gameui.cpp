@@ -167,8 +167,11 @@ void GameUI::update(const RunStats &stats, Client *client, MapDrawControl *draw_
 			if (g_touchcontrols)
 				g_touchcontrols->getStatusText()->setVisible(true);
 		} else {
+#if !IS_VOPI_ENGINE
+			// VOPI preserves the touch-control status text visibility.
 			if (g_touchcontrols)
 				g_touchcontrols->getStatusText()->setVisible(false);
+#endif
 			m_status_text->update(dtime);
 		}
 	}
