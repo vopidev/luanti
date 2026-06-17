@@ -508,6 +508,13 @@ bool ClientLauncher::launch_game(std::string &error_message,
 	if (start_data.isSinglePlayer()) {
 #if IS_VOPI_ENGINE
 		start_data.name = g_settings->get("default_player_name");
+		// default_player_name defaults to "" and is user-configurable, so it
+		// may be empty or hold invalid characters. Singleplayer bypasses the
+		// network-handshake name validation, so guard here to keep the name a
+		// valid file/identifier and preserve the upstream "singleplayer"
+		// guarantee.
+		if (start_data.name.empty() || !is_valid_player_name(start_data.name))
+			start_data.name = "singleplayer";
 #else
 		start_data.name = "singleplayer";
 #endif

@@ -1304,9 +1304,10 @@
 # chat_message_limit_trigger_kick = 50
 
 #    [VOPI Engine] Default player name for singleplayer mode.
-#    This name will be used automatically when starting a singleplayer game.
+#    Used automatically when starting a singleplayer game. If empty or
+#    invalid, it falls back to "singleplayer".
 #    type: string
-# default_player_name = Player
+# default_player_name =
 
 ## Server Gameplay
 
