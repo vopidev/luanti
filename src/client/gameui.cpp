@@ -36,6 +36,10 @@ inline static const char *yawToDirectionString(int yaw)
 
 void GameUI::init()
 {
+#if IS_VOPI_ENGINE
+	// Base font size for mobile font scaling of chat/info text.
+	const u16 base_font_size = g_fontengine->getDefaultFontSize();
+#endif
 	// First line of debug text
 	m_guitext = gui::StaticText::add(guienv, utf8_to_wide(PROJECT_NAME_C).c_str(),
 		core::recti(), false, true, guiroot);
@@ -47,7 +51,12 @@ void GameUI::init()
 	// Chat text
 	m_guitext_chat = gui::StaticText::add(guienv, L"", core::recti(),
 		false, true, guiroot);
+#if IS_VOPI_ENGINE
+	const u16 chat_font_size = std::round(base_font_size *
+			g_settings->getFloat("chat_font_scale"));
+#else
 	u16 chat_font_size = g_settings->getU16("chat_font_size");
+#endif
 	if (chat_font_size != 0) {
 		m_guitext_chat->setOverrideFont(g_fontengine->getFont(
 			rangelim(chat_font_size, 5, 72), FM_Unspecified));
@@ -64,6 +73,14 @@ void GameUI::init()
 			v2s32(100, chat_font_height *
 			(g_settings->getU16("recent_chat_messages") + 3)),
 			false, true, guiroot);
+
+#if IS_VOPI_ENGINE
+	const u16 info_font_size = std::round(base_font_size *
+			g_settings->getFloat("info_font_scale"));
+	if (info_font_size != 0)
+		m_guitext_info->setOverrideFont(g_fontengine->getFont(
+			rangelim(info_font_size, 5, 72), FM_Unspecified));
+#endif
 
 	// Status message for in-game notifications (fly/fast mode, volume changes, etc.)
 	m_status_text = std::make_unique<StatusTextHelper>(guienv, guiroot);
