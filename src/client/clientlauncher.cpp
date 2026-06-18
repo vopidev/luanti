@@ -382,7 +382,11 @@ void ClientLauncher::config_guienv()
 		RenderingEngine::getDisplayDensity();
 	skin->setScale(density);
 	skin->setSize(gui::EGDS_CHECK_BOX_WIDTH, (s32)(17.0f * density));
+#if IS_VOPI_ENGINE
+	skin->setSize(gui::EGDS_SCROLLBAR_SIZE, (s32)(10.0f * density));
+#else
 	skin->setSize(gui::EGDS_SCROLLBAR_SIZE, (s32)(21.0f * density));
+#endif
 	skin->setSize(gui::EGDS_WINDOW_BUTTON_WIDTH, (s32)(15.0f * density));
 
 	skin->setBehavior(gui::EGDB_SMOOTH_SCROLL, g_settings->getBool("smooth_scrolling"));

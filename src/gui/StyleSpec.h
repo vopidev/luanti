@@ -44,6 +44,16 @@ public:
 		SOUND,
 		SPACING,
 		SIZE,
+#if IS_VOPI_ENGINE
+		SCROLLBAR_BGIMG,
+		SCROLLBAR_THUMB_IMG,
+		SCROLLBAR_TOP_IMG,
+		SCROLLBAR_BOTTOM_IMG,
+		SCROLLBAR_THUMB_TOP_IMG,
+		SCROLLBAR_THUMB_BOTTOM_IMG,
+		SCROLLBAR_THUMB_TOP_SIZE,
+		SCROLLBAR_THUMB_BOTTOM_SIZE,
+#endif
 		NUM_PROPERTIES,
 		NONE
 	};
@@ -117,6 +127,24 @@ public:
 			return SPACING;
 		} else if (name == "size") {
 			return SIZE;
+#if IS_VOPI_ENGINE
+		} else if (name == "scrollbar_bgimg") {
+			return SCROLLBAR_BGIMG;
+		} else if (name == "scrollbar_thumb_img") {
+			return SCROLLBAR_THUMB_IMG;
+		} else if (name == "scrollbar_top_img") {
+			return SCROLLBAR_TOP_IMG;
+		} else if (name == "scrollbar_bottom_img") {
+			return SCROLLBAR_BOTTOM_IMG;
+		} else if (name == "scrollbar_thumb_top_img") {
+			return SCROLLBAR_THUMB_TOP_IMG;
+		} else if (name == "scrollbar_thumb_bottom_img") {
+			return SCROLLBAR_THUMB_BOTTOM_IMG;
+		} else if (name == "scrollbar_thumb_top_size") {
+			return SCROLLBAR_THUMB_TOP_SIZE;
+		} else if (name == "scrollbar_thumb_bottom_size") {
+			return SCROLLBAR_THUMB_BOTTOM_SIZE;
+#endif
 		} else {
 			return NONE;
 		}
@@ -178,6 +206,23 @@ public:
 
 		return temp;
 	}
+
+#if IS_VOPI_ENGINE
+	s32 getS32(Property prop, s32 def) const {
+		const auto& val = properties[prop];
+		if (val.empty())
+			return def;
+		try {
+			return mystoi(val);
+		} catch (const std::invalid_argument& e) {
+			errorstream << "Invalid argument: " << e.what() << std::endl;
+			return def;
+		} catch (const std::out_of_range& e) {
+			errorstream << "Out of range: " << e.what() << std::endl;
+			return def;
+		}
+	}
+#endif
 
 	video::SColor getColor(Property prop, video::SColor def) const
 	{

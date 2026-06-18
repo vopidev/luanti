@@ -3594,6 +3594,22 @@ Elements
 * Value of this trackbar is set to (`0`-`1000`) by default
 * See also `core.explode_scrollbar_event`
 
+### `scrollbar[<X>,<Y>;<W>,<H>;<orientation>;<name>;<value>;<textures>]`
+
+* Extended scrollbar with custom texture support
+* `textures`: Comma-separated list of texture names (optional):
+    * Minimum 4 textures required: `bg,thumb,top,bottom`
+    * Optional 2 additional textures: `thumb_top,thumb_bottom`
+* Texture roles:
+    * `bg`: Scrollbar background/track
+    * `thumb`: Main slider/thumb body
+    * `top`: Top/left arrow button
+    * `bottom`: Bottom/right arrow button
+    * `thumb_top`: Top/left cap of slider (optional)
+    * `thumb_bottom`: Bottom/right cap of slider (optional)
+* If textures are not provided, falls back to style-based textures
+* See also `style[<name>;scrollbar_*]` for style-based customization
+
 ### `scrollbaroptions[opt1;opt2;...]`
 * Sets options for all following `scrollbar[]` elements
 * All numbers below are integers [s32]
@@ -3891,6 +3907,14 @@ Some types may inherit styles from parent types.
     * font_size - Sets font size. See button `font_size` property for more information.
     * noclip - boolean, set to true to allow the element to exceed formspec bounds.
     * textcolor - color. Default white.
+    * scrollbar_bgimg - (textarea only) image, scrollbar background/track texture.
+    * scrollbar_thumb_img - (textarea only) image, scrollbar slider/thumb main texture.
+    * scrollbar_top_img - (textarea only) image, top/left arrow button texture.
+    * scrollbar_bottom_img - (textarea only) image, bottom/right arrow button texture.
+    * scrollbar_thumb_top_img - (textarea only) image, top/left cap of slider (optional).
+    * scrollbar_thumb_bottom_img - (textarea only) image, bottom/right cap of slider (optional).
+    * scrollbar_thumb_top_size - (textarea only) integer, size in pixels of the top cap.
+    * scrollbar_thumb_bottom_size - (textarea only) integer, size in pixels of the bottom cap.
 * model
     * bgcolor - color, sets background color.
     * noclip - boolean, set to true to allow the element to exceed formspec bounds.
@@ -3920,6 +3944,14 @@ Some types may inherit styles from parent types.
     * sound - a sound to be played when triggered.
 * scrollbar
     * noclip - boolean, set to true to allow the element to exceed formspec bounds.
+    * scrollbar_bgimg - image, scrollbar background/track texture.
+    * scrollbar_thumb_img - image, scrollbar slider/thumb main texture.
+    * scrollbar_top_img - image, top/left arrow button texture.
+    * scrollbar_bottom_img - image, bottom/right arrow button texture.
+    * scrollbar_thumb_top_img - image, top/left cap of slider (optional).
+    * scrollbar_thumb_bottom_img - image, bottom/right cap of slider (optional).
+    * scrollbar_thumb_top_size - integer, size in pixels of the top cap.
+    * scrollbar_thumb_bottom_size - integer, size in pixels of the bottom cap.
 * tabheader
     * noclip - boolean, set to true to allow the element to exceed formspec bounds.
     * sound - a sound to be played when a different tab is selected.
@@ -3928,6 +3960,14 @@ Some types may inherit styles from parent types.
     * font - Sets font type. See button `font` property for more information.
     * font_size - Sets font size. See button `font_size` property for more information.
     * noclip - boolean, set to true to allow the element to exceed formspec bounds.
+    * scrollbar_bgimg - image, scrollbar background/track texture.
+    * scrollbar_thumb_img - image, scrollbar slider/thumb main texture.
+    * scrollbar_top_img - image, top/left arrow button texture.
+    * scrollbar_bottom_img - image, bottom/right arrow button texture.
+    * scrollbar_thumb_top_img - image, top/left cap of slider (optional).
+    * scrollbar_thumb_bottom_img - image, bottom/right cap of slider (optional).
+    * scrollbar_thumb_top_size - integer, size in pixels of the top cap.
+    * scrollbar_thumb_bottom_size - integer, size in pixels of the bottom cap.
 
 ### Valid States
 

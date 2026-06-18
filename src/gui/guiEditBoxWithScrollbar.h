@@ -7,6 +7,10 @@
 
 #include "CGUIEditBox.h"
 
+#if IS_VOPI_ENGINE
+#include "StyleSpec.h"
+#endif
+
 class ISimpleTextureSource;
 
 class GUIEditBoxWithScrollBar : public gui::CGUIEditBox
@@ -26,6 +30,11 @@ public:
 
 	//! Change the background color
 	void setBackgroundColor(const video::SColor &bg_color);
+
+#if IS_VOPI_ENGINE
+	//! Sets the scrollbar style
+	void setScrollbarStyle(const StyleSpec &style, ISimpleTextureSource *tsrc);
+#endif
 
 protected:
 	//! create a Vertical ScrollBar

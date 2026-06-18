@@ -20,8 +20,12 @@ namespace video {
 	class ITexture;
 }
 
+#if IS_VOPI_ENGINE
+#include "StyleSpec.h"
+#endif
+
 class ISimpleTextureSource;
-class GUIScrollBar;
+#include "guiScrollBar.h"
 
 /*
 	A table GUI element for GUIFormSpecMenu.
@@ -136,6 +140,17 @@ public:
 
 	/* Irrlicht event handler */
 	virtual bool OnEvent(const SEvent &event);
+
+#if IS_VOPI_ENGINE
+	/* Set scrollbar texture */
+	void setStyle(const StyleSpec &style)
+	{
+		setNotClipped(style.getBool(StyleSpec::NOCLIP, false));
+		setOverrideFont(style.getFont());
+		m_scrollbar->setArrowsVisible(false); //CHECK (A hack to fix in the future)
+		m_scrollbar->setStyle(style, m_tsrc);
+	}
+#endif
 
 protected:
 	enum ColumnType {
