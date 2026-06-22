@@ -3595,6 +3595,13 @@ void Game::updateFrame(ProfilerGraph *graph, RunStats *stats, f32 dtime,
 
 		bool skip_anim = client->consumeSkipNextWieldAnimation();
 		camera->wield(tool_item, !skip_anim);
+#if IS_VOPI_ENGINE
+		std::string item_desc = selected_item.getDefinition(itemdef_manager).description;
+		if (wield_name != item_desc) {
+			m_game_ui->showStatusText(utf8_to_wide(item_desc));
+			wield_name = item_desc;
+		}
+#endif
 	}
 
 	/*
