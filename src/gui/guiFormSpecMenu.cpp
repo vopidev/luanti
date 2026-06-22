@@ -161,51 +161,7 @@ void GUIFormSpecMenu::create(GUIFormSpecMenu *&cur_formspec, Client *client,
 #if IS_VOPI_ENGINE && (defined(__ANDROID__) || defined(__IOS__))
 void GUIFormSpecMenu::removeItemSelectBackground()
 {
-	if (m_selected_item_background_up_left) {
-		m_selected_item_background_up_left->remove();
-		m_selected_item_background_up_left->drop();
-		m_selected_item_background_up_left = nullptr;
-	}
-	if (m_selected_item_background_up) {
-		m_selected_item_background_up->remove();
-		m_selected_item_background_up->drop();
-		m_selected_item_background_up = nullptr;
-	}
-	if (m_selected_item_background_up_right) {
-		m_selected_item_background_up_right->remove();
-		m_selected_item_background_up_right->drop();
-		m_selected_item_background_up_right = nullptr;
-	}
-	if (m_selected_item_background_left) {
-		m_selected_item_background_left->remove();
-		m_selected_item_background_left->drop();
-		m_selected_item_background_left = nullptr;
-	}
-	if (m_selected_item_background_center) {
-		m_selected_item_background_center->remove();
-		m_selected_item_background_center->drop();
-		m_selected_item_background_center = nullptr;
-	}
-	if (m_selected_item_background_right) {
-		m_selected_item_background_right->remove();
-		m_selected_item_background_right->drop();
-		m_selected_item_background_right = nullptr;
-	}
-	if (m_selected_item_background_down_left) {
-		m_selected_item_background_down_left->remove();
-		m_selected_item_background_down_left->drop();
-		m_selected_item_background_down_left = nullptr;
-	}
-	if (m_selected_item_background_down) {
-		m_selected_item_background_down->remove();
-		m_selected_item_background_down->drop();
-		m_selected_item_background_down = nullptr;
-	}
-	if (m_selected_item_background_down_right) {
-		m_selected_item_background_down_right->remove();
-		m_selected_item_background_down_right->drop();
-		m_selected_item_background_down_right = nullptr;
-	}
+	m_selected_item_bg.remove();
 }
 #endif
 
@@ -218,51 +174,7 @@ void GUIFormSpecMenu::removeTooltip()
 	}
 
 #if IS_VOPI_ENGINE
-	if (m_tooltip_background_up_left) {
-		m_tooltip_background_up_left->remove();
-		m_tooltip_background_up_left->drop();
-		m_tooltip_background_up_left = nullptr;
-	}
-	if (m_tooltip_background_up) {
-		m_tooltip_background_up->remove();
-		m_tooltip_background_up->drop();
-		m_tooltip_background_up = nullptr;
-	}
-	if (m_tooltip_background_up_right) {
-		m_tooltip_background_up_right->remove();
-		m_tooltip_background_up_right->drop();
-		m_tooltip_background_up_right = nullptr;
-	}
-	if (m_tooltip_background_left) {
-		m_tooltip_background_left->remove();
-		m_tooltip_background_left->drop();
-		m_tooltip_background_left = nullptr;
-	}
-	if (m_tooltip_background_center) {
-		m_tooltip_background_center->remove();
-		m_tooltip_background_center->drop();
-		m_tooltip_background_center = nullptr;
-	}
-	if (m_tooltip_background_right) {
-		m_tooltip_background_right->remove();
-		m_tooltip_background_right->drop();
-		m_tooltip_background_right = nullptr;
-	}
-	if (m_tooltip_background_down_left) {
-		m_tooltip_background_down_left->remove();
-		m_tooltip_background_down_left->drop();
-		m_tooltip_background_down_left = nullptr;
-	}
-	if (m_tooltip_background_down) {
-		m_tooltip_background_down->remove();
-		m_tooltip_background_down->drop();
-		m_tooltip_background_down = nullptr;
-	}
-	if (m_tooltip_background_down_right) {
-		m_tooltip_background_down_right->remove();
-		m_tooltip_background_down_right->drop();
-		m_tooltip_background_down_right = nullptr;
-	}
+	m_tooltip_bg.remove();
 #endif
 }
 
@@ -3540,72 +3452,9 @@ void GUIFormSpecMenu::regenerateGui(v2u32 screensize)
 	video::IVideoDriver *driver = RenderingEngine::get_video_driver();
 	std::string textures_path = porting::path_share + "/textures/base/pack/gui_pop_up/";
 #if defined(__ANDROID__) || defined(__IOS__)
-	// Add selected item background
 	{
-		assert(!m_selected_item_background_up_left);
-		assert(!m_selected_item_background_up);
-		assert(!m_selected_item_background_up_right);
-		assert(!m_selected_item_background_left);
-		assert(!m_selected_item_background_center);
-		assert(!m_selected_item_background_right);
-		assert(!m_selected_item_background_down_left);
-		assert(!m_selected_item_background_down);
-		assert(!m_selected_item_background_down_right);
-
-		//selected item background
-		std::string m_selected_item_background_up_left_path = textures_path + "gui_tooltip_bg_up_left.png";
-		std::string m_selected_item_background_up_path = textures_path + "gui_tooltip_bg_up.png";
-		std::string m_selected_item_background_up_right_path = textures_path + "gui_tooltip_bg_up_right.png";
-		std::string m_selected_item_background_left_path = textures_path + "gui_tooltip_bg_left.png";
-		std::string m_selected_item_background_center_path = textures_path + "gui_tooltip_bg_center.png";
-		std::string m_selected_item_background_right_path = textures_path + "gui_tooltip_bg_right.png";
-		std::string m_selected_item_background_down_left_path = textures_path + "gui_tooltip_bg_down_left.png";
-		std::string m_selected_item_background_down_path = textures_path + "gui_tooltip_bg_down.png";
-		std::string m_selected_item_background_down_right_path = textures_path + "gui_tooltip_bg_down_right.png";
-		m_selected_item_background_up_left = guienv->addImage(core::rect<s32>(0, 0, 1, 1), guiroot, -1, nullptr, true);
-		m_selected_item_background_up = guienv->addImage(core::rect<s32>(0, 0, 1, 1), guiroot, -1, nullptr, true);
-		m_selected_item_background_up_right = guienv->addImage(core::rect<s32>(0, 0, 1, 1), guiroot, -1, nullptr, true);
-		m_selected_item_background_left = guienv->addImage(core::rect<s32>(0, 0, 1, 1), guiroot, -1, nullptr, true);
-		m_selected_item_background_center = guienv->addImage(core::rect<s32>(0, 0, 1, 1), guiroot, -1, nullptr, true);
-		m_selected_item_background_right = guienv->addImage(core::rect<s32>(0, 0, 1, 1), guiroot, -1, nullptr, true);
-
-		m_selected_item_background_down_left = guienv->addImage(core::rect<s32>(0, 0, 1, 1), guiroot, -1, nullptr, true);
-		m_selected_item_background_down = guienv->addImage(core::rect<s32>(0, 0, 1, 1), guiroot, -1, nullptr, true);
-		m_selected_item_background_down_right = guienv->addImage(core::rect<s32>(0, 0, 1, 1), guiroot, -1, nullptr, true);
-		m_selected_item_background_up_left->setImage(driver->getTexture(m_selected_item_background_up_left_path.c_str()));
-		m_selected_item_background_up->setImage(driver->getTexture(m_selected_item_background_up_path.c_str()));
-		m_selected_item_background_up_right->setImage(driver->getTexture(m_selected_item_background_up_right_path.c_str()));
-		m_selected_item_background_left->setImage(driver->getTexture(m_selected_item_background_left_path.c_str()));
-		m_selected_item_background_center->setImage(driver->getTexture(m_selected_item_background_center_path.c_str()));
-		m_selected_item_background_right->setImage(driver->getTexture(m_selected_item_background_right_path.c_str()));
-
-		m_selected_item_background_down_left->setImage(driver->getTexture(m_selected_item_background_down_left_path.c_str()));
-		m_selected_item_background_down->setImage(driver->getTexture(m_selected_item_background_down_path.c_str()));
-		m_selected_item_background_down_right->setImage(driver->getTexture(m_selected_item_background_down_right_path.c_str()));
-
-		m_selected_item_background_up_left->setScaleImage(true);
-		m_selected_item_background_up->setScaleImage(true);
-		m_selected_item_background_up_right->setScaleImage(true);
-		m_selected_item_background_left->setScaleImage(true);
-		m_selected_item_background_center->setScaleImage(true);
-		m_selected_item_background_right->setScaleImage(true);
-
-		m_selected_item_background_down_left->setScaleImage(true);
-		m_selected_item_background_down->setScaleImage(true);
-		m_selected_item_background_down_right->setScaleImage(true);
-
-		//we're not parent so no autograb for this!
-		m_selected_item_background_up_left->grab();
-		m_selected_item_background_up->grab();
-		m_selected_item_background_up_right->grab();
-
-		m_selected_item_background_left->grab();
-		m_selected_item_background_center->grab();
-		m_selected_item_background_right->grab();
-
-		m_selected_item_background_down_left->grab();
-		m_selected_item_background_down->grab();
-		m_selected_item_background_down_right->grab();
+		assert(!m_selected_item_bg.isInitialized());
+		m_selected_item_bg.init(guienv, driver, guiroot, textures_path, "gui_tooltip_bg", false);
 	}
 #endif
 #endif
@@ -3613,18 +3462,6 @@ void GUIFormSpecMenu::regenerateGui(v2u32 screensize)
 	// Add tooltip
 	{
 		assert(!m_tooltip_element);
-
-#if IS_VOPI_ENGINE
-		assert(!m_tooltip_background_up_left);
-		assert(!m_tooltip_background_up);
-		assert(!m_tooltip_background_up_right);
-		assert(!m_tooltip_background_left);
-		assert(!m_tooltip_background_center);
-		assert(!m_tooltip_background_right);
-		assert(!m_tooltip_background_down_left);
-		assert(!m_tooltip_background_down);
-		assert(!m_tooltip_background_down_right);
-#endif
 
 		// Note: parent != this so that the tooltip isn't clipped by the menu rectangle
 		m_tooltip_element = gui::StaticText::add(Environment, L"",
@@ -3649,60 +3486,8 @@ void GUIFormSpecMenu::regenerateGui(v2u32 screensize)
 		m_tooltip_element->grab();
 
 #if IS_VOPI_ENGINE
-		//Tooltip background
-		std::string m_tooltip_image_up_left_path = textures_path + "gui_tooltip_bg_up_left.png";
-		std::string m_tooltip_image_up_path = textures_path + "gui_tooltip_bg_up.png";
-		std::string m_tooltip_image_up_right_path = textures_path + "gui_tooltip_bg_up_right.png";
-		std::string m_tooltip_image_left_path = textures_path + "gui_tooltip_bg_left.png";
-		std::string m_tooltip_image_center_path = textures_path + "gui_tooltip_bg_center.png";
-		std::string m_tooltip_image_right_path = textures_path + "gui_tooltip_bg_right.png";
-		std::string m_tooltip_image_down_left_path = textures_path + "gui_tooltip_bg_down_left.png";
-		std::string m_tooltip_image_down_path = textures_path + "gui_tooltip_bg_down.png";
-		std::string m_tooltip_image_down_right_path = textures_path + "gui_tooltip_bg_down_right.png";
-		m_tooltip_background_up_left = guienv->addImage(core::rect<s32>(0, 0, 1, 1), guiroot, -1, nullptr, true);
-		m_tooltip_background_up = guienv->addImage(core::rect<s32>(0, 0, 1, 1), guiroot, -1, nullptr, true);
-		m_tooltip_background_up_right = guienv->addImage(core::rect<s32>(0, 0, 1, 1), guiroot, -1, nullptr, true);
-		m_tooltip_background_left = guienv->addImage(core::rect<s32>(0, 0, 1, 1), guiroot, -1, nullptr, true);
-		m_tooltip_background_center = guienv->addImage(core::rect<s32>(0, 0, 1, 1), guiroot, -1, nullptr, true);
-		m_tooltip_background_right = guienv->addImage(core::rect<s32>(0, 0, 1, 1), guiroot, -1, nullptr, true);
-
-		m_tooltip_background_down_left = guienv->addImage(core::rect<s32>(0, 0, 1, 1), guiroot, -1, nullptr, true);
-		m_tooltip_background_down = guienv->addImage(core::rect<s32>(0, 0, 1, 1), guiroot, -1, nullptr, true);
-		m_tooltip_background_down_right = guienv->addImage(core::rect<s32>(0, 0, 1, 1), guiroot, -1, nullptr, true);
-		m_tooltip_background_up_left->setImage(driver->getTexture(m_tooltip_image_up_left_path.c_str()));
-		m_tooltip_background_up->setImage(driver->getTexture(m_tooltip_image_up_path.c_str()));
-		m_tooltip_background_up_right->setImage(driver->getTexture(m_tooltip_image_up_right_path.c_str()));
-		m_tooltip_background_left->setImage(driver->getTexture(m_tooltip_image_left_path.c_str()));
-		m_tooltip_background_center->setImage(driver->getTexture(m_tooltip_image_center_path.c_str()));
-		m_tooltip_background_right->setImage(driver->getTexture(m_tooltip_image_right_path.c_str()));
-
-		m_tooltip_background_down_left->setImage(driver->getTexture(m_tooltip_image_down_left_path.c_str()));
-		m_tooltip_background_down->setImage(driver->getTexture(m_tooltip_image_down_path.c_str()));
-		m_tooltip_background_down_right->setImage(driver->getTexture(m_tooltip_image_down_right_path.c_str()));
-
-		m_tooltip_background_up_left->setScaleImage(true);
-		m_tooltip_background_up->setScaleImage(true);
-		m_tooltip_background_up_right->setScaleImage(true);
-		m_tooltip_background_left->setScaleImage(true);
-		m_tooltip_background_center->setScaleImage(true);
-		m_tooltip_background_right->setScaleImage(true);
-
-		m_tooltip_background_down_left->setScaleImage(true);
-		m_tooltip_background_down->setScaleImage(true);
-		m_tooltip_background_down_right->setScaleImage(true);
-
-		//we're not parent so no autograb for this!
-		m_tooltip_background_up_left->grab();
-		m_tooltip_background_up->grab();
-		m_tooltip_background_up_right->grab();
-
-		m_tooltip_background_left->grab();
-		m_tooltip_background_center->grab();
-		m_tooltip_background_right->grab();
-
-		m_tooltip_background_down_left->grab();
-		m_tooltip_background_down->grab();
-		m_tooltip_background_down_right->grab();
+		assert(!m_tooltip_bg.isInitialized());
+		m_tooltip_bg.init(guienv, driver, guiroot, textures_path, "gui_tooltip_bg", false);
 #endif
 	}
 
@@ -4120,108 +3905,21 @@ void GUIFormSpecMenu::drawSelectedItem()
 			m_selected_item->position.Y + slotsize.Y
 		);
 		if (m_selected_active) {
-			// Size of corner elements for rounding adjustment
 			s32 corner_size = 10;
-
-			// Additional background indentation from the slot
-			s32 bg_padding = 3; // Can be adjusted with this value
-
-			// Calculate the rectangle for the background with padding
+			s32 bg_padding = 3;
 			core::rect<s32> bg_rect(
 				rect.UpperLeftCorner.X - bg_padding,
 				rect.UpperLeftCorner.Y - bg_padding,
 				rect.LowerRightCorner.X + bg_padding,
 				rect.LowerRightCorner.Y + bg_padding
 			);
-			// Set positions for 9 background images
-			// Corners - keep the size of corners regardless of padding
-			m_selected_item_background_up_left->setRelativePosition(
-				core::rect<s32>(bg_rect.UpperLeftCorner.X,
-							   bg_rect.UpperLeftCorner.Y,
-							   bg_rect.UpperLeftCorner.X + corner_size,
-							   bg_rect.UpperLeftCorner.Y + corner_size));
-
-			m_selected_item_background_up_right->setRelativePosition(
-				core::rect<s32>(bg_rect.LowerRightCorner.X - corner_size,
-							   bg_rect.UpperLeftCorner.Y,
-							   bg_rect.LowerRightCorner.X,
-							   bg_rect.UpperLeftCorner.Y + corner_size));
-
-			m_selected_item_background_down_left->setRelativePosition(
-				core::rect<s32>(bg_rect.UpperLeftCorner.X,
-							   bg_rect.LowerRightCorner.Y - corner_size,
-							   bg_rect.UpperLeftCorner.X + corner_size,
-							   bg_rect.LowerRightCorner.Y));
-
-			m_selected_item_background_down_right->setRelativePosition(
-				core::rect<s32>(bg_rect.LowerRightCorner.X - corner_size,
-							   bg_rect.LowerRightCorner.Y - corner_size,
-							   bg_rect.LowerRightCorner.X,
-							   bg_rect.LowerRightCorner.Y));
-			// Edges - stretch between the corners
-			m_selected_item_background_up->setRelativePosition(
-				core::rect<s32>(bg_rect.UpperLeftCorner.X + corner_size,
-							   bg_rect.UpperLeftCorner.Y,
-							   bg_rect.LowerRightCorner.X - corner_size,
-							   bg_rect.UpperLeftCorner.Y + corner_size));
-
-			m_selected_item_background_down->setRelativePosition(
-				core::rect<s32>(bg_rect.UpperLeftCorner.X + corner_size,
-							   bg_rect.LowerRightCorner.Y - corner_size,
-							   bg_rect.LowerRightCorner.X - corner_size,
-							   bg_rect.LowerRightCorner.Y));
-
-			m_selected_item_background_left->setRelativePosition(
-				core::rect<s32>(bg_rect.UpperLeftCorner.X,
-							   bg_rect.UpperLeftCorner.Y + corner_size,
-							   bg_rect.UpperLeftCorner.X + corner_size,
-							   bg_rect.LowerRightCorner.Y - corner_size));
-
-			m_selected_item_background_right->setRelativePosition(
-				core::rect<s32>(bg_rect.LowerRightCorner.X - corner_size,
-							   bg_rect.UpperLeftCorner.Y + corner_size,
-							   bg_rect.LowerRightCorner.X,
-							   bg_rect.LowerRightCorner.Y - corner_size));
-			// Center - fills the entire internal space
-			m_selected_item_background_center->setRelativePosition(
-				core::rect<s32>(bg_rect.UpperLeftCorner.X + corner_size,
-							   bg_rect.UpperLeftCorner.Y + corner_size,
-							   bg_rect.LowerRightCorner.X - corner_size,
-							   bg_rect.LowerRightCorner.Y - corner_size));
-			// Set visibility for all background elements to true
-			m_selected_item_background_up_left->setVisible(true);
-			m_selected_item_background_up->setVisible(true);
-			m_selected_item_background_up_right->setVisible(true);
-			m_selected_item_background_left->setVisible(true);
-			m_selected_item_background_center->setVisible(true);
-			m_selected_item_background_right->setVisible(true);
-			m_selected_item_background_down_left->setVisible(true);
-			m_selected_item_background_down->setVisible(true);
-			m_selected_item_background_down_right->setVisible(true);
+			m_selected_item_bg.setPosition(bg_rect, corner_size);
+			m_selected_item_bg.setVisible(true);
 		} else {
-			m_selected_item_background_up_left->setVisible(false);
-			m_selected_item_background_up->setVisible(false);
-			m_selected_item_background_up_right->setVisible(false);
-			m_selected_item_background_left->setVisible(false);
-			m_selected_item_background_center->setVisible(false);
-			m_selected_item_background_right->setVisible(false);
-			m_selected_item_background_down_left->setVisible(false);
-			m_selected_item_background_down->setVisible(false);
-			m_selected_item_background_down_right->setVisible(false);
+			m_selected_item_bg.setVisible(false);
 		}
 
-		// Draw item slot background
-		m_selected_item_background_up_left->draw();
-		m_selected_item_background_up->draw();
-		m_selected_item_background_up_right->draw();
-
-		m_selected_item_background_left->draw();
-		m_selected_item_background_center->draw();
-		m_selected_item_background_right->draw();
-
-		m_selected_item_background_down_left->draw();
-		m_selected_item_background_down->draw();
-		m_selected_item_background_down_right->draw();
+		m_selected_item_bg.draw();
 	} else {
 		// When dragging, follow the cursor
 		rect = imgrect + (m_pointer - imgrect.getCenter());
@@ -4276,17 +3974,7 @@ void GUIFormSpecMenu::drawMenu()
 	m_tooltip_element->setVisible(false);
 
 #if IS_VOPI_ENGINE
-	m_tooltip_background_up_left->setVisible(false);
-	m_tooltip_background_up->setVisible(false);
-	m_tooltip_background_up_right->setVisible(false);
-
-	m_tooltip_background_left->setVisible(false);
-	m_tooltip_background_center->setVisible(false);
-	m_tooltip_background_right->setVisible(false);
-
-	m_tooltip_background_down_left->setVisible(false);
-	m_tooltip_background_down->setVisible(false);
-	m_tooltip_background_down_right->setVisible(false);
+	m_tooltip_bg.setVisible(false);
 #endif
 
 	for (const auto &pair : m_tooltip_rects) {
@@ -4434,17 +4122,7 @@ void GUIFormSpecMenu::drawMenu()
 	m_tooltip_element->draw();
 
 #if IS_VOPI_ENGINE
-	m_tooltip_background_up_left->draw();
-	m_tooltip_background_up->draw();
-	m_tooltip_background_up_right->draw();
-
-	m_tooltip_background_left->draw();
-	m_tooltip_background_center->draw();
-	m_tooltip_background_right->draw();
-
-	m_tooltip_background_down_left->draw();
-	m_tooltip_background_down->draw();
-	m_tooltip_background_down_right->draw();
+	m_tooltip_bg.draw();
 #endif
 
 	skin->setFont(old_font);
@@ -4538,32 +4216,11 @@ void GUIFormSpecMenu::showTooltip(const std::wstring &text,
 	bringToFront(m_tooltip_element);
 
 #if IS_VOPI_ENGINE
-	// Define sizes for background elements
-	s32 vertical_size = tooltip_height - 2 * corner_size; // Vertical stretchable area size
-	s32 horizontal_size = tooltip_width - 2 * corner_size; // Horizontal stretchable area size
-	// Set positions and sizes for 9 background images
-	// Corners
-	m_tooltip_background_up_left->setRelativePosition(core::rect<s32>(tooltip_x, tooltip_y, tooltip_x + corner_size, tooltip_y + corner_size));
-	m_tooltip_background_up_right->setRelativePosition(core::rect<s32>(tooltip_x + tooltip_width - corner_size, tooltip_y, tooltip_x + tooltip_width, tooltip_y + corner_size));
-	m_tooltip_background_down_left->setRelativePosition(core::rect<s32>(tooltip_x, tooltip_y + tooltip_height - corner_size, tooltip_x + corner_size, tooltip_y + tooltip_height));
-	m_tooltip_background_down_right->setRelativePosition(core::rect<s32>(tooltip_x + tooltip_width - corner_size, tooltip_y + tooltip_height - corner_size, tooltip_x + tooltip_width, tooltip_y + tooltip_height));
-	// Edges
-	m_tooltip_background_up->setRelativePosition(core::rect<s32>(tooltip_x + corner_size, tooltip_y, tooltip_x + tooltip_width - corner_size, tooltip_y + corner_size));
-	m_tooltip_background_down->setRelativePosition(core::rect<s32>(tooltip_x + corner_size, tooltip_y + tooltip_height - corner_size, tooltip_x + tooltip_width - corner_size, tooltip_y + tooltip_height));
-	m_tooltip_background_left->setRelativePosition(core::rect<s32>(tooltip_x, tooltip_y + corner_size, tooltip_x + corner_size, tooltip_y + tooltip_height - corner_size));
-	m_tooltip_background_right->setRelativePosition(core::rect<s32>(tooltip_x + tooltip_width - corner_size, tooltip_y + corner_size, tooltip_x + tooltip_width, tooltip_y + tooltip_height - corner_size));
-	// Center
-	m_tooltip_background_center->setRelativePosition(core::rect<s32>(tooltip_x + corner_size, tooltip_y + corner_size, tooltip_x + tooltip_width - corner_size, tooltip_y + tooltip_height - corner_size));
-	// Setting visibility for all background elements
-	m_tooltip_background_up_left->setVisible(true);
-	m_tooltip_background_up->setVisible(true);
-	m_tooltip_background_up_right->setVisible(true);
-	m_tooltip_background_left->setVisible(true);
-	m_tooltip_background_center->setVisible(true);
-	m_tooltip_background_right->setVisible(true);
-	m_tooltip_background_down_left->setVisible(true);
-	m_tooltip_background_down->setVisible(true);
-	m_tooltip_background_down_right->setVisible(true);
+	m_tooltip_bg.setPosition(
+		core::rect<s32>(tooltip_x, tooltip_y,
+			tooltip_x + tooltip_width, tooltip_y + tooltip_height),
+		corner_size);
+	m_tooltip_bg.setVisible(true);
 #endif
 }
 
