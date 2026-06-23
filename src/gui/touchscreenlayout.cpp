@@ -178,11 +178,13 @@ bool ButtonLayout::isButtonAllowed(touch_gui_button_id id)
 	// here. Note: this makes the P4 per-player touch_hidden_mask bits for
 	// these ids no-ops (the buttons are never created), which is intended.
 	// drop_id is additionally hidden because the touch hotbar supports
-	// drag-to-drop (drag an item up out of the hotbar), so no dedicated
-	// drop button is needed.
+	// drag-to-drop (drag an item up out of the hotbar), so no dedicated drop
+	// button is needed. inventory_id is hidden from the generic layout system
+	// because it is anchored to the hotbar's right edge and managed separately
+	// by TouchControls (see m_inventory_btn and Hud::drawHotbar).
 	if (id == fly_id || id == fast_id || id == noclip_id ||
 			id == debug_id || id == range_id || id == minimap_id ||
-			id == toggle_chat_id || id == drop_id) {
+			id == toggle_chat_id || id == drop_id || id == inventory_id) {
 		return false;
 	}
 #endif
@@ -262,13 +264,11 @@ const ButtonLayout::ButtonMap ButtonLayout::default_data {
 #endif
 	}},
 #if IS_VOPI_ENGINE
-	{inventory_id, {
-		v2f(1.0f, 0.5f),
-		v2f(-0.4f, -0.41f),
-		0.8f
-	}},
-	// drop_id intentionally omitted: hidden on VOPI mobile in favor of
-	// hotbar drag-to-drop (see ButtonLayout::isButtonAllowed).
+	// inventory_id and drop_id intentionally omitted on VOPI mobile:
+	//   - inventory_id is drawn separately, anchored to the hotbar's right
+	//     edge by TouchControls + Hud (see m_inventory_btn).
+	//   - drop_id is replaced by the hotbar drag-to-drop gesture.
+	// Both are filtered out by ButtonLayout::isButtonAllowed.
 	{exit_id, {
 		v2f(0.5f, 0.0f),
 		v2f(-0.824f, 0.4f),

@@ -262,6 +262,13 @@ void TouchControls::applyLayout(const ButtonLayout &layout)
 	// with a future one (Android reuses pointer IDs).
 	m_has_hotbar_drag_id = false;
 	m_hotbar_drag_active = false;
+	// A committed-but-unconsumed drop must not survive a layout rebuild and
+	// fire against a possibly-changed slot on the next frame.
+	m_hotbar_drop_request = std::nullopt;
+
+	// Reset hotbar-anchored inventory button; it will be (re)created below
+	// and resized/repositioned per frame by Hud::drawHotbar.
+	m_inventory_btn = nullptr;
 #endif
 
 	// Initialize joystick display "button".
@@ -313,6 +320,20 @@ void TouchControls::applyLayout(const ButtonLayout &layout)
 		else
 			addButton(m_buttons, id, button_image_names[id], rect, true);
 	}
+
+#if IS_VOPI_ENGINE
+	// Inventory button: not part of the general layout (filtered out by
+	// ButtonLayout::isButtonAllowed), so it is created here with a zero-size
+	// placeholder rect. Hud::drawHotbar will report the real anchor on the
+	// next frame via setInventoryButtonRect; until then a 0x0 image is not
+	// rendered by Irrlicht anyway, so we can leave visible=true and let the
+	// normal updateVisibility pipeline manage it like any other button.
+	// The standard m_buttons press/release pipeline routes taps to
+	// keymap_inventory unchanged.
+	addButton(m_buttons, inventory_id, button_image_names[inventory_id],
+			recti(0, 0, 0, 0), true);
+	m_inventory_btn = m_buttons.back().gui_button;
+#endif
 
 	IGUIStaticText *background = m_guienv->addStaticText(L"",
 			recti(v2s32(0, 0), dimension2du(m_screensize)));
@@ -452,6 +473,12 @@ std::optional<u16> TouchControls::getHotbarDropRequest()
 	return req;
 }
 
+void TouchControls::setInventoryButtonRect(const recti &rect)
+{
+	if (m_inventory_btn)
+		m_inventory_btn->setRelativePosition(rect);
+}
+
 void TouchControls::pushTouchableHudRects(std::vector<std::pair<u32, recti>> rects)
 {
 	m_touchable_hud_rects = std::move(rects);
@@ -515,6 +542,7 @@ std::optional<u32> TouchControls::getHudButtonClick()
 	auto click = m_hud_btn_click;
 	m_hud_btn_click = std::nullopt;
 	return click;
+}
 #endif
 
 void TouchControls::handleReleaseEvent(size_t pointer_id)

@@ -1073,30 +1073,77 @@ void Hud::drawHotbar(const v2s32 &pos, const v2f &offset, u16 dir, const v2f &al
 #endif
 
 	s32 hotbar_itemcount = player->getMaxHotbarItemcount();
-	s32 width = hotbar_itemcount * (m_hotbar_imagesize + m_padding * 2);
+	const s32 slot_size = m_hotbar_imagesize + m_padding * 2;
+	s32 width = hotbar_itemcount * slot_size;
+
+#if IS_VOPI_ENGINE
+	// On touch: reserve room on the right for the inventory button. The button
+	// is intentionally a little smaller than a full hotbar slot (the slot has
+	// 2*m_padding around the icon; the button has 1*m_padding) and the gap
+	// between hotbar and button is tightened to 1*m_padding too, so the touch
+	// composition feels tight without dwarfing the hotbar visually.
+	// Shift the hotbar's center leftward by half of (button + gap) so the
+	// composition (hotbar + gap + button) stays centered on screen.
+	const bool touch_active = g_touchcontrols != nullptr;
+	const s32 inv_button_size = m_hotbar_imagesize + m_padding;
+	const s32 inv_gap = m_padding;
+	const s32 inv_button_total = inv_button_size + inv_gap;
+	v2s32 hotbar_pos = pos;
+	if (touch_active)
+		hotbar_pos.X -= inv_button_total / 2;
+#else
+	const v2s32 hotbar_pos = pos;
+#endif
 
 	const v2u32 &window_size = RenderingEngine::getWindowSize();
-	if ((float) width / (float) window_size.X <=
+	// When touch is active the inventory button also occupies horizontal
+	// space; fold it into the max-width check so we don't accidentally fit
+	// the hotbar on screen while the button overflows.
+#if IS_VOPI_ENGINE
+	const s32 effective_width = touch_active ? width + inv_button_total : width;
+#else
+	const s32 effective_width = width;
+#endif
+	if ((float) effective_width / (float) window_size.X <=
 			g_settings->getFloat("hud_hotbar_max_width")) {
-		drawItems(pos, screen_offset, hotbar_itemcount, align, 0,
+		drawItems(hotbar_pos, screen_offset, hotbar_itemcount, align, 0,
 			mainlist, playeritem + 1, dir, true);
 	} else {
-		v2s32 upper_pos = pos - v2s32(0, m_hotbar_imagesize + m_padding);
+		v2s32 upper_pos = hotbar_pos - v2s32(0, m_hotbar_imagesize + m_padding);
 
 		drawItems(upper_pos, screen_offset, hotbar_itemcount / 2, align, 0,
 			mainlist, playeritem + 1, dir, true);
-		drawItems(pos, screen_offset, hotbar_itemcount, align,
+		drawItems(hotbar_pos, screen_offset, hotbar_itemcount, align,
 			hotbar_itemcount / 2, mainlist, playeritem + 1, dir, true);
 	}
 #if IS_VOPI_ENGINE
 	// Cache the hotbar's top edge for anchor_above_hotbar HUD elements (read by
-	// Hud::getImageElementRect / drawLuaElements). The hotbar is bottom-aligned
-	// (align.Y = -1), so its top is pos.Y plus the scaled screen offset minus
-	// one slot box. In a two-row layout the lower row stays at pos, so elements
-	// anchor to the lower row's top -- acceptable.
-	m_hotbar_top_y = pos.Y
+	// Hud::getImageElementRect / drawLuaElements) AND reused as the inventory
+	// button's top below. The hotbar is bottom-aligned (align.Y = -1), so its top
+	// is hotbar_pos.Y plus the scaled screen offset minus one slot box. In a
+	// two-row layout the lower row stays at hotbar_pos, so elements anchor to the
+	// lower row's top -- acceptable. Kept unconditional (not gated on touch) so
+	// anchor_above_hotbar HUD elements get a valid value on desktop too.
+	m_hotbar_top_y = hotbar_pos.Y
 			+ (s32) std::round(screen_offset.Y * m_scale_factor)
-			- (m_hotbar_imagesize + m_padding * 2);
+			- slot_size;
+
+	// Anchor the inventory touch button at the right edge of the (lower) row,
+	// reusing the cached top edge. Derived from the same math drawItems uses for
+	// placement so the button stays aligned across hud_scaling,
+	// hud_hotbar_bottom_margin, and screen rotations.
+	if (touch_active) {
+		const s32 row_y_top = m_hotbar_top_y;
+		const s32 row_right = hotbar_pos.X
+				+ (s32) std::round(screen_offset.X * m_scale_factor)
+				+ width / 2; // align.X = 0 centers width around hotbar_pos.X
+		const s32 inv_left = row_right + inv_gap;
+		// Vertically center the (slightly smaller) button against the slot.
+		const s32 inv_top = row_y_top + (slot_size - inv_button_size) / 2;
+		g_touchcontrols->setInventoryButtonRect(core::recti(
+				inv_left, inv_top,
+				inv_left + inv_button_size, inv_top + inv_button_size));
+	}
 #endif
 }
 
