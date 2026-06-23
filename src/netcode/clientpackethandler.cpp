@@ -1273,10 +1273,13 @@ void Client::handleCommand_HudAdd(NetworkPacket* pkt)
 #if IS_VOPI_ENGINE
 	core::rect<s32> middle;
 	f32 middle_scale = 1.0f;
+	bool touchable = false;
+	std::string pressed_text;
 	try {
 		s32 mx, my, mw, mh;
 		*pkt >> mx >> my >> mw >> mh >> middle_scale;
 		middle = core::rect<s32>(mx, my, mw, mh);
+		*pkt >> touchable >> pressed_text;
 	} catch(PacketError &e) {};
 #endif
 
@@ -1302,6 +1305,8 @@ void Client::handleCommand_HudAdd(NetworkPacket* pkt)
 #if IS_VOPI_ENGINE
 	event->hudadd->middle       = middle;
 	event->hudadd->middle_scale = middle_scale;
+	event->hudadd->touchable    = touchable;
+	event->hudadd->pressed_text = pressed_text;
 #endif
 	m_client_event_queue.push(event);
 }

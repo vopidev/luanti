@@ -8,6 +8,7 @@
 #include <string>
 #include <iostream>
 #include <cmath>
+#include <unordered_set>
 #include "settings.h"
 #include "util/numeric.h"
 #include "log.h"
@@ -340,6 +341,62 @@ bool Hud::calculateScreenPos(const v3s16 &camera_offset, HudElement *e, v2s32 *p
 }
 
 #if IS_VOPI_ENGINE
+core::rect<s32> Hud::getImageElementRect(const HudElement *e, v2s32 pos) const
+{
+	video::ITexture *texture = tsrc->getTexture(e->text);
+	core::dimension2di imgsize = texture
+			? core::dimension2di(texture->getOriginalSize())
+			: core::dimension2di(0, 0);
+
+	v2s32 dstsize(imgsize.Width * e->scale.X * m_scale_factor,
+			imgsize.Height * e->scale.Y * m_scale_factor);
+	if (e->scale.X < 0)
+		dstsize.X = m_screensize.X * (e->scale.X * -0.01);
+	if (e->scale.Y < 0)
+		dstsize.Y = m_screensize.Y * (e->scale.Y * -0.01);
+	// Explicit size for 9-slice images. Use width/height (not getArea, which
+	// is zero for a valid 1-D middle rect — kept consistent with the draw-time
+	// 9-slice dispatch below).
+	if ((e->middle.getWidth() != 0 || e->middle.getHeight() != 0) && e->size.X > 0 && e->size.Y > 0) {
+		dstsize.X = e->size.X * m_scale_factor;
+		dstsize.Y = e->size.Y * m_scale_factor;
+	}
+	v2s32 offset((e->align.X - 1.0) * dstsize.X / 2,
+			(e->align.Y - 1.0) * dstsize.Y / 2);
+	core::rect<s32> rect(0, 0, dstsize.X, dstsize.Y);
+	rect += pos + offset + v2s32(e->offset.X * m_scale_factor,
+			e->offset.Y * m_scale_factor);
+	return rect;
+}
+
+std::vector<std::pair<u32, core::rect<s32>>> Hud::getTouchableHudRects()
+{
+	std::vector<std::pair<u32, core::rect<s32>>> out;
+	const auto &elems = player->getHudElements();
+	for (u32 i = 0; i < elems.size(); i++) {
+		HudElement *e = elems[i];
+		if (e && e->type == HUD_ELEM_IMAGE && e->touchable) {
+			v2s32 pos(floor(e->pos.X * (float) m_screensize.X + 0.5),
+					floor(e->pos.Y * (float) m_screensize.Y + 0.5));
+			core::rect<s32> rect = getImageElementRect(e, pos);
+			// A touchable button whose texture can't be resolved collapses to
+			// a zero-size rect and is silently unclickable. Warn once per name
+			// so a mod author's typo doesn't look like a dead button.
+			if (rect.getArea() == 0) {
+				static std::unordered_set<std::string> warned;
+				if (warned.insert(e->text).second)
+					warningstream << "HUD: touchable image '" << e->text
+							<< "' has no resolvable texture; button is unclickable"
+							<< std::endl;
+			}
+			out.emplace_back(i, rect);
+		}
+	}
+	return out;
+}
+#endif
+
+#if IS_VOPI_ENGINE
 void Hud::drawLuaElements(const v3s16 &camera_offset, s16 z_index_min, s16 z_index_max)
 #else
 void Hud::drawLuaElements(const v3s16 &camera_offset)
@@ -388,6 +445,17 @@ void Hud::drawLuaElements(const v3s16 &camera_offset)
 	std::stable_sort(elems.begin(), elems.end(), [] (HudElement *l, HudElement *r) {
 		return l->z_index < r->z_index;
 	});
+
+#if IS_VOPI_ENGINE
+	// Resolve the held touchable button (by id) to a live element this frame, so
+	// no server-removable pointer is held across the client-event pump.
+	HudElement *pressed_elem = nullptr;
+	if (m_pressed_touchable_id) {
+		const auto &hels = player->getHudElements();
+		if (*m_pressed_touchable_id < hels.size())
+			pressed_elem = hels[*m_pressed_touchable_id];
+	}
+#endif
 
 	for (HudElement *e : elems) {
 
@@ -497,31 +565,38 @@ void Hud::drawLuaElements(const v3s16 &camera_offset)
 				[[fallthrough]];
 			}
 			case HUD_ELEM_IMAGE: {
+#if IS_VOPI_ENGINE
+				// Tappable buttons draw their pressed_texture while held.
+				const std::string &img_name = (e->touchable &&
+						e == pressed_elem && !e->pressed_text.empty())
+						? e->pressed_text : e->text;
+				video::ITexture *texture = tsrc->getTexture(img_name);
+#else
 				video::ITexture *texture = tsrc->getTexture(e->text);
+#endif
 				if (!texture)
 					continue;
 
 				const video::SColor color(255, 255, 255, 255);
 				const video::SColor colors[] = {color, color, color, color};
 				core::dimension2di imgsize(texture->getOriginalSize());
+#if IS_VOPI_ENGINE
+				// Single source of truth for the on-screen rect (shared with
+				// getImageElementRect / getTouchableHudRects for hit-testing).
+				core::rect<s32> rect = getImageElementRect(e, pos);
+#else
 				v2s32 dstsize(imgsize.Width * e->scale.X * m_scale_factor,
 				              imgsize.Height * e->scale.Y * m_scale_factor);
 				if (e->scale.X < 0)
 					dstsize.X = m_screensize.X * (e->scale.X * -0.01);
 				if (e->scale.Y < 0)
 					dstsize.Y = m_screensize.Y * (e->scale.Y * -0.01);
-#if IS_VOPI_ENGINE
-				// Use explicit size for 9-slice images if size is set
-				if ((e->middle.getWidth() != 0 || e->middle.getHeight() != 0) && e->size.X > 0 && e->size.Y > 0) {
-					dstsize.X = e->size.X * m_scale_factor;
-					dstsize.Y = e->size.Y * m_scale_factor;
-				}
-#endif
 				v2s32 offset((e->align.X - 1.0) * dstsize.X / 2,
 				             (e->align.Y - 1.0) * dstsize.Y / 2);
 				core::rect<s32> rect(0, 0, dstsize.X, dstsize.Y);
 				rect += pos + offset + v2s32(e->offset.X * m_scale_factor,
 				                             e->offset.Y * m_scale_factor);
+#endif
 				core::rect<s32> srcrect(core::position2d<s32>(0, 0), imgsize);
 #if IS_VOPI_ENGINE
 				if (e->middle.getWidth() != 0 || e->middle.getHeight() != 0) {

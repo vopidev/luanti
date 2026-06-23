@@ -127,6 +127,14 @@ public:
 	// When true, tap-to-dig/place is suppressed (applyContextControls). Re-pushed
 	// every frame from game.cpp so it survives a TouchControls recreation.
 	void setInteractionBlocked(bool blocked);
+
+	// Lua-defined tappable HUD buttons. game.cpp pushes the current
+	// (hud id, screen rect) list each frame; taps are detected against it.
+	void pushTouchableHudRects(std::vector<std::pair<u32, recti>> rects);
+	// The button currently held (for the pressed visual), read each frame.
+	std::optional<u32> getPressedHudButton() const;
+	// A completed release-inside click (read-once-clear), polled by game.cpp.
+	std::optional<u32> getHudButtonClick();
 #endif
 
 	void resetHotbarRects();
@@ -148,6 +156,15 @@ private:
 	u32 m_hidden_mask = 0;
 	// When true, tap-to-dig/place is suppressed. Default false.
 	bool m_interaction_blocked = false;
+
+	// Lua-defined tappable HUD buttons (see pushTouchableHudRects).
+	std::vector<std::pair<u32, recti>> m_touchable_hud_rects;
+	bool m_has_hud_btn_id = false;
+	size_t m_hud_btn_id = 0;       // active pointer id
+	u32 m_hud_btn_hud_id = 0;      // HUD element id of the held button
+	recti m_hud_btn_rect;          // its rect at press time
+	bool m_hud_btn_inside = false; // pointer currently within the rect
+	std::optional<u32> m_hud_btn_click = std::nullopt;
 #endif
 
 	// changes to these two values are handled in TouchControls::step
@@ -253,6 +270,11 @@ private:
 
 	// handle pressing hotbar items
 	bool isHotbarButton(const SEvent &event);
+
+#if IS_VOPI_ENGINE
+	// handle pressing Lua-defined tappable HUD buttons
+	bool isTouchableHudButton(const SEvent &event);
+#endif
 
 	// handle release event
 	void handleReleaseEvent(size_t pointer_id);

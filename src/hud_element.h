@@ -119,6 +119,9 @@ struct HudElement {
 	// 9-slice middle rect for image elements
 	core::rect<s32> middle;
 	f32 middle_scale = 1.0f;
+	// Tappable HUD image button support (see Hud::getTouchableHudRects).
+	bool touchable = false;
+	std::string pressed_text; // texture shown while the button is held
 #endif
 };
 

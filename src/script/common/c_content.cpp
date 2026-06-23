@@ -2462,6 +2462,9 @@ void read_hud_element(lua_State *L, HudElement *elem)
 	}
 	lua_pop(L, 1);
 	elem->middle_scale = getfloatfield_default(L, 2, "middle_scale", 1.0f);
+
+	elem->touchable = getboolfield_default(L, 2, "touchable", false);
+	elem->pressed_text = getstringfield_default(L, 2, "pressed_texture", "");
 #endif
 
 	/* check for known deprecated element usage */
@@ -2544,6 +2547,11 @@ void push_hud_element(lua_State *L, HudElement *elem)
 
 	lua_pushnumber(L, elem->middle_scale);
 	lua_setfield(L, -2, "middle_scale");
+
+	lua_pushboolean(L, elem->touchable);
+	lua_setfield(L, -2, "touchable");
+	lua_pushstring(L, elem->pressed_text.c_str());
+	lua_setfield(L, -2, "pressed_texture");
 #endif
 }
 

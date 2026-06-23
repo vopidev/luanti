@@ -6,6 +6,7 @@
 #pragma once
 
 #include <vector>
+#include <optional>
 #include <IGUIFont.h>
 #include <SMaterial.h>
 #include <CMeshBuffer.h>
@@ -108,6 +109,18 @@ public:
 	void drawLuaElements(const v3s16 &camera_offset);
 #endif
 
+#if IS_VOPI_ENGINE
+	// VOPI: Lua-defined tappable HUD image buttons. getTouchableHudRects returns
+	// (hud id, screen rect) for every touchable image element (used by
+	// TouchControls for hit-testing). setPressedTouchableElement tells the draw
+	// path which element is currently held so it draws its pressed_texture.
+	std::vector<std::pair<u32, core::rect<s32>>> getTouchableHudRects();
+	// Set each frame by game.cpp: the CLIENT hud index of the currently-held
+	// button (or nullopt). Resolved to a live element during draw, so no
+	// server-removable pointer is held across the client-event pump.
+	void setPressedTouchableId(std::optional<u32> id) { m_pressed_touchable_id = id; }
+#endif
+
 private:
 	bool calculateScreenPos(const v3s16 &camera_offset, HudElement *e, v2s32 *pos);
 	void drawStatbar(v2s32 pos, u16 corner, u16 drawdir,
@@ -136,6 +149,16 @@ private:
 	float m_scale_factor;
 	v3s16 m_camera_offset;
 	v2u32 m_screensize;
+
+#if IS_VOPI_ENGINE
+	// Computes the on-screen pixel rect of an image element (shared by the draw
+	// path and getTouchableHudRects so the hit area always matches the drawn image).
+	// pos is the element's screen origin (caller-provided so HUD_ELEM_IMAGE_WAYPOINT
+	// can pass its projected position; plain images pass the flat 2D pos).
+	core::rect<s32> getImageElementRect(const HudElement *e, v2s32 pos) const;
+	// CLIENT hud index of the currently-held touchable button (pressed visual).
+	std::optional<u32> m_pressed_touchable_id;
+#endif
 	v2s32 m_displaycenter;
 	s32 m_hotbar_imagesize; // Takes hud_scaling into account, updated by resizeHotbar()
 	s32 m_padding; // Takes hud_scaling into account, updated by resizeHotbar()

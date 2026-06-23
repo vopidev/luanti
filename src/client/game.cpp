@@ -1435,6 +1435,14 @@ void Game::processUserInput(f32 dtime)
 			// TouchControls recreation (the mask lives on the player, not here).
 			g_touchcontrols->setHiddenButtons(touch_player->touch_hidden_mask);
 			g_touchcontrols->setInteractionBlocked(touch_player->block_interaction);
+			// Lua-defined tappable HUD buttons: feed TouchControls the current
+			// button rects, and tell the HUD which one is held (pressed visual).
+			if (hud) {
+				g_touchcontrols->pushTouchableHudRects(hud->getTouchableHudRects());
+				// pass the held button's id; HUD resolves it to a live element
+				// during draw (no pointer held across the client-event pump).
+				hud->setPressedTouchableId(g_touchcontrols->getPressedHudButton());
+			}
 #else
 			g_touchcontrols->show();
 #endif
@@ -1643,6 +1651,23 @@ void Game::processItemSelection(u16 *new_playeritem)
 		std::optional<u16> selection = g_touchcontrols->getHotbarSelection();
 		if (selection)
 			*new_playeritem = *selection;
+#if IS_VOPI_ENGINE
+		// Lua-defined tappable HUD button clicked (release-inside) -> deliver to
+		// server-side Lua via the formspec-fields channel (empty form name).
+		// getHudButtonClick() returns the CLIENT-side hud index; translate it to
+		// the SERVER id the mod knows (the value returned by hud_add).
+		std::optional<u32> hud_click = g_touchcontrols->getHudButtonClick();
+		if (hud_click) {
+			for (const auto &[server_id, client_id] : m_hud_server_to_client) {
+				if (client_id == *hud_click) {
+					StringMap fields;
+					fields["__vopi_hud_click"] = std::to_string(server_id);
+					client->sendInventoryFields("", fields);
+					break;
+				}
+			}
+		}
+#endif
 	}
 
 	// Clamp selection again in case it wasn't changed but max_item was
@@ -2371,6 +2396,8 @@ void Game::handleClientEvent_HudAdd(ClientEvent *event, CameraOrientation *cam)
 #if IS_VOPI_ENGINE
 	e->middle       = event->hudadd->middle;
 	e->middle_scale = event->hudadd->middle_scale;
+	e->touchable    = event->hudadd->touchable;
+	e->pressed_text = event->hudadd->pressed_text;
 #endif
 	m_hud_server_to_client[server_id] = player->addHud(e);
 
