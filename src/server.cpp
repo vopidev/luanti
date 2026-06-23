@@ -1891,6 +1891,7 @@ void Server::SendHUDAdd(session_t peer_id, u32 id, HudElement *form)
 		<< (s32)form->middle.LowerRightCorner.X << (s32)form->middle.LowerRightCorner.Y
 		<< form->middle_scale;
 	pkt << form->touchable << form->pressed_text;
+	pkt << form->anchor_above_hotbar;
 #endif
 
 	Send(&pkt);

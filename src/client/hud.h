@@ -158,6 +158,9 @@ private:
 	core::rect<s32> getImageElementRect(const HudElement *e, v2s32 pos) const;
 	// CLIENT hud index of the currently-held touchable button (pressed visual).
 	std::optional<u32> m_pressed_touchable_id;
+	// Cached hotbar top-edge Y for anchor_above_hotbar elements; refreshed each
+	// frame in drawHotbar.
+	s32 m_hotbar_top_y = 0;
 #endif
 	v2s32 m_displaycenter;
 	s32 m_hotbar_imagesize; // Takes hud_scaling into account, updated by resizeHotbar()
