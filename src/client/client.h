@@ -35,6 +35,7 @@ class IWritableItemDefManager;
 class IWritableShaderSource;
 class IWritableTextureSource;
 class LuaError;
+class MapCanvas;
 class MapDatabase;
 class MeshUpdateManager;
 class Minimap;
@@ -302,6 +303,12 @@ public:
 	void typeChatMessage(const std::wstring& message);
 
 	u64 getMapSeed() const { return m_map_seed; }
+
+	// Persistent client-side explored-map canvas (fog of war), lazy-created
+	// per world. Returns nullptr until the client is far enough along that the
+	// map seed is known. Owned by Client so exploration accumulates for the
+	// whole session even while the map UI is closed.
+	MapCanvas *getMapCanvas();
 
 	void addUpdateMeshTask(v3s16 blockpos, bool ack_to_server=false, bool urgent=false);
 	// Including blocks at appropriate edges
@@ -594,6 +601,13 @@ private:
 	std::unique_ptr<MapDatabase> m_localdb;
 	IntervalLimiter m_localdb_save_interval;
 	u16 m_cache_save_interval;
+
+	// Persistent explored-map canvas (fog of war) + harvest throttle.
+	std::unique_ptr<MapCanvas> m_map_canvas;
+	IntervalLimiter m_map_harvest_interval;  // base cadence (~0.5s)
+	v3s16 m_map_harvest_last_center;         // center of last harvest sweep
+	u32 m_map_harvest_ticks = 0;             // 0.5s ticks; every 6th = full rescan
+	bool m_map_harvest_done = false;         // has at least one sweep run
 
 	// Client modding
 	ClientScripting *m_script = nullptr;

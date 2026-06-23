@@ -30,6 +30,7 @@
 #include "mapnode.h"
 #include "mapsector.h"
 #include "minimap.h"
+#include "mapCanvas.h"
 #include "node_visuals.h"
 #include "profiler.h"
 #include "shader.h"
@@ -381,6 +382,12 @@ void Client::Stop()
 		infostream << "Local map saving ended." << std::endl;
 		m_localdb->endSave();
 		m_localdb.reset();
+	}
+
+	// Persist the explored-map canvas (fog of war).
+	if (m_map_canvas) {
+		m_map_canvas->flushAll();
+		m_map_canvas.reset();
 	}
 
 	if (m_mods_loaded)
@@ -842,6 +849,125 @@ void Client::step(float dtime)
 		m_localdb->endSave();
 		m_localdb->beginSave();
 	}
+
+	// Continuously harvest the explored surface around the player into the
+	// persistent fog-of-war canvas. This must run independent of the map UI
+	// (the map lives in a formspec, and the player can't move while it's open),
+	// so it happens here in the client step, throttled to keep CPU modest.
+	{
+		MapCanvas *canvas = getMapCanvas();
+		LocalPlayer *player = m_env.getLocalPlayer();
+		if (canvas && player && m_map_harvest_interval.step(dtime, 0.5f)) {
+			const v3s16 c = floatToInt(player->getPosition(), BS);
+			const s16 y_top = c.Y + 64;
+			const s16 y_bottom = c.Y - 400;
+
+			// Two reasons to actually run a sweep:
+			//  - the player moved to a new node-center (new frontier to record);
+			//  - a periodic full rescan (every 6th ~0.5s tick ≈ 3s) to pick up
+			//    blocks that streamed in while standing still.
+			// Otherwise skip entirely: standing still in explored area costs ~0
+			// instead of re-scanning tens of thousands of columns every 0.5s.
+			m_map_harvest_ticks++;
+			const bool moved = !m_map_harvest_done || c != m_map_harvest_last_center;
+			const bool periodic = (m_map_harvest_ticks % 6) == 0;
+			if (moved || periodic) {
+				// Capture the previous sweep center/state BEFORE overwriting, so a
+				// move-sweep can skip the window the last sweep already covered.
+				const v3s16 prev_center = m_map_harvest_last_center;
+				const bool had_prev = m_map_harvest_done;
+				m_map_harvest_done = true;
+				m_map_harvest_last_center = c;
+
+				// Harvest radius tracks the client's configured view range, so the
+				// canvas covers the whole loaded area on every device instead of a
+				// fixed disc. Read once per sweep here (never inside the column loop
+				// below), so it costs nothing measurable yet still picks up a runtime
+				// view-range change within half a second. Ceiling-clamped: view range
+				// can be very large on PC and there is no point scanning beyond a sane
+				// window per sweep. Columns past the actually-loaded edge return no
+				// surface and stay fog, so over-covering only costs a cheap block-skip.
+				const s16 harvest_radius =
+					std::min<s16>(g_settings->getS16("viewing_range"), 192);
+
+				// Iterate at SECTOR granularity (16×16 columns) so a whole unloaded
+				// sector is skipped in ONE hash lookup instead of deep-scanning each
+				// of its columns. The earlier per-column box re-scanned the large
+				// unloaded ring around the loaded area every sweep; at a wide view
+				// range that meant ~10^6 wasted block lookups per 0.5s on the client
+				// main thread (severe stutter). Now only loaded sectors reach the
+				// inner loop, and the skip-recorded check keeps the deep scan to the
+				// fresh frontier. Cache the last canvas tile across the whole sweep:
+				// the window spans far fewer tiles than MAX_RESIDENT_TILES, so
+				// eviction never fires mid-sweep and the pointer stays valid.
+				Map &map = m_env.getMap();
+				const MapTile *seen = nullptr;
+				s16 seen_tx = -32768, seen_tz = -32768;
+
+				const s16 sx0 = getContainerPos((s16)(c.X - harvest_radius), (s16)MAP_BLOCKSIZE);
+				const s16 sx1 = getContainerPos((s16)(c.X + harvest_radius), (s16)MAP_BLOCKSIZE);
+				const s16 sz0 = getContainerPos((s16)(c.Z - harvest_radius), (s16)MAP_BLOCKSIZE);
+				const s16 sz1 = getContainerPos((s16)(c.Z + harvest_radius), (s16)MAP_BLOCKSIZE);
+
+				for (s16 sz = sz0; sz <= sz1; sz++)
+				for (s16 sx = sx0; sx <= sx1; sx++) {
+					if (!map.getSectorNoGenerateNoLock(v2s16(sx, sz)))
+						continue; // sector not loaded — skip all 256 of its columns
+
+					const s16 base_x = sx * MAP_BLOCKSIZE;
+					const s16 base_z = sz * MAP_BLOCKSIZE;
+					for (s16 oz = 0; oz < MAP_BLOCKSIZE; oz++)
+					for (s16 ox = 0; ox < MAP_BLOCKSIZE; ox++) {
+						const s16 wx = base_x + ox;
+						const s16 wz = base_z + oz;
+
+						// On move-only sweeps, scan just the newly-entered frontier band; the
+						// periodic sweep still walks the full box, so columns whose surface had not
+						// finished loading are retried there. Without this, the not-yet-loadable
+						// edge columns (which air_above leaves unrecorded) were deep-scanned every
+						// single 0.5s sweep -- the cost that showed up as movement micro-lag.
+						if (!periodic && had_prev &&
+								std::max(std::abs((s32)wx - prev_center.X),
+									std::abs((s32)wz - prev_center.Z)) <= harvest_radius)
+							continue;
+
+						// Skip columns already recorded (alpha != 0 == explored), so
+						// the deep scan only runs for the fresh frontier.
+						const s16 tx = MapCanvas::tileCoord(wx);
+						const s16 tz = MapCanvas::tileCoord(wz);
+						if (tx != seen_tx || tz != seen_tz) {
+							seen = canvas->findTileReadonly(tx, tz);
+							seen_tx = tx;
+							seen_tz = tz;
+						}
+						if (seen) {
+							const s32 cell_x = wx & (MAPCANVAS_TILE_NODES - 1);
+							const s32 cell_z = wz & (MAPCANVAS_TILE_NODES - 1);
+							if ((seen->colour[cell_z * MAPCANVAS_TILE_NODES + cell_x] >> 24) != 0)
+								continue; // already explored — skip the deep scan
+						}
+
+						u32 argb;
+						s16 h;
+						if (scanSurfaceColumn(map, m_nodedef, wx, wz,
+								y_top, y_bottom, argb, h))
+							canvas->setCell(wx, wz, argb, h);
+					}
+				}
+			} // moved || periodic
+		}
+		if (canvas)
+			canvas->maybeFlush(dtime);
+	}
+}
+
+MapCanvas *Client::getMapCanvas()
+{
+	// Lazy-create once the handshake is complete and the map seed is known.
+	// Guard on client STATE, not the seed value (0 is a legitimate seed).
+	if (!m_map_canvas && m_state == LC_Ready)
+		m_map_canvas = std::make_unique<MapCanvas>(m_map_seed);
+	return m_map_canvas.get();
 }
 
 bool Client::loadMedia(const std::string &data, const std::string &filename,
