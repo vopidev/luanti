@@ -100,6 +100,28 @@ gui::IGUIFont *GUIFormSpecMenu::getScaledStyleFont(const StyleSpec &style) const
 	return sf ? sf : getScaledDefaultFont();
 }
 
+gui::IGUIFont *GUIFormSpecMenu::getScaledTooltipFont() const
+{
+#if IS_VOPI_ENGINE
+	// VOPI: tooltips otherwise use m_font (the imgsize-scaled UI font), which is
+	// oversized on fullscreen formspecs. Render the tooltip at a fraction of that
+	// size so hint popups stay smaller than the surrounding UI. The main menu and
+	// the in-game formspecs have a different imgsize, so they need separate ratios
+	// to look right: use the in-game ratio when a Client exists (inventory/craft),
+	// the menu ratio otherwise. Falls back to m_font when font scaling is inactive
+	// (m_font_scale == 1, e.g. the upstream path).
+	if (m_font_scale != 1.0f) {
+		const float ratio = m_client ? VOPI_TOOLTIP_FONT_RATIO_INGAME
+		                             : VOPI_TOOLTIP_FONT_RATIO;
+		const unsigned base_size = g_fontengine->getFontSize(FM_Standard);
+		FontSpec spec((unsigned)std::round(base_size * m_font_scale * ratio),
+			FM_Standard, false, false);
+		return g_fontengine->getFont(spec);
+	}
+#endif
+	return m_font;
+}
+
 inline u32 clamp_u8(s32 value)
 {
 	return (u32) MYMIN(MYMAX(value, 0), 255);
@@ -3823,7 +3845,7 @@ void GUIFormSpecMenu::regenerateGui(v2u32 screensize)
 	}
 	recalculateAbsolutePosition(false);
 	mydata.basepos = getBasePos();
-	m_tooltip_element->setOverrideFont(m_font);
+	m_tooltip_element->setOverrideFont(getScaledTooltipFont());
 
 	gui::IGUISkin *skin = Environment->getSkin();
 	sanity_check(skin);
@@ -4334,7 +4356,7 @@ void GUIFormSpecMenu::showTooltip(const std::wstring &text,
 {
 #if IS_VOPI_ENGINE
 	setStaticText(m_tooltip_element, text);
-	m_tooltip_element->setOverrideFont(m_font);
+	m_tooltip_element->setOverrideFont(getScaledTooltipFont());
 #else
 	EnrichedString ntext(text);
 	ntext.setDefaultColor(color);

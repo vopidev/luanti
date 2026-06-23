@@ -339,6 +339,9 @@ protected:
 
 	// Get style font with m_font_scale fallback to scaled default
 	gui::IGUIFont *getScaledStyleFont(const StyleSpec &style) const;
+
+	// Get tooltip font (scaled default reduced by the menu/in-game tooltip ratio)
+	gui::IGUIFont *getScaledTooltipFont() const;
 	v2s32 offset;
 	v2f32 pos_offset;
 	std::stack<v2f32> container_stack;
