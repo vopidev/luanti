@@ -1276,12 +1276,16 @@ void Client::handleCommand_HudAdd(NetworkPacket* pkt)
 	bool touchable = false;
 	std::string pressed_text;
 	bool anchor_above_hotbar = false;
+	s32 max_width = 0;
+	s32 line_spacing = 0;
 	try {
 		s32 mx, my, mw, mh;
 		*pkt >> mx >> my >> mw >> mh >> middle_scale;
 		middle = core::rect<s32>(mx, my, mw, mh);
 		*pkt >> touchable >> pressed_text;
 		*pkt >> anchor_above_hotbar;
+		*pkt >> max_width;
+		*pkt >> line_spacing;
 	} catch(PacketError &e) {};
 #endif
 
@@ -1310,6 +1314,8 @@ void Client::handleCommand_HudAdd(NetworkPacket* pkt)
 	event->hudadd->touchable    = touchable;
 	event->hudadd->pressed_text = pressed_text;
 	event->hudadd->anchor_above_hotbar = anchor_above_hotbar;
+	event->hudadd->max_width    = max_width;
+	event->hudadd->line_spacing = line_spacing;
 #endif
 	m_client_event_queue.push(event);
 }

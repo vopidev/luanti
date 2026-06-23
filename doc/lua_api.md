@@ -2031,6 +2031,25 @@ Displays text on the HUD.
 * `scale`: Defines the bounding rectangle of the text, syntax is
   `{ x = <number>, y = <number> }`.
   A value such as `{ x = 100, y = 100 }` should work.
+* `max_width` (VOPI engine only): word-wrap width in logical HUD pixels.
+  When `> 0`, the client wraps the text in its real font so each visual line
+  fits within `max_width` (proportional fonts and per-language glyph widths are
+  handled correctly, since the wrapping happens client-side with the actual font
+  and DPI). `0` (default) disables wrapping — the text only breaks on explicit
+  `\n`, the upstream behavior. After wrapping, the client reports the measured
+  block size back to the server-side mod via an `on_player_receive_fields` event
+  with an empty form name and a `__vopi_hud_measured` field
+  (`"<hud_id>:<width>:<height>;..."`, sizes in logical pixels), so the mod can
+  size a 9-slice background and stack panels in real pixels.
+  The reported width may be up to ~1 pixel larger than `max_width` (rounding), so
+  do not assume the measured width is always `<= max_width`.
+  In response to `__vopi_hud_measured`, size/position only OTHER (background /
+  sibling) elements — do NOT mutate the measured element's own `size` or
+  `max_width`, or you risk a per-frame feedback loop on the fields channel.
+* `line_spacing` (VOPI engine only): extra vertical gap in logical pixels inserted
+  between wrapped lines (only used when `max_width > 0`). May be negative to
+  tighten lines. Included in the reported measured height. Default `0`.
+  Set at `hud_add` time only — `line_spacing` is not a valid `hud_change` stat.
 * `text`: The text to be displayed in the HUD element.
   Supports `core.translate` (always)
   and `core.colorize` (since protocol version 44)

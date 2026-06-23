@@ -38,6 +38,7 @@ const struct EnumString es_HudElementStat[] =
 	{HUD_STAT_STYLE,   "style"},
 #if IS_VOPI_ENGINE
 	{HUD_STAT_MIDDLE,  "middle"},
+	{HUD_STAT_MAX_WIDTH, "max_width"},
 #endif
 	{0, NULL},
 };

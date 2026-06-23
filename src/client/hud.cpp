@@ -406,6 +406,140 @@ std::vector<std::pair<u32, core::rect<s32>>> Hud::getTouchableHudRects()
 #endif
 
 #if IS_VOPI_ENGINE
+// Greedily word-wrap one already-newline-free EnrichedString to `wrap_px` pixels
+// using the real font, preserving per-character colors. Appends the resulting
+// visual lines to `out`. A single word wider than wrap_px is kept whole (it will
+// overflow) rather than split mid-word.
+static void wrapEnrichedLine(const EnrichedString &line, gui::IGUIFont *font,
+		s32 wrap_px, std::vector<EnrichedString> &out)
+{
+	const std::wstring &ws = line.getString();
+	const size_t n = ws.size();
+	if (n == 0) {
+		out.push_back(line);
+		return;
+	}
+
+	// Emit [start, end) with trailing spaces trimmed: they neither render nor
+	// should inflate the reported block width.
+	auto emit = [&](size_t start, size_t end) {
+		while (end > start && ws[end - 1] == L' ')
+			end--;
+		out.push_back(line.substr(start, end - start));
+	};
+
+	size_t seg_start = 0; // first char of the visual line currently being built
+	size_t i = 0;
+	s32 cur_w = 0;        // pixel width of [seg_start, i)
+
+	while (i < n) {
+		// One token = a run of non-spaces (the word) plus any trailing spaces.
+		const size_t word_start = i;
+		while (i < n && ws[i] != L' ')
+			i++;
+		while (i < n && ws[i] == L' ')
+			i++;
+		const EnrichedString tok = line.substr(word_start, i - word_start);
+		const s32 tok_w = (s32) font->getDimension(tok.c_str()).Width;
+
+		if (word_start == seg_start) {
+			// First token on the line: always keep it, even if it overflows.
+			cur_w = tok_w;
+		} else if (cur_w + tok_w <= wrap_px) {
+			cur_w += tok_w;
+		} else {
+			// Doesn't fit: flush the current visual line, start a new one here.
+			emit(seg_start, word_start);
+			seg_start = word_start;
+			cur_w = tok_w;
+		}
+	}
+	emit(seg_start, n);
+}
+
+// Render a HUD_ELEM_TEXT that has max_width > 0: wrap the text in the real font,
+// draw it line by line, and stash the measured block size (in logical pixels) on
+// the element so Game::processUserInput can report it back to server-side Lua.
+static void drawWrappedHudText(HudElement *e, gui::IGUIFont *textfont,
+		gui::CGUITTFont *ttfont, const EnrichedString &text,
+		const video::SColor &color, v2s32 pos, float scale_factor)
+{
+	// Clamp the float product BEFORE the s32 cast: max_width is server-sent and
+	// unbounded, and casting an out-of-range float to s32 is undefined behavior.
+	// A malicious server can bypass the Lua-read clamp via a crafted HUDADD, so
+	// this client-side guard at the actual cast site is the real protection.
+	const s32 wrap_px = std::max<s32>(1, (s32) rangelim(e->max_width * scale_factor, 0.0f, 32767.0f));
+
+	// Strip carriage returns first: the font backends treat '\r' as a hard line
+	// break (and getNextLine only splits on '\n'), which would desync wrapping
+	// from measurement. Only allocate a copy when a '\r' is actually present.
+	const EnrichedString *src = &text;
+	EnrichedString sanitized;
+	if (text.getString().find(L'\r') != std::wstring::npos) {
+		for (size_t k = 0; k < text.size(); k++) {
+			if (text.getString()[k] != L'\r')
+				sanitized.addChar(text, k);
+		}
+		src = &sanitized;
+	}
+
+	// Wrap every explicit (newline-delimited) line to the pixel width.
+	std::vector<EnrichedString> lines;
+	size_t str_pos = 0;
+	while (str_pos < src->size())
+		wrapEnrichedLine(src->getNextLine(&str_pos), textfont, wrap_px, lines);
+	if (lines.empty())
+		lines.push_back(*src);
+
+	// Extra gap between wrapped lines (logical px → device px; may be negative).
+	const s32 line_spacing = (s32) rangelim(e->line_spacing * scale_factor, -32767.0f, 32767.0f);
+
+	// Measure each wrapped line ONCE (device px) and reuse the dimensions for both
+	// the block size and the per-line draw below — no redundant getDimension passes.
+	std::vector<core::dimension2d<u32>> dims;
+	dims.reserve(lines.size());
+	s32 block_w = 0, block_h = 0;
+	for (size_t k = 0; k < lines.size(); k++) {
+		const core::dimension2d<u32> ls = textfont->getDimension(lines[k].c_str());
+		dims.push_back(ls);
+		if ((s32) ls.Width > block_w)
+			block_w = ls.Width;
+		block_h += (s32) ls.Height;
+		if (k + 1 < lines.size())
+			block_h += line_spacing;
+	}
+	if (block_h < 0)
+		block_h = 0;
+
+	const core::rect<s32> rect(0, 0, wrap_px, block_h);
+	v2s32 offset(0, (e->align.Y - 1.0) * (block_h / 2));
+	const v2s32 offs((s32) (e->offset.X * scale_factor),
+			(s32) (e->offset.Y * scale_factor));
+
+	for (size_t k = 0; k < lines.size(); k++) {
+		const core::dimension2d<u32> &ls = dims[k];
+		const v2s32 line_offset((e->align.X - 1.0) * ((s32) ls.Width / 2), 0);
+		if (ttfont)
+			ttfont->draw(lines[k], rect + pos + offset + offs + line_offset);
+		else
+			textfont->draw(lines[k].c_str(), rect + pos + offset + offs + line_offset, color);
+		offset.Y += (s32) ls.Height + line_spacing;
+	}
+
+	// Report the measured size in logical pixels (device px / scale_factor) back
+	// to the mod. ceil() so the background box never clips the text; flag a change
+	// only when it actually differs to avoid spamming the fields channel. The
+	// reported width may be up to ~1px larger than max_width due to rounding.
+	const v2s32 logical((s32) ceil(block_w / scale_factor),
+			(s32) ceil(block_h / scale_factor));
+	if (logical != e->measured_size) {
+		e->measured_size = logical;
+		e->measured_dirty = true;
+	}
+}
+#endif
+
+#if IS_VOPI_ENGINE
 void Hud::drawLuaElements(const v3s16 &camera_offset, s16 z_index_min, s16 z_index_max)
 #else
 void Hud::drawLuaElements(const v3s16 &camera_offset)
@@ -511,6 +645,17 @@ void Hud::drawLuaElements(const v3s16 &camera_offset)
 						(num >> 0)  & 0xFF);
 
 				EnrichedString text(unescape_string(utf8_to_wide(e->text)), color);
+
+#if IS_VOPI_ENGINE
+				// VOPI: client-side word wrapping to a pixel width. The client owns
+				// the layout (real font + DPI) and reports the measured size back to
+				// Lua; everything else (background, stacking) stays mod-side.
+				if (e->max_width > 0) {
+					drawWrappedHudText(e, textfont, ttfont, text, color, pos,
+							m_scale_factor);
+					break;
+				}
+#endif
 				core::dimension2d<u32> textsize = textfont->getDimension(text.c_str());
 
 				v2s32 offset(0, (e->align.Y - 1.0) * (textsize.Height / 2));

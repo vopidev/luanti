@@ -2466,6 +2466,10 @@ void read_hud_element(lua_State *L, HudElement *elem)
 	elem->touchable = getboolfield_default(L, 2, "touchable", false);
 	elem->pressed_text = getstringfield_default(L, 2, "pressed_texture", "");
 	elem->anchor_above_hotbar = getboolfield_default(L, 2, "anchor_above_hotbar", false);
+	// Clamp like the 9-slice middle field: these flow into a float*scale cast on
+	// the client, where an out-of-range value would be undefined behavior.
+	elem->max_width = rangelim(getintfield_default(L, 2, "max_width", 0), 0, 16384);
+	elem->line_spacing = rangelim(getintfield_default(L, 2, "line_spacing", 0), -4096, 4096);
 #endif
 
 	/* check for known deprecated element usage */
@@ -2555,6 +2559,10 @@ void push_hud_element(lua_State *L, HudElement *elem)
 	lua_setfield(L, -2, "pressed_texture");
 	lua_pushboolean(L, elem->anchor_above_hotbar);
 	lua_setfield(L, -2, "anchor_above_hotbar");
+	lua_pushinteger(L, elem->max_width);
+	lua_setfield(L, -2, "max_width");
+	lua_pushinteger(L, elem->line_spacing);
+	lua_setfield(L, -2, "line_spacing");
 #endif
 }
 
@@ -2636,6 +2644,11 @@ bool read_hud_change(lua_State *L, HudElementStat &stat, HudElement *elem, void 
 						rangelim(getintfield_default(L, 4, "h", 0), -4096, 4096));
 			}
 			*value = &elem->middle;
+			break;
+		case HUD_STAT_MAX_WIDTH:
+			// Clamp the double before the s32 narrowing (out-of-range cast is UB).
+			elem->max_width = (s32) rangelim(luaL_checknumber(L, 4), 0.0, 16384.0);
+			*value = &elem->max_width;
 			break;
 #endif
 		case HudElementStat_END:

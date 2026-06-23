@@ -1474,6 +1474,37 @@ void Game::processUserInput(f32 dtime)
 
 	processKeyInput();
 	processItemSelection(&runData.new_playeritem);
+
+#if IS_VOPI_ENGINE
+	// VOPI: report client-measured wrapped-text sizes (HUD_ELEM_TEXT with
+	// max_width > 0) back to server-side Lua, so it can size 9-slice backgrounds
+	// and stack notification/info panels in real pixels instead of guessing from
+	// character counts. Rides the formspec-fields channel (empty form name), like
+	// __vopi_hud_click. Batches all changed elements into one push per frame, and
+	// only sends when a size actually changed (the draw path flags measured_dirty).
+	if (hud) {
+		LocalPlayer *lp = client->getEnv().getLocalPlayer();
+		std::string measured;
+		if (lp) {
+			for (const auto &[server_id, client_id] : m_hud_server_to_client) {
+				HudElement *he = lp->getHud(client_id);
+				if (he && he->max_width > 0 && he->measured_dirty) {
+					he->measured_dirty = false;
+					if (!measured.empty())
+						measured += ';';
+					measured += std::to_string(server_id) + ':' +
+							std::to_string(he->measured_size.X) + ':' +
+							std::to_string(he->measured_size.Y);
+				}
+			}
+		}
+		if (!measured.empty()) {
+			StringMap fields;
+			fields["__vopi_hud_measured"] = measured;
+			client->sendInventoryFields("", fields);
+		}
+	}
+#endif
 }
 
 
@@ -2399,6 +2430,8 @@ void Game::handleClientEvent_HudAdd(ClientEvent *event, CameraOrientation *cam)
 	e->touchable    = event->hudadd->touchable;
 	e->pressed_text = event->hudadd->pressed_text;
 	e->anchor_above_hotbar = event->hudadd->anchor_above_hotbar;
+	e->max_width    = event->hudadd->max_width;
+	e->line_spacing = event->hudadd->line_spacing;
 #endif
 	m_hud_server_to_client[server_id] = player->addHud(e);
 
@@ -2470,6 +2503,8 @@ void Game::handleClientEvent_HudChange(ClientEvent *event, CameraOrientation *ca
 
 #if IS_VOPI_ENGINE
 		CASE_SET(HUD_STAT_MIDDLE, middle, rectdata);
+
+		CASE_SET(HUD_STAT_MAX_WIDTH, max_width, data);
 #endif
 
 		case HudElementStat_END:
