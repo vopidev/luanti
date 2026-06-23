@@ -32,6 +32,9 @@ class Client;
 class GUIScrollContainer;
 class ISoundManager;
 class JoystickController;
+#if IS_VOPI_ENGINE
+class GUIScene;
+#endif
 
 enum FormspecFieldType {
 	f_Button,
@@ -361,6 +364,15 @@ protected:
 	std::vector<gui::IGUIElement *> m_clickthrough_elements;
 	std::vector<std::pair<std::string, GUIScrollContainer *>> m_scroll_containers;
 
+#if IS_VOPI_ENGINE
+	// VOPI extension — index of model[] name → GUIScene* so model_overlay[]
+	// parser can attach secondary meshes to a previously declared model[].
+	// Pointers are owned by the GUI element tree (parseModel calls drop()
+	// after construction transferring ownership). We only borrow them and
+	// must clear this map in removeAll() before the tree is torn down.
+	std::unordered_map<std::string, GUIScene *> m_scene_models;
+#endif
+
 #if IS_VOPI_ENGINE && (defined(__ANDROID__) || defined(__IOS__))
 	gui::IGUIImage *m_selected_item_bg = nullptr;
 	bool m_selected_active = false;
@@ -517,6 +529,9 @@ private:
 	void parseStyle(parserData *data, const std::string &element);
 	void parseSetFocus(parserData *, const std::string &element);
 	void parseModel(parserData *data, const std::string &element);
+#if IS_VOPI_ENGINE
+	void parseModelOverlay(parserData *data, const std::string &element);
+#endif
 	void parseAllowClose(parserData *data, const std::string &element);
 
 	bool parseMiddleRect(const std::string &value, core::rect<s32> *parsed_rect);
