@@ -3754,14 +3754,29 @@ void GUIFormSpecMenu::regenerateGui(v2u32 screensize)
 		padding = v2s32(use_imgsize*3.0/8, use_imgsize*3.0/8);
 		m_btn_height = use_imgsize*15.0/13 * 0.35;
 
-#if IS_VOPI_ENGINE && !defined(__ANDROID__) && !defined(__IOS__)
-		// Desktop VOPI: scale fonts based on window height (not imgsize).
-		// This ensures consistent font scaling across formspecs of different sizes
-		// (menu 5.12h vs in-game 10.24h). Reference 670 calibrated for desktop.
+#if IS_VOPI_ENGINE
+		// VOPI: scale formspec fonts with the formspec's element size (imgsize),
+		// NOT the screen. Every element is sized as units * imgsize, so making
+		// font_px proportional to imgsize keeps text a constant FRACTION of the
+		// UI on every device — design once (e.g. on Mac) and it stays
+		// proportional on phones, no per-device calibration. Resizing the game
+		// window still rescales text, because imgsize tracks the window
+		// (calculateImgsize). Note: font_px itself is NOT constant across devices
+		// (it grows with imgsize) — the text/UI RATIO is what stays fixed.
+		//
+		// FontEngine renders a *N-styled font at N * base * m_font_scale *
+		// density * gui_scaling. Solving font_px = VOPI_FONT_IMGSIZE_RATIO *
+		// imgsize for the scale gives the line below: base, density and
+		// gui_scaling cancel because we divide by them here and FontEngine
+		// multiplies by them at render time. (`base` is the FM_Standard size; if
+		// mono/bold are configured to a different size, their *N text scales by
+		// that size's ratio to standard — a non-issue while the defaults match.)
 		{
-			v2u32 screen = RenderingEngine::get_video_driver()->getScreenSize();
-			float screen_h = (float)std::min(screen.X, screen.Y);
-			m_font_scale = std::max(0.5f, screen_h * 0.9f / VOPI_DESKTOP_FONT_REF_HEIGHT);
+			const float base = (float)std::max(1u, g_fontengine->getFontSize(FM_Standard));
+			const float density = std::max(0.1f, RenderingEngine::getDisplayDensity());
+			const float gui_scaling = g_settings->getFloat("gui_scaling", 0.5f, 42.0f);
+			m_font_scale = std::max(0.3f,
+				(float)(VOPI_FONT_IMGSIZE_RATIO * use_imgsize) / (base * density * gui_scaling));
 		}
 #else
 		m_font_scale = 1.0f;

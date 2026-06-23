@@ -366,6 +366,30 @@ public:
 		}
 
 		if (!size.empty()) {
+#if IS_VOPI_ENGINE
+			// VOPI: keep the size in FLOAT through the *N multiply and the
+			// font_scale multiply, rounding only ONCE at the end. Upstream
+			// cast `*N * base` to int BEFORE applying font_scale, which froze
+			// the platform base font size (the font_size setting: 14 mobile /
+			// 18 desktop) at integer precision and broke the base
+			// cancellation — so `*N` text drifted (~7%) across devices. With a
+			// single final round the base cancels (`N*base` in the numerator,
+			// `1/base` inside m_font_scale), giving font_px ~ N * RATIO *
+			// imgsize on every device — matching the hypertext formula.
+			float calc_size = 1.0f;
+
+			if (size[0] == '*') {
+				std::string new_size = size.substr(1); // Remove '*' (invalid for stof)
+				calc_size = stof(new_size) * g_fontengine->getFontSize(spec.mode);
+			} else if (size[0] == '+' || size[0] == '-') {
+				calc_size = stoi(size) + g_fontengine->getFontSize(spec.mode);
+			} else {
+				calc_size = stoi(size);
+			}
+
+			int final_size = (int)std::round(calc_size * font_scale);
+			spec.size = (unsigned)std::min(std::max(final_size, 1), 999);
+#else
 			int calc_size = 1;
 
 			if (size[0] == '*') {
@@ -379,6 +403,7 @@ public:
 
 			calc_size = (int)std::round(calc_size * font_scale);
 			spec.size = (unsigned)std::min(std::max(calc_size, 1), 999);
+#endif
 		}
 
 		return g_fontengine->getFont(spec);
