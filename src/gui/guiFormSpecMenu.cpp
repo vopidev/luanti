@@ -653,10 +653,12 @@ void GUIFormSpecMenu::parseCheckbox(parserData* data, const std::string &element
 	// DRAWN with (font_size-scaled) — keeps the rect / centering exact.
 	auto style = getDefaultStyleForElement("checkbox", name);
 #if IS_VOPI_ENGINE
-	// Use the style's font_size-scaled font; fall back to the menu font.
-	gui::IGUIFont *cb_font = style.getFont();
-	if (!cb_font)
-		cb_font = m_font;
+	// Use the style font scaled by the formspec font scale (m_font_scale), so the
+	// checkbox label tracks the UI size like every other formspec font. Both the
+	// measurement below and the GUICheckBox override font use cb_font, so the
+	// label rect and the drawn text stay in sync. getScaledStyleFont falls back
+	// to the scaled default font, so cb_font is never null.
+	gui::IGUIFont *cb_font = getScaledStyleFont(style);
 #else
 	gui::IGUIFont *cb_font = m_font;
 #endif
