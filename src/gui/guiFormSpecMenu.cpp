@@ -83,6 +83,23 @@ static unsigned int font_line_height(gui::IGUIFont *font)
 	return font->getDimension(L"Ay").Height + font->getKerning(L'A').Y;
 }
 
+gui::IGUIFont *GUIFormSpecMenu::getScaledDefaultFont() const
+{
+	if (m_font_scale != 1.0f) {
+		unsigned base_size = g_fontengine->getFontSize(FM_Standard);
+		FontSpec spec((unsigned)std::round(base_size * m_font_scale),
+			FM_Standard, false, false);
+		return g_fontengine->getFont(spec);
+	}
+	return g_fontengine->getFont();
+}
+
+gui::IGUIFont *GUIFormSpecMenu::getScaledStyleFont(const StyleSpec &style) const
+{
+	gui::IGUIFont *sf = style.getFont(m_font_scale);
+	return sf ? sf : getScaledDefaultFont();
+}
+
 inline u32 clamp_u8(s32 value)
 {
 	return (u32) MYMIN(MYMAX(value, 0), 255);
@@ -1247,6 +1264,7 @@ void GUIFormSpecMenu::parseButton(parserData* data, const std::string &element)
 
 	spec.sound = style[StyleSpec::STATE_DEFAULT].get(StyleSpec::Property::SOUND, "");
 
+	e->setFontScale(m_font_scale);
 	e->setStyles(style);
 
 	if (spec.fname == m_focused_element) {
@@ -1445,10 +1463,10 @@ void GUIFormSpecMenu::parseTable(parserData* data, const std::string &element)
 	// Apply styling before calculating the cell sizes
 	auto style = getDefaultStyleForElement("table", name);
 #if IS_VOPI_ENGINE
-	e->setStyle(style);
+	e->setStyle(style, m_font_scale);
 #else
 	e->setNotClipped(style.getBool(StyleSpec::NOCLIP, false));
-	e->setOverrideFont(style.getFont());
+	e->setOverrideFont(getScaledStyleFont(style));
 #endif
 
 	if (spec.fname == m_focused_element) {
@@ -1538,10 +1556,10 @@ void GUIFormSpecMenu::parseTextList(parserData* data, const std::string &element
 
 	auto style = getDefaultStyleForElement("textlist", name);
 #if IS_VOPI_ENGINE
-	e->setStyle(style);
+	e->setStyle(style, m_font_scale);
 #else
 	e->setNotClipped(style.getBool(StyleSpec::NOCLIP, false));
-	e->setOverrideFont(style.getFont());
+	e->setOverrideFont(getScaledStyleFont(style));
 #endif
 
 	m_tables.emplace_back(spec, e);
@@ -1713,7 +1731,7 @@ void GUIFormSpecMenu::parsePwdField(parserData* data, const std::string &element
 	e->setNotClipped(style.getBool(StyleSpec::NOCLIP, false));
 	e->setDrawBorder(style.getBool(StyleSpec::BORDER, true));
 	e->setOverrideColor(style.getColor(StyleSpec::TEXTCOLOR, video::SColor(0xFFFFFFFF)));
-	e->setOverrideFont(style.getFont());
+	e->setOverrideFont(getScaledStyleFont(style));
 
 	SEvent evt;
 	evt.EventType            = EET_KEY_INPUT_EVENT;
@@ -1795,7 +1813,7 @@ void GUIFormSpecMenu::createTextField(parserData *data, FieldSpec &spec,
 		bool border = style.getBool(StyleSpec::BORDER, true);
 		e->setDrawBorder(border);
 		e->setDrawBackground(border);
-		e->setOverrideFont(style.getFont());
+		e->setOverrideFont(getScaledStyleFont(style));
 
 #if IS_VOPI_ENGINE
 		if (box != nullptr)
@@ -2054,9 +2072,7 @@ void GUIFormSpecMenu::parseLabel(parserData* data, const std::string &element)
 #endif
 
 	auto style = getDefaultStyleForElement("label", "");
-	gui::IGUIFont *font = style.getFont();
-	if (!font)
-		font = m_font;
+	gui::IGUIFont *font = getScaledStyleFont(style);
 
 #if IS_VOPI_ENGINE
 	auto add_label = [&](core::rect<s32> rect, const EnrichedString &text,
@@ -2276,9 +2292,7 @@ void GUIFormSpecMenu::parseVertLabel(parserData* data, const std::string &elemen
 	MY_CHECKPOS("vertlabel", 1);
 
 	auto style = getDefaultStyleForElement("vertlabel", "", "label");
-	gui::IGUIFont *font = style.getFont();
-	if (!font)
-		font = m_font;
+	gui::IGUIFont *font = getScaledStyleFont(style);
 
 	v2s32 pos;
 	core::rect<s32> rect;
@@ -2415,6 +2429,7 @@ void GUIFormSpecMenu::parseImageButton(parserData* data, const std::string &elem
 		style[StyleSpec::STATE_DEFAULT].set(StyleSpec::BORDER, parts[6]);
 	}
 
+	e->setFontScale(m_font_scale);
 	e->setStyles(style);
 	e->setScaleImage(true);
 
@@ -3739,7 +3754,20 @@ void GUIFormSpecMenu::regenerateGui(v2u32 screensize)
 		padding = v2s32(use_imgsize*3.0/8, use_imgsize*3.0/8);
 		m_btn_height = use_imgsize*15.0/13 * 0.35;
 
-		m_font = g_fontengine->getFont();
+#if IS_VOPI_ENGINE && !defined(__ANDROID__) && !defined(__IOS__)
+		// Desktop VOPI: scale fonts based on window height (not imgsize).
+		// This ensures consistent font scaling across formspecs of different sizes
+		// (menu 5.12h vs in-game 10.24h). Reference 670 calibrated for desktop.
+		{
+			v2u32 screen = RenderingEngine::get_video_driver()->getScreenSize();
+			float screen_h = (float)std::min(screen.X, screen.Y);
+			m_font_scale = std::max(0.5f, screen_h * 0.9f / VOPI_DESKTOP_FONT_REF_HEIGHT);
+		}
+#else
+		m_font_scale = 1.0f;
+#endif
+
+		m_font = getScaledDefaultFont();
 
 		if (mydata.real_coordinates) {
 			mydata.size = v2s32(
@@ -3763,7 +3791,7 @@ void GUIFormSpecMenu::regenerateGui(v2u32 screensize)
 		// Non-size[] form must consist only of text fields and
 		// implicit "Proceed" button.  Use default font, and
 		// temporary form size which will be recalculated below.
-		m_font = g_fontengine->getFont();
+		m_font = getScaledDefaultFont();
 		m_btn_height = font_line_height(m_font) * 0.875;
 		DesiredRect = core::rect<s32>(
 			(s32)((f32)mydata.screensize.X * mydata.offset.X) - (s32)(mydata.anchor.X * 580.0),
@@ -6276,7 +6304,17 @@ double GUIFormSpecMenu::calculateImgsize(const parserData &data)
 	double prefer_imgsize = getImgsize(v2u32::from(padded_screensize),
 			screen_dpi, gui_scaling);
 
+#if IS_VOPI_ENGINE && !defined(__ANDROID__) && !defined(__IOS__)
+	// Desktop VOPI: scale prefer_imgsize with window so fullscreen formspecs
+	// (10.24x5.12) fill the window, while popups (4.8x2.4) stay proportional.
+	// Reference height 6.0 units: formspecs taller than this fill the window,
+	// shorter ones are proportionally smaller (popup behavior).
+	double window_scaled_prefer = padded_screensize.Y / 6.0;
+	double desktop_prefer = std::max(window_scaled_prefer, prefer_imgsize);
+	return std::min(desktop_prefer, std::min(fitx_imgsize, fity_imgsize));
+#else
 	// Try to use the preferred imgsize, but if that's bigger than the maximum
 	// size, use the maximum size.
 	return std::min(prefer_imgsize, std::min(fitx_imgsize, fity_imgsize));
+#endif
 }

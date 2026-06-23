@@ -165,6 +165,9 @@ public:
 
 	//! Set the styles used for each state
 	void setStyles(const std::array<StyleSpec, StyleSpec::NUM_STATES>& styles);
+
+	//! Set font scale factor (for VOPI desktop formspec scaling)
+	void setFontScale(float scale) { FontScale = scale; }
 	// END PATCH
 
 
@@ -243,6 +246,7 @@ private:
 	std::array<StyleSpec, StyleSpec::NUM_STATES> Styles;
 
 	gui::IGUIFont* OverrideFont = nullptr;
+	float FontScale = 1.0f;
 
 	bool OverrideColorEnabled = false;
 	video::SColor OverrideColor = video::SColor(101,255,255,255);

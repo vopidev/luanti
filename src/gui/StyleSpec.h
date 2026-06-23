@@ -340,7 +340,7 @@ public:
 		return v2s32(vec.X, vec.Y);
 	}
 
-	gui::IGUIFont *getFont() const
+	gui::IGUIFont *getFont(float font_scale = 1.0f) const
 	{
 		FontSpec spec(FONT_SIZE_UNSPECIFIED, FM_Standard, false, false);
 
@@ -377,6 +377,7 @@ public:
 				calc_size = stoi(size);
 			}
 
+			calc_size = (int)std::round(calc_size * font_scale);
 			spec.size = (unsigned)std::min(std::max(calc_size, 1), 999);
 		}
 

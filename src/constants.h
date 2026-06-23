@@ -104,6 +104,9 @@
 #define TTF_DEFAULT_FONT_SIZE (16)
 #endif
 
+// VOPI Desktop: reference screen height for font scaling (calibrated for desktop readability)
+#define VOPI_DESKTOP_FONT_REF_HEIGHT (850.0f)
+
 // Minimum texture size enforced/checked for enabling linear filtering
 // This serves as the minimum for `texture_min_size`.
 // The intent is to ensure that the rendering doesn't turn terribly blurry
