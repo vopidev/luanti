@@ -1683,6 +1683,18 @@ void Game::processItemSelection(u16 *new_playeritem)
 		if (selection)
 			*new_playeritem = *selection;
 #if IS_VOPI_ENGINE
+		// VOPI mobile drag-to-drop: drop the entire stack from the slot the
+		// player dragged out of, without touching the current wield index.
+		std::optional<u16> drop_slot = g_touchcontrols->getHotbarDropRequest();
+		if (drop_slot && *drop_slot <= max_item) {
+			IDropAction *a = new IDropAction();
+			a->count = 0; // 0 = entire stack
+			a->from_inv.setCurrentPlayer();
+			a->from_list = "main";
+			a->from_i = *drop_slot;
+			client->inventoryAction(a);
+		}
+
 		// Lua-defined tappable HUD button clicked (release-inside) -> deliver to
 		// server-side Lua via the formspec-fields channel (empty form name).
 		// getHudButtonClick() returns the CLIENT-side hud index; translate it to

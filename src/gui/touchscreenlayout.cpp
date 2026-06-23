@@ -177,9 +177,12 @@ bool ButtonLayout::isButtonAllowed(touch_gui_button_id id)
 	// VOPI mobile UI does not expose these buttons; they are hard-disabled
 	// here. Note: this makes the P4 per-player touch_hidden_mask bits for
 	// these ids no-ops (the buttons are never created), which is intended.
+	// drop_id is additionally hidden because the touch hotbar supports
+	// drag-to-drop (drag an item up out of the hotbar), so no dedicated
+	// drop button is needed.
 	if (id == fly_id || id == fast_id || id == noclip_id ||
 			id == debug_id || id == range_id || id == minimap_id ||
-			id == toggle_chat_id) {
+			id == toggle_chat_id || id == drop_id) {
 		return false;
 	}
 #endif
@@ -264,11 +267,8 @@ const ButtonLayout::ButtonMap ButtonLayout::default_data {
 		v2f(-0.4f, -0.41f),
 		0.8f
 	}},
-	{drop_id, {
-		v2f(1.0f, 0.5f),
-		v2f(-0.4f, 0.41f),
-		0.8f
-	}},
+	// drop_id intentionally omitted: hidden on VOPI mobile in favor of
+	// hotbar drag-to-drop (see ButtonLayout::isButtonAllowed).
 	{exit_id, {
 		v2f(0.5f, 0.0f),
 		v2f(-0.824f, 0.4f),
