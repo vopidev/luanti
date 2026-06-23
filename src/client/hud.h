@@ -96,7 +96,17 @@ public:
 
 	bool hasElementOfType(HudElementType type);
 
+#if IS_VOPI_ENGINE
+	// VOPI: optional z_index range filter so the render pipeline can draw
+	// HUD elements in two passes (under vs. above formspec).
+	// Note: builtin minimap/hotbar fallbacks (used for legacy protocol versions)
+	// have an implicit z_index of 0 and are only included when the requested
+	// range covers 0. Callers that exclude 0 from their range will not see them.
+	void drawLuaElements(const v3s16 &camera_offset,
+			s16 z_index_min = S16_MIN, s16 z_index_max = S16_MAX);
+#else
 	void drawLuaElements(const v3s16 &camera_offset);
+#endif
 
 private:
 	bool calculateScreenPos(const v3s16 &camera_offset, HudElement *e, v2s32 *pos);

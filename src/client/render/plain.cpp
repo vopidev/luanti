@@ -48,10 +48,24 @@ void DrawHUD::run(PipelineContext &context)
 		if (context.draw_crosshair)
 			context.hud->drawCrosshair();
 
+#if IS_VOPI_ENGINE
+		// VOPI: split HUD into two passes so elements with z_index
+		// >= HUD_Z_INDEX_ABOVE_FORMSPEC render on top of any open formspec.
+		const v3s16 cam_offset = context.client->getCamera()->getOffset();
+		context.hud->drawLuaElements(cam_offset,
+				S16_MIN, HUD_Z_INDEX_ABOVE_FORMSPEC - 1);
+		context.client->getCamera()->drawNametags();
+		context.device->getGUIEnvironment()->drawAll();
+		context.hud->drawLuaElements(cam_offset,
+				HUD_Z_INDEX_ABOVE_FORMSPEC, S16_MAX);
+#else
 		context.hud->drawLuaElements(context.client->getCamera()->getOffset());
 		context.client->getCamera()->drawNametags();
+		context.device->getGUIEnvironment()->drawAll();
+#endif
+	} else {
+		context.device->getGUIEnvironment()->drawAll();
 	}
-	context.device->getGUIEnvironment()->drawAll();
 }
 
 

@@ -51,6 +51,14 @@
 
 #define HOTBAR_IMAGE_SIZE 48
 
+#if IS_VOPI_ENGINE
+// HUD elements with z_index >= this threshold are drawn AFTER the GUI
+// environment (i.e. on top of any open formspec). Elements below this
+// threshold preserve the original behavior of drawing under formspecs.
+// See client/render/plain.cpp DrawHUD::run().
+#define HUD_Z_INDEX_ABOVE_FORMSPEC 10000
+#endif
+
 enum HudElementType {
 	HUD_ELEM_IMAGE     = 0,
 	HUD_ELEM_TEXT      = 1,

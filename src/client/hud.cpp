@@ -339,7 +339,11 @@ bool Hud::calculateScreenPos(const v3s16 &camera_offset, HudElement *e, v2s32 *p
 	return true;
 }
 
+#if IS_VOPI_ENGINE
+void Hud::drawLuaElements(const v3s16 &camera_offset, s16 z_index_min, s16 z_index_max)
+#else
 void Hud::drawLuaElements(const v3s16 &camera_offset)
+#endif
 {
 	const u32 text_height = g_fontengine->getTextHeight();
 	gui::IGUIFont *const font = g_fontengine->getFont();
@@ -348,20 +352,32 @@ void Hud::drawLuaElements(const v3s16 &camera_offset)
 
 	elems.reserve(player->getHudElements().size());
 	for (HudElement *e : player->getHudElements()) {
+#if IS_VOPI_ENGINE
+		if (e && e->z_index >= z_index_min && e->z_index <= z_index_max)
+			elems.push_back(e);
+#else
 		if (e)
 			elems.push_back(e);
+#endif
 	}
 
 	// Add builtin elements if the server doesn't send them.
-	// Declared here such that they have the same lifetime as the elems vector
+	// Declared here such that they have the same lifetime as the elems vector.
+	// Builtin fallbacks have an implicit z_index of 0, so they're only
+	// included when the requested range covers 0 (default / "under formspec" pass).
 	HudElement minimap;
 	HudElement hotbar;
-	if (client->getProtoVersion() < 44 && (player->hud_flags & HUD_FLAG_MINIMAP_VISIBLE)) {
+#if IS_VOPI_ENGINE
+	const bool include_builtins = (z_index_min <= 0 && z_index_max >= 0);
+#else
+	constexpr bool include_builtins = true;
+#endif
+	if (include_builtins && client->getProtoVersion() < 44 && (player->hud_flags & HUD_FLAG_MINIMAP_VISIBLE)) {
 		minimap = {HUD_ELEM_MINIMAP, v2f(1, 0), "", v2f(), "", 0 , 0, 0, v2f(-1, 1),
 				v2f(-10, 10), v3f(), v2f(256.0f, 256.0f), 0, "", 0};
 		elems.push_back(&minimap);
 	}
-	if (client->getProtoVersion() < 46 && player->hud_flags & HUD_FLAG_HOTBAR_VISIBLE) {
+	if (include_builtins && client->getProtoVersion() < 46 && player->hud_flags & HUD_FLAG_HOTBAR_VISIBLE) {
 		hotbar = {HUD_ELEM_HOTBAR, v2f(0.5, 1), "", v2f(), "", 0 , 0, 0, v2f(0, -1),
 				v2f(0, -4), v3f(), v2f(), 0, "", 0};
 		elems.push_back(&hotbar);
