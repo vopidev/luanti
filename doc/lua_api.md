@@ -9417,6 +9417,8 @@ child will follow movement and rotation of that bone.
           Does not affect players with the `debug` privilege.
         * `chat`: Modifies the client's permission to view chat on the HUD.
           The client may locally elect to not view chat. Does not affect the console.
+        * `status_text` (VOPI Engine): show the transient in-game status text
+          (selected / picked-up item names and engine messages). Default `true`.
     * If a flag equals `nil`, the flag is not modified
 * `hud_get_flags()`: returns a table of player HUD flags with boolean values.
     * See `hud_set_flags` for a list of flags that can be toggled.

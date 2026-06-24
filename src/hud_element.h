@@ -40,6 +40,9 @@
 
 #if IS_VOPI_ENGINE
 #define HUD_FLAG_TOUCH_CONTROLS_VISIBLE (1 << 9)
+// VOPI: toggles the in-game status text (item names / engine messages) so the
+// game can hide it via player:hud_set_flags{status_text=false}, like the hotbar.
+#define HUD_FLAG_STATUS_TEXT_VISIBLE   (1 << 10)
 #endif
 
 #define HUD_PARAM_HOTBAR_ITEMCOUNT 1

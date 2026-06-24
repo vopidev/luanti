@@ -3677,7 +3677,15 @@ void Game::updateFrame(ProfilerGraph *graph, RunStats *stats, f32 dtime,
 #if IS_VOPI_ENGINE
 		std::string item_desc = selected_item.getDefinition(itemdef_manager).description;
 		if (wield_name != item_desc) {
-			m_game_ui->showStatusText(utf8_to_wide(item_desc));
+			// An empty description means the wield slot is now empty (e.g. the
+			// last held item was just placed). Clear the status text instead of
+			// calling showStatusText("") — the helper ignores an empty string,
+			// which would otherwise leave the previous item name (and its
+			// background) stuck on screen until another item is selected.
+			if (item_desc.empty())
+				m_game_ui->clearStatusText();
+			else
+				m_game_ui->showStatusText(utf8_to_wide(item_desc));
 			wield_name = item_desc;
 		}
 #endif
@@ -3710,6 +3718,17 @@ void Game::updateFrame(ProfilerGraph *graph, RunStats *stats, f32 dtime,
 	} else if (RenderingEngine::get_shadow_renderer()) {
 		updateShadows();
 	}
+
+#if IS_VOPI_ENGINE
+	// Anchor the status text above the hotbar when it is visible, else fall back
+	// to the screen-bottom offset. Uses the hotbar top Y from the HUD draw (which
+	// runs after this) — last frame's value, stable as the hotbar only moves on
+	// resize.
+	m_game_ui->setStatusHotbarAnchor(
+			(m_game_ui->getFlags().show_hud && player &&
+				(player->hud_flags & HUD_FLAG_HOTBAR_VISIBLE))
+			? hud->getHotbarTopY() : -1);
+#endif
 
 	m_game_ui->update(*stats, client, draw_control, cam, runData.pointed_old,
 			gui_chat_console.get(), dtime);

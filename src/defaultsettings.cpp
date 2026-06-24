@@ -619,6 +619,20 @@ void set_default_settings()
 	settings->setDefault("tooltip_bg_offset_x", "0");
 	settings->setDefault("tooltip_bg_offset_y", "0");
 
+	// Status-text 9-slice background (in-game item/status panel). Mirrors the
+	// tooltip knobs so the panel can be tuned relative to the text.
+	// corner_size 0 keeps the automatic, text-height-proportional corner.
+	settings->setDefault("status_text_corner_size", "20");
+	settings->setDefault("status_text_padding_width", "10");
+	settings->setDefault("status_text_padding_height", "10");
+	settings->setDefault("status_bg_offset_x", "0");
+	settings->setDefault("status_bg_offset_y", "-2");
+	// Gap (px) between the hotbar top and the status panel's bottom edge. When
+	// the hotbar is visible the panel anchors this far above it (tracking the
+	// hotbar across DPI) instead of the screen bottom. Tune to clear the
+	// above-hotbar HUD bars.
+	settings->setDefault("status_hotbar_gap", "80");
+
 	// Selected inventory slot highlight (single-image overlay; mobile only)
 	settings->setDefault("selected_slot_bg_padding", "3");
 	settings->setDefault("selected_slot_bg_offset_x", "0");

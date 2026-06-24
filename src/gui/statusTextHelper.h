@@ -57,6 +57,11 @@ public:
 	// text (mirrors gameui's status_text_bottom_offset setting).
 	void setBottomOffset(f32 offset) { m_status_text_bottom_offset = offset; }
 
+	// VOPI: anchor the status panel a configurable gap above the hotbar's top
+	// edge (y >= 0). Pass -1 to fall back to the screen-bottom offset (used
+	// while the hotbar is hidden). Refreshed each frame by gameui from the HUD.
+	void setHotbarAnchorY(s32 y) { m_hotbar_anchor_y = y; }
+
 	// VOPI: place a 9-slice background behind the status text. MUST be called
 	// right after update() in the same frame, because update() is the sole
 	// owner of the inner element's geometry and recomputes the background rect
@@ -98,6 +103,10 @@ private:
 
 	// Bottom offset of the status text as a fraction of screen height.
 	f32 m_status_text_bottom_offset = 0.3f;
+
+	// Hotbar top-edge Y to anchor the status panel above (-1 = not anchored:
+	// fall back to m_status_text_bottom_offset).
+	s32 m_hotbar_anchor_y = -1;
 
 	// Background geometry computed by updatePosition() (VOPI branch) and
 	// consumed by positionBackground() in the same frame.

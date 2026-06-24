@@ -65,6 +65,11 @@ public:
 
 	void drawHotbar(const v2s32 &pos, const v2f &offset, u16 direction, const v2f &align);
 	void resizeHotbar();
+#if IS_VOPI_ENGINE
+	// Top-edge Y of the hotbar (or the screen-bottom fallback), refreshed each
+	// frame in drawHotbar; used to anchor the status text above the hotbar.
+	s32 getHotbarTopY() const { return m_hotbar_top_y; }
+#endif
 	void drawCrosshair();
 	void drawSelectionMesh();
 	void updateSelectionMesh(const v3s16 &camera_offset);

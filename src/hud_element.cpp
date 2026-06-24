@@ -56,6 +56,7 @@ const struct EnumString es_HudBuiltinElement[] =
 	{HUD_FLAG_CHAT_VISIBLE,          "chat"},
 #if IS_VOPI_ENGINE
 	{HUD_FLAG_TOUCH_CONTROLS_VISIBLE, "touch_controls"},
+	{HUD_FLAG_STATUS_TEXT_VISIBLE,   "status_text"},
 #endif
 	{0, NULL},
 };

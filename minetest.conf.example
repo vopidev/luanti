@@ -1154,6 +1154,34 @@
 #    type: float min: 0.1 max: 0.5
 # status_text_bottom_offset = 0.3
 
+#    [VOPI Engine] Corner (9-slice border) size of the status-text background, in pixels.
+#    0 keeps the automatic size (a quarter of the panel height).
+#    type: int
+# status_text_corner_size = 0
+
+#    [VOPI Engine] Horizontal padding between the status text and its background, in pixels.
+#    type: int
+# status_text_padding_width = 10
+
+#    [VOPI Engine] Vertical padding between the status text and its background, in pixels.
+#    type: int
+# status_text_padding_height = 10
+
+#    [VOPI Engine] Horizontal offset of the status-text background relative to the text, in pixels.
+#    type: int
+# status_bg_offset_x = 0
+
+#    [VOPI Engine] Vertical offset of the status-text background relative to the text, in pixels.
+#    type: int
+# status_bg_offset_y = 0
+
+#    [VOPI Engine] Gap between the hotbar's top edge and the status panel's bottom, in pixels.
+#    When the hotbar is visible the status text anchors this far above it (tracking the
+#    hotbar across DPI) instead of the screen bottom; falls back to status_text_bottom_offset
+#    while the hotbar is hidden. Increase to clear the above-hotbar HUD bars.
+#    type: int
+# status_hotbar_gap = 10
+
 ### Content Repository
 
 #    The URL for the content repository

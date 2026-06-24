@@ -335,8 +335,15 @@ void GameUI::update(const RunStats &stats, Client *client, MapDrawControl *draw_
 			// VOPI preserves the touch-control status text visibility.
 			if (g_touchcontrols)
 				g_touchcontrols->getStatusText()->setVisible(false);
-#endif
 			m_status_text->update(dtime);
+#else
+			// VOPI: the status text obeys a HUD flag (like the hotbar / chat),
+			// so the game can hide it via player:hud_set_flags{status_text=false}.
+			if (player->hud_flags & HUD_FLAG_STATUS_TEXT_VISIBLE)
+				m_status_text->update(dtime);
+			else
+				m_status_text->clearStatusText();
+#endif
 		}
 	}
 
@@ -346,7 +353,9 @@ void GameUI::update(const RunStats &stats, Client *client, MapDrawControl *draw_
 	// and recomputes the background rect there. Doing this here avoids the
 	// helper clobbering the background placement.
 	if (m_status_text)
-		m_status_text->positionBackground(m_status_bg, m_show_status_background);
+		m_status_text->positionBackground(m_status_bg,
+				m_show_status_background &&
+				(player->hud_flags & HUD_FLAG_STATUS_TEXT_VISIBLE));
 #endif
 
 	// Hide chat when disabled by server or when console is visible

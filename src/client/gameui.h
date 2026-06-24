@@ -74,6 +74,16 @@ public:
 			m_status_text->clearStatusText();
 	}
 
+#if IS_VOPI_ENGINE
+	// VOPI: anchor the status panel above the hotbar (y = HUD hotbar top edge),
+	// or -1 to fall back to the screen-bottom offset. Set each frame from game.
+	inline void setStatusHotbarAnchor(s32 y)
+	{
+		if (m_status_text)
+			m_status_text->setHotbarAnchorY(y);
+	}
+#endif
+
 	bool isChatVisible()
 	{
 		return m_flags.show_chat && m_recent_chat_count != 0 && m_profiler_current_page == 0;

@@ -9,6 +9,7 @@
 #include "client/renderingengine.h"
 #if IS_VOPI_ENGINE
 #include "client/fontengine.h"
+#include "settings.h" // g_settings for the configurable status panel
 #include "util/numeric.h" // rangelim
 #include <algorithm>
 #include <cmath>
@@ -123,8 +124,19 @@ void StatusTextHelper::update(float dtime)
 
 	updatePosition();
 
+#if IS_VOPI_ENGINE
+	// VOPI in-game: the status text sits on an OPAQUE 9-slice panel (see
+	// positionBackground). A text-only fade would leave the solid panel hanging
+	// under invisible text, so keep full opacity and let clearStatusText() drop
+	// the text and the panel together at m_display_duration — matching 5.15.0.
+	// The main-menu status bar (no 9-slice) keeps its gentle fade.
+	const f32 alpha_factor = m_use_main_menu_position
+			? (1.0f - m_fade_progress * m_fade_progress)
+			: 1.0f;
+#else
 	// Quadratic fade feels a bit smoother than linear.
 	const f32 alpha_factor = 1.0f - m_fade_progress * m_fade_progress;
+#endif
 
 	// Background (optional)
 	if (m_background_enabled) {
@@ -164,33 +176,46 @@ void StatusTextHelper::updatePosition()
 #if IS_VOPI_ENGINE
 		// VOPI: text centered inside a 9-slice background, positioned a
 		// configurable fraction of the screen height above the bottom edge.
-#if defined(__ANDROID__) || defined(__IOS__)
-		const s32 padding = 10; // Padding for mobile
-#else
-		const s32 padding = 5;  // Padding for desktop
-#endif
-		const s32 central_height = text_height + (2 * padding);
-		// Side (corner) width, clamped to a sane range.
-		s32 side_width = central_height / 4;
-		side_width = std::max(5, std::min(side_width, 50));
+		// Padding, corner size and background offset are configurable (mirrors
+		// the tooltip) so the panel can be tuned relative to the text. Cached
+		// once (lazy static), like the tooltip's knobs.
+		static thread_local const s32 cfg_corner  = g_settings->getS32("status_text_corner_size");
+		static thread_local const s32 pad_w       = g_settings->getS32("status_text_padding_width");
+		static thread_local const s32 pad_h       = g_settings->getS32("status_text_padding_height");
+		static thread_local const s32 bg_offset_x = g_settings->getS32("status_bg_offset_x");
+		static thread_local const s32 bg_offset_y = g_settings->getS32("status_bg_offset_y");
+		static thread_local const s32 hotbar_gap  = g_settings->getS32("status_hotbar_gap");
 
-		s32 total_width = text_width + (side_width * 2) + (2 * padding);
+		const s32 central_height = text_height + (2 * pad_h);
+		// Side (corner) width: a positive setting pins it; 0 keeps the
+		// automatic value (a quarter of the panel height, clamped sane).
+		s32 side_width = cfg_corner > 0 ? cfg_corner
+				: std::max(5, std::min(central_height / 4, 50));
+
+		s32 total_width = text_width + (side_width * 2) + (2 * pad_w);
 		total_width = std::min(total_width, (s32)screensize.X);
 		const s32 total_height = central_height;
 
-		const s32 status_y = (s32)screensize.Y -
-				(s32)((f32)screensize.Y * m_status_text_bottom_offset);
+		// Vertical anchor: a configurable gap above the hotbar's top edge when
+		// the hotbar is visible (DPI-stable — the anchor tracks the hotbar like
+		// the HUD bars), else the screen-bottom fraction.
+		const s32 status_y = (m_hotbar_anchor_y >= 0)
+				? m_hotbar_anchor_y - hotbar_gap - total_height
+				: (s32)screensize.Y - (s32)((f32)screensize.Y * m_status_text_bottom_offset);
 		const s32 status_x = ((s32)screensize.X - total_width) / 2;
 
 		m_guitext_status->setRelativePosition(core::rect<s32>(
 				status_x + side_width,
-				status_y + padding,
+				status_y + pad_h,
 				status_x + total_width - side_width,
-				status_y + total_height - padding));
+				status_y + total_height - pad_h));
 
-		// Cache the background geometry for positionBackground() (same frame).
-		m_bg_rect = core::rect<s32>(status_x, status_y,
-				status_x + total_width, status_y + total_height);
+		// Cache the background geometry for positionBackground() (same frame),
+		// shifted by the configurable offset relative to the text.
+		m_bg_rect = core::rect<s32>(
+				status_x + bg_offset_x, status_y + bg_offset_y,
+				status_x + total_width + bg_offset_x,
+				status_y + total_height + bg_offset_y);
 		m_bg_corner_size = side_width;
 #else
 		// Centered above bottom (game style)
