@@ -1110,8 +1110,14 @@ void GUIFormSpecMenu::parseImage(parserData* data, const std::string &element)
 void GUIFormSpecMenu::parseAnimatedImage(parserData *data, const std::string &element)
 {
 	std::vector<std::string> parts;
-	if (!precheckElement("animated_image", element, 6, 8, parts))
+#if IS_VOPI_ENGINE
+	// VOPI: allow a 10th param (column count for a 2D grid atlas).
+	if (!precheckElement("animated_image", element, 6, 10, parts))
 		return;
+#else
+	if (!precheckElement("animated_image", element, 6, 9, parts))
+		return;
+#endif
 
 	std::vector<std::string> v_pos  = split(parts[0], ',');
 	std::vector<std::string> v_geom = split(parts[1], ',');
@@ -1163,6 +1169,33 @@ void GUIFormSpecMenu::parseAnimatedImage(parserData *data, const std::string &el
 	e->setFrameCount(frame_count);
 	if (parts.size() >= 7)
 		e->setFrameIndex(stoi(parts[6]) - 1);
+	// Optional 9th param: loop flag. Default true (upstream behaviour); set
+	// to false for a one-shot animation that holds on its last frame.
+	if (parts.size() >= 9)
+		e->setLoop(is_yes(parts[8]));
+#if IS_VOPI_ENGINE
+	// VOPI: Optional 10th param: column count for a 2D grid atlas (frames packed
+	// left-to-right, then top-to-bottom). Default 1 = vertical strip. A grid
+	// keeps long animations within the GPU's max texture size.
+	if (parts.size() >= 10) {
+		s32 columns = stoi(parts[9]);
+		e->setColumns(columns);
+		video::ITexture *tex = e->getTexture();
+		if (tex && columns > 1) {
+			const core::dimension2d<u32> ts = tex->getOriginalSize();
+			// 64-bit ceil: frame_count is the raw (unclamped, possibly negative
+			// or huge) parts[4] value and columns is server-controlled, so the
+			// s32 numerator (frame_count + columns - 1) could overflow. The
+			// grid_rows > 0 guard below still drops a nonsensical grid.
+			const s32 grid_rows = (s32)(((s64)frame_count + columns - 1) / columns);
+			if (grid_rows > 0 && (ts.Width % columns != 0 || ts.Height % grid_rows != 0))
+				warningstream << "animated_image[" << name << "]: atlas "
+					<< ts.Width << "x" << ts.Height << " is not evenly divisible by a "
+					<< columns << "x" << grid_rows << " grid; frames may jitter."
+					<< std::endl;
+		}
+	}
+#endif
 
 	auto style = getDefaultStyleForElement("animated_image", spec.fname, "image");
 	e->setNotClipped(style.getBool(StyleSpec::NOCLIP, false));

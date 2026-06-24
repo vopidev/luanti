@@ -3242,7 +3242,7 @@ Elements
     * Requires formspec version >= 6.
     * See `background9[]` documentation for more information.
 
-### `animated_image[<X>,<Y>;<W>,<H>;<name>;<texture name>;<frame count>;<frame duration>;<frame start>;<middle>]`
+### `animated_image[<X>,<Y>;<W>,<H>;<name>;<texture name>;<frame count>;<frame duration>;<frame start>;<middle>;<loop>;<columns>]`
 
 * Show an animated image. The image is drawn like a "vertical_frames" tile
   animation (See [Tile animation definition](#tile-animation-definition)), but uses a frame count/duration for simplicity
@@ -3254,6 +3254,17 @@ Elements
 * `middle` (optional): Makes the image render in 9-sliced mode and defines the middle rect.
     * Requires formspec version >= 6.
     * See `background9[]` documentation for more information.
+    * Leave empty (e.g. `;;false`) to keep the default scaled rendering while
+      still passing the `loop` parameter that follows.
+* `loop` (optional): Whether the animation loops. Default `true` (upstream
+  behaviour). Set to `false` for a one-shot animation that plays through once
+  and then holds on the last frame instead of wrapping back to the first.
+  (VOPI Engine extension.)
+* `columns` (optional): Read the texture as a 2D grid atlas with this many
+  columns (frames packed left-to-right, then top-to-bottom) instead of a single
+  vertical strip. Default `1` (vertical strip). A grid keeps long animations
+  within the GPU's maximum texture size, since the atlas grows ~sqrt(frames) in
+  each dimension instead of linearly in height. (VOPI Engine extension.)
 
 ### `map[<X>,<Y>;<W>,<H>;<name>;<scale>;<focus>;<player icon>;<icon size>;<marker 1>;...]`
 
