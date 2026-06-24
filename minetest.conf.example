@@ -1016,6 +1016,18 @@
 #    type: bool
 # inventory_items_animations = false
 
+#    [VOPI Engine] Padding for 3D mesh item icons as percentage of slot size.
+#    Adds space between the 3D model and the edge of the inventory slot.
+#    Value range: 0-25 (e.g. 5 = 5% padding).
+#    type: float min: 0 max: 25
+# mesh_icon_padding_percent = 0.0
+
+#    [VOPI Engine] Padding for 2D texture item icons as percentage of slot size.
+#    Adds space between the texture and the edge of the inventory slot.
+#    Value range: 0-25 (e.g. 5 = 5% padding).
+#    type: float min: 0 max: 25
+# image_icon_padding_percent = 0.0
+
 #    Formspec full-screen background opacity (between 0 and 255).
 #    type: int min: 0 max: 255
 # formspec_fullscreen_bg_opacity = 140
@@ -1070,6 +1082,18 @@
 #    type: float min: 0.001 max: 1
 # hud_hotbar_max_width = 1.0
 
+#    [VOPI Engine] Bottom margin for the hotbar in pixels.
+#    Lifts the hotbar up from the bottom edge of the screen.
+#    Useful for mobile devices to avoid UI overlap with system controls.
+#    type: int min: 0 max: 50
+# hud_hotbar_bottom_margin = 5
+
+#    [VOPI Engine] Screen corner radius in pixels.
+#    Creates rounded corners effect for UI elements on devices with rounded screens.
+#    Set to 0 to disable. Typical values: 85-150 for modern phones.
+#    type: int min: 0 max: 200
+# round_screen = 0
+
 ### Chat
 
 #    Maximum number of recent chat messages to show
@@ -1096,6 +1120,39 @@
 #    Value 0 will use the default font size.
 #    type: int min: 0 max: 72
 # chat_font_size = 0
+
+#    [VOPI Engine] Chat text font scale multiplier.
+#    Scales the base font size for chat messages. 1.0 = 100% (no scaling).
+#    Useful for adjusting text size on different screen densities.
+#    type: float min: 0.5 max: 2.0
+# chat_font_scale = 1.0
+
+#    [VOPI Engine] Info text font scale multiplier.
+#    Scales the base font size for node/object info text (e.g., node names).
+#    1.0 = 100% (no scaling).
+#    type: float min: 0.5 max: 2.0
+# info_font_scale = 1.0
+
+#    [VOPI Engine] Status text font scale multiplier.
+#    Scales the base font size for status messages (e.g., "Game saved").
+#    1.0 = 100% (no scaling).
+#    type: float min: 0.5 max: 2.0
+# status_font_scale = 1.0
+
+#    [VOPI Engine] Show decorative background behind chat messages.
+#    Uses 9-slice scaled background images for better aesthetics on mobile.
+#    type: bool
+# show_chat_background = true
+
+#    [VOPI Engine] Show decorative background behind status messages.
+#    Uses 9-slice scaled background images for better aesthetics on mobile.
+#    type: bool
+# show_status_background = true
+
+#    [VOPI Engine] Status text bottom offset as fraction of screen height.
+#    Controls how far from the bottom the status text appears (0.0 = bottom, 1.0 = top).
+#    type: float min: 0.1 max: 0.5
+# status_text_bottom_offset = 0.3
 
 ### Content Repository
 

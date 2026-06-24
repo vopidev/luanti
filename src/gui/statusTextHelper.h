@@ -11,6 +11,10 @@
 #include <IGUIStaticText.h>
 #include <IVideoDriver.h>
 
+#if IS_VOPI_ENGINE
+#include "gui/guiNineSliceBackground.h"
+#endif
+
 #include <string>
 
 /*
@@ -45,6 +49,24 @@ public:
 	void setVisible(bool visible);
 	bool isVisible() const;
 
+#if IS_VOPI_ENGINE
+	// VOPI: override the status font with base_size * scale. Applied in update().
+	void setFontScale(f32 scale);
+
+	// VOPI: fraction of screen height used as the bottom offset for the status
+	// text (mirrors gameui's status_text_bottom_offset setting).
+	void setBottomOffset(f32 offset) { m_status_text_bottom_offset = offset; }
+
+	// VOPI: place a 9-slice background behind the status text. MUST be called
+	// right after update() in the same frame, because update() is the sole
+	// owner of the inner element's geometry and recomputes the background rect
+	// there. Hides the background when the status text is not visible.
+	void positionBackground(NineSliceBackground &bg, bool show);
+
+	// VOPI: raise the inner status element to the front of its parent.
+	void bringToFront();
+#endif
+
 	// Getters for testing / debugging
 	const std::wstring &getStatusText() const { return m_statustext; }
 	float getStatusTextTime() const { return m_statustext_time; }
@@ -68,6 +90,20 @@ private:
 
 	// per-style vertical text alignment (horizontal is always centered)
 	gui::EGUI_ALIGNMENT m_text_alignment_v = gui::EGUIA_UPPERLEFT;
+
+#if IS_VOPI_ENGINE
+	// Cached font override (base_size * status_font_scale), applied in update().
+	gui::IGUIFont *m_override_font = nullptr;
+	bool m_override_font_applied = false;
+
+	// Bottom offset of the status text as a fraction of screen height.
+	f32 m_status_text_bottom_offset = 0.3f;
+
+	// Background geometry computed by updatePosition() (VOPI branch) and
+	// consumed by positionBackground() in the same frame.
+	core::rect<s32> m_bg_rect{0, 0, 0, 0};
+	s32 m_bg_corner_size = 0;
+#endif
 
 	// Internal helper to update position based on screen size and style
 	void updatePosition();
