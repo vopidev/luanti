@@ -127,6 +127,11 @@ private:
 		std::vector<std::function<void()>> m_mesh_loaders;
 		std::vector<SkinnedMesh::SJoint *> m_loaded_nodes;
 
+		// For each glTF node index, the mesh buffers created for it that carry
+		// morph targets. Used to route the morph "weights" animation channel,
+		// which targets a node, to that node's mesh buffers.
+		std::vector<std::vector<SSkinMeshBuffer *>> m_node_to_meshbufs;
+
 		std::unordered_set<std::string> warnings;
 		void warn(const std::string &warning) {
 			warnings.insert(warning);
@@ -143,11 +148,13 @@ private:
 
 		void addPrimitive(const tiniergltf::MeshPrimitive &primitive,
 				const std::optional<std::size_t> skinIdx,
-				SkinnedMesh::SJoint *parent);
+				SkinnedMesh::SJoint *parent,
+				const std::size_t nodeIdx, const std::size_t meshIdx);
 
 		void deferAddMesh(const std::size_t meshIdx,
 				const std::optional<std::size_t> skinIdx,
-				SkinnedMesh::SJoint *parentJoint);
+				SkinnedMesh::SJoint *parentJoint,
+				const std::size_t nodeIdx);
 
 		void loadNode(const std::size_t nodeIdx, SkinnedMesh::SJoint *parentJoint);
 

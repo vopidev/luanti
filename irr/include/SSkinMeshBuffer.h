@@ -8,10 +8,12 @@
 #include "CVertexBuffer.h"
 #include "CIndexBuffer.h"
 #include "WeightBuffer.h"
+#include "MorphBuffer.h"
 #include "IVertexBuffer.h"
 #include "S3DVertex.h"
 #include "vector3d.h"
 #include <cassert>
+#include <memory>
 
 namespace scene
 {
@@ -256,10 +258,19 @@ public:
 		return const_cast<SSkinMeshBuffer*>(this)->getWeights();
 	}
 
+	//! Morph-target (blend shape) data for this buffer, if any.
+	/** Type-independent (position/normal deltas), CPU-only, so it lives directly
+	on the mesh buffer rather than on the templated vertex buffer. */
+	MorphBuffer *getMorph() { return Morph.get(); }
+	const MorphBuffer *getMorph() const { return Morph.get(); }
+
 	SVertexBufferTangents *Vertices_Tangents;
 	SVertexBufferLightMap *Vertices_2TCoords;
 	SVertexBuffer *Vertices_Standard;
 	SIndexBuffer *Indices;
+
+	//! Optional morph-target data (nullptr if the buffer has no morph targets).
+	std::unique_ptr<MorphBuffer> Morph;
 
 	core::matrix4 Transformation;
 

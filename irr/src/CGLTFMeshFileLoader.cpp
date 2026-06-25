@@ -400,7 +400,8 @@ static video::E_TEXTURE_CLAMP convertTextureWrap(const Wrap wrap) {
 void SelfType::MeshExtractor::addPrimitive(
 		const tiniergltf::MeshPrimitive &primitive,
 		const std::optional<std::size_t> skinIdx,
-		SkinnedMesh::SJoint *parent)
+		SkinnedMesh::SJoint *parent,
+		const std::size_t nodeIdx, const std::size_t meshIdx)
 {
 	auto vertices = getVertices(primitive);
 	if (!vertices.has_value())
@@ -440,6 +441,56 @@ void SelfType::MeshExtractor::addPrimitive(
 				}
 			}
 		}
+	}
+
+	// Morph targets (blend shapes / shape keys): read per-target POSITION/NORMAL
+	// deltas. Independent of skinning, so this runs for both skinned and rigid
+	// primitives. Deltas are differences of positions/normals, so they take the
+	// same handedness conversion as the base attributes.
+	if (primitive.targets.has_value() && !primitive.targets->empty()) {
+		auto morph = std::make_unique<MorphBuffer>();
+		morph->targets.reserve(primitive.targets->size());
+		for (const auto &gltfTarget : *primitive.targets) {
+			MorphBuffer::Target target;
+			// Always size delta arrays to the vertex count so the per-frame apply
+			// can index them unconditionally, even if an accessor is malformed.
+			target.positions.assign(n_vertices, core::vector3df(0, 0, 0));
+			if (gltfTarget.position.has_value()) {
+				const auto acc = Accessor<core::vector3df>::make(m_gltf_model, *gltfTarget.position);
+				const std::size_t count = acc.getCount() < n_vertices ? acc.getCount() : n_vertices;
+				for (std::size_t i = 0; i < count; ++i)
+					target.positions[i] = convertHandedness(acc.get(i));
+			}
+			if (gltfTarget.normal.has_value()) {
+				const auto acc = Accessor<core::vector3df>::make(m_gltf_model, *gltfTarget.normal);
+				std::vector<core::vector3df> normals(n_vertices, core::vector3df(0, 0, 0));
+				const std::size_t count = acc.getCount() < n_vertices ? acc.getCount() : n_vertices;
+				for (std::size_t i = 0; i < count; ++i)
+					normals[i] = convertHandedness(acc.get(i));
+				target.normals = std::move(normals);
+			}
+			if (gltfTarget.tangent.has_value())
+				warn("morph tangent deltas are not supported");
+			if (gltfTarget.texcoord.has_value() || gltfTarget.color.has_value())
+				warn("morph texcoord/color deltas are not supported");
+			morph->targets.push_back(std::move(target));
+		}
+
+		// Fallback weights: node.weights overrides mesh.weights, else zero.
+		// (When a weights animation channel is present it overrides these at runtime.)
+		const auto nTargets = morph->targets.size();
+		morph->baseWeights.assign(nTargets, 0.0f);
+		const auto &node = m_gltf_model.nodes->at(nodeIdx);
+		const auto &mesh = m_gltf_model.meshes->at(meshIdx);
+		for (std::size_t t = 0; t < nTargets; ++t) {
+			if (node.weights.has_value() && t < node.weights->size())
+				morph->baseWeights[t] = static_cast<f32>((*node.weights)[t]);
+			else if (mesh.weights.has_value() && t < mesh.weights->size())
+				morph->baseWeights[t] = static_cast<f32>((*mesh.weights)[t]);
+		}
+
+		meshbuf->Morph = std::move(morph);
+		m_node_to_meshbufs.at(nodeIdx).push_back(meshbuf);
 	}
 
 	if (!skinIdx) {
@@ -517,12 +568,13 @@ void SelfType::MeshExtractor::addPrimitive(
 void SelfType::MeshExtractor::deferAddMesh(
 		const std::size_t meshIdx,
 		const std::optional<std::size_t> skinIdx,
-		SkinnedMesh::SJoint *parent)
+		SkinnedMesh::SJoint *parent,
+		const std::size_t nodeIdx)
 {
 	m_mesh_loaders.emplace_back([=] {
 		for (std::size_t pi = 0; pi < getPrimitiveCount(meshIdx); ++pi) {
 			const auto &primitive = m_gltf_model.meshes->at(meshIdx).primitives.at(pi);
-			addPrimitive(primitive, skinIdx, parent);
+			addPrimitive(primitive, skinIdx, parent, nodeIdx, meshIdx);
 		}
 	});
 }
@@ -576,7 +628,7 @@ void SelfType::MeshExtractor::loadNode(
 	}
 	m_loaded_nodes[nodeIdx] = joint;
 	if (node.mesh.has_value()) {
-		deferAddMesh(*node.mesh, node.skin, joint);
+		deferAddMesh(*node.mesh, node.skin, joint, nodeIdx);
 	}
 	if (node.children.has_value()) {
 		for (const auto &child : *node.children) {
@@ -588,6 +640,7 @@ void SelfType::MeshExtractor::loadNode(
 void SelfType::MeshExtractor::loadNodes()
 {
 	m_loaded_nodes = std::vector<SkinnedMesh::SJoint *>(m_gltf_model.nodes->size());
+	m_node_to_meshbufs = std::vector<std::vector<SSkinMeshBuffer *>>(m_gltf_model.nodes->size());
 
 	std::vector<bool> isChild(m_gltf_model.nodes->size());
 	for (const auto &node : *m_gltf_model.nodes) {
@@ -647,7 +700,10 @@ void SelfType::MeshExtractor::loadAnimation(const std::size_t animIdx)
 			throw std::runtime_error("no animated node");
 
 		auto *joint = m_loaded_nodes.at(*channel.target.node);
-		if (std::holds_alternative<core::matrix4>(joint->transform)) {
+		// Morph weight animation animates weights, not the node transform, so it
+		// is allowed even on nodes using matrix transforms.
+		if (std::holds_alternative<core::matrix4>(joint->transform)
+				&& channel.target.path != tiniergltf::AnimationChannelTarget::Path::WEIGHTS) {
 			warn("nodes using matrix transforms must not be animated");
 			continue;
 		}
@@ -686,8 +742,56 @@ void SelfType::MeshExtractor::loadAnimation(const std::size_t animIdx)
 			}
 			break;
 		}
-		case tiniergltf::AnimationChannelTarget::Path::WEIGHTS:
-			throw std::runtime_error("no support for morph animations");
+		case tiniergltf::AnimationChannelTarget::Path::WEIGHTS: {
+			// Morph target weights. The channel targets a node; the animation
+			// applies to all morph-bearing mesh buffers created for that node.
+			const std::size_t nodeIdx = *channel.target.node;
+			auto &bufs = m_node_to_meshbufs.at(nodeIdx);
+			if (bufs.empty()) {
+				warn("morph weights animation targets a node without morph targets");
+				break;
+			}
+			const std::size_t nTargets = bufs.front()->getMorph()->numTargets();
+			// All of the node's morph buffers must share the target count the
+			// channel is laid out for, otherwise weights would be misrouted.
+			bool consistent = true;
+			for (const auto *buf : bufs) {
+				if (buf->getMorph()->numTargets() != nTargets) {
+					consistent = false;
+					break;
+				}
+			}
+			if (!consistent) {
+				warn("morph weights animation: inconsistent target counts across primitives");
+				break;
+			}
+			// glTF allows normalized-integer weight output, but we only read float
+			// scalars; warn and skip the channel rather than failing the whole mesh.
+			const auto &outAcc = m_gltf_model.accessors->at(sampler.output);
+			if (outAcc.componentType != tiniergltf::Accessor::ComponentType::FLOAT
+					|| outAcc.type != tiniergltf::Accessor::Type::SCALAR) {
+				warn("morph weights animation output must be float scalar");
+				break;
+			}
+			// glTF weights output is SCALAR float: n_frames * nTargets values.
+			const auto outputAccessor = Accessor<f32>::make(m_gltf_model, sampler.output);
+			if (outputAccessor.getCount() != n_frames * nTargets) {
+				warn("morph weights animation output size mismatch");
+				break;
+			}
+			MorphBuffer::WeightChannel ch;
+			ch.interpolate = interpolate;
+			ch.times.resize(n_frames);
+			ch.values.resize(n_frames * nTargets);
+			for (std::size_t i = 0; i < n_frames; ++i) {
+				ch.times[i] = inputAccessor.get(i);
+				for (std::size_t t = 0; t < nTargets; ++t)
+					ch.values[i * nTargets + t] = outputAccessor.get(i * nTargets + t);
+			}
+			for (auto *buf : bufs)
+				buf->getMorph()->channel = ch;
+			break;
+		}
 		}
 	}
 }

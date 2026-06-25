@@ -480,6 +480,53 @@ SECTION("simple skin")
 	}
 }
 
+SECTION("morph targets: animated weights channel")
+{
+	auto *mesh = loadMesh(model_stem + "morph_animated.gltf");
+	REQUIRE(mesh);
+	auto *sk = dynamic_cast<scene::SkinnedMesh *>(mesh);
+	REQUIRE(sk);
+	REQUIRE(sk->getMeshBufferCount() == 1);
+	auto *mb = dynamic_cast<scene::SSkinMeshBuffer *>(sk->getMeshBuffer(0));
+	REQUIRE(mb);
+
+	auto *morph = mb->getMorph();
+	REQUIRE(morph);
+	CHECK(morph->hasAnimation());
+	CHECK(morph->numTargets() == 1);
+
+	// No skeletal keys: the frame range must come from the morph channel (= 1.0).
+	CHECK(sk->getMaxFrameNumber() > 0.9f);
+	CHECK(sk->getMaxFrameNumber() < 1.1f);
+
+	auto *vb = mb->getVertexBuffer();
+	// vertex 2 rest = (0,1,0); the target adds (+0.5 X) at weight 1 (LINEAR).
+	sk->morphMesh(0.0f);
+	CHECK((vb->getPosition(2) - core::vector3df(0.f, 1.f, 0.f)).getLength() < 1e-4f);
+	sk->morphMesh(1.0f);
+	CHECK((vb->getPosition(2) - core::vector3df(0.5f, 1.f, 0.f)).getLength() < 1e-4f);
+	sk->morphMesh(0.5f);
+	CHECK((vb->getPosition(2) - core::vector3df(0.25f, 1.f, 0.f)).getLength() < 1e-4f);
+}
+
+SECTION("morph targets: static morph baked at load")
+{
+	auto *mesh = loadMesh(model_stem + "morph_static.gltf");
+	REQUIRE(mesh);
+	auto *sk = dynamic_cast<scene::SkinnedMesh *>(mesh);
+	REQUIRE(sk);
+	auto *mb = dynamic_cast<scene::SSkinMeshBuffer *>(sk->getMeshBuffer(0));
+	REQUIRE(mb);
+
+	// A channel-less morph (mesh.weights only) is baked into the base vertices
+	// at load time and the runtime morph data is dropped.
+	CHECK(mb->getMorph() == nullptr);
+
+	auto *vb = mb->getVertexBuffer();
+	// baked vertex 2 = rest(0,1,0) + 1.0 * delta(0.5,0,0)
+	CHECK((vb->getPosition(2) - core::vector3df(0.5f, 1.f, 0.f)).getLength() < 1e-4f);
+}
+
 driver->closeDevice();
 driver->drop();
 }

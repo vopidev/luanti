@@ -74,6 +74,11 @@ public:
 	//! Performs a software skin on this mesh based on the given joint matrices
 	void skinMesh(const std::vector<core::matrix4> &animated_transforms);
 
+	//! Applies morph-target (blend shape) deltas for the given frame to the
+	//! vertex buffers. Must run before skinning (morph -> skin). No-op unless the
+	//! mesh has an animated morph (static morphs are baked in at load time).
+	void morphMesh(f32 frame);
+
 	//! returns amount of mesh buffers.
 	u32 getMeshBufferCount() const override;
 
@@ -336,6 +341,7 @@ public:
 protected:
 	bool checkForWeights() const;
 	bool checkForKeys() const;
+	bool checkForMorphAnimation() const;
 
 	void prepareForSkinning();
 
@@ -369,8 +375,12 @@ protected:
 	f32 EndFrame;
 	f32 FramesPerSecond;
 
+	//! Conservative margin added to the bounding box to account for morph deltas.
+	f32 MorphBBoxMargin = 0.0f;
+
 	bool HasAnimation = false;
 	bool HasWeights = false;
+	bool HasMorphAnimation = false;
 	bool PreparedForSkinning = false;
 	bool UseSwSkinning = false;
 

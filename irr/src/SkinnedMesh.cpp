@@ -100,6 +100,26 @@ core::aabbox3df SkinnedMesh::calculateBoundingBox(
 			result.addInternalBox(box);
 		}
 	}
+	// Conservative expansion so morph deformation never causes culling pop.
+	// The per-frame box is computed from the static joint boxes (before morph),
+	// so the margin is folded in here.
+	if (MorphBBoxMargin > 0.0f) {
+		// Morph deltas are measured in local space but get scaled by the joint /
+		// rigid transform during skinning. Scale the margin by the largest
+		// transform scale (floored at 1) so a scale>1 animation cannot push
+		// morphed geometry outside this conservative box.
+		f32 maxScale = 1.0f;
+		for (const auto &m : global_transforms) {
+			const core::vector3df s = m.getScale();
+			maxScale = std::max(maxScale, s.X);
+			maxScale = std::max(maxScale, s.Y);
+			maxScale = std::max(maxScale, s.Z);
+		}
+		const f32 margin = MorphBBoxMargin * maxScale;
+		const core::vector3df mv(margin, margin, margin);
+		result.MinEdge -= mv;
+		result.MaxEdge += mv;
+	}
 	return result;
 }
 
@@ -147,6 +167,32 @@ void SkinnedMesh::skinMesh(const std::vector<core::matrix4> &global_matrices)
 	for (auto *buffer : *SkinningBuffers) {
 		if (auto *weights = buffer->getWeights())
 			weights->skin(buffer->getVertexBuffer(), joint_transforms);
+	}
+}
+
+void SkinnedMesh::morphMesh(f32 frame)
+{
+	if (!HasMorphAnimation)
+		return;
+
+	// Morph runs before skinning: it rewrites the base vertices that the existing
+	// (HW or SW) skinning then consumes.
+	for (auto *buffer : *SkinningBuffers) {
+		auto *morph = buffer->getMorph();
+		if (!morph || !morph->hasAnimation())
+			continue;
+
+		morph->apply(buffer->getVertexBuffer(), frame);
+
+		// Under software skinning, skinMesh() reads the backed-up static pose
+		// (the rest pose) and would discard the morph we just applied. Refresh
+		// the static pose from the freshly morphed buffer so the morph is what
+		// gets skinned. (HW skinning reads the vertex buffer directly, so it
+		// needs nothing extra here.)
+		if (UseSwSkinning) {
+			if (auto *weights = buffer->getWeights())
+				weights->updateStaticPose(buffer->getVertexBuffer());
+		}
 	}
 }
 
@@ -246,11 +292,21 @@ bool SkinnedMesh::checkForKeys() const
 			[](const auto *joint) { return !joint->keys.empty(); });
 }
 
+bool SkinnedMesh::checkForMorphAnimation() const
+{
+	return std::any_of(LocalBuffers.begin(), LocalBuffers.end(),
+			[](const auto *buf) {
+				const auto *morph = buf->getMorph();
+				return morph && morph->hasAnimation();
+			});
+}
+
 void SkinnedMesh::prepareForSkinning()
 {
 	HasWeights = checkForWeights();
+	HasMorphAnimation = checkForMorphAnimation();
 	// Meshes with weights are animatable (e.g. with bone overrides)
-	HasAnimation = HasWeights || checkForKeys();
+	HasAnimation = HasWeights || HasMorphAnimation || checkForKeys();
 	if (!HasAnimation || PreparedForSkinning)
 		return;
 
@@ -259,6 +315,12 @@ void SkinnedMesh::prepareForSkinning()
 	EndFrame = 0.0f;
 	for (const auto *joint : AllJoints) {
 		EndFrame = std::max(EndFrame, joint->keys.getEndFrame());
+	}
+	// Morph weight channels participate in the animation timeline as well, so
+	// that morph-only meshes (no skeletal keys) still get a non-zero frame range.
+	for (const auto *buffer : LocalBuffers) {
+		if (const auto *morph = buffer->getMorph())
+			EndFrame = std::max(EndFrame, morph->getEndFrame());
 	}
 
 	for (auto *joint : AllJoints) {
@@ -432,6 +494,7 @@ SkinnedMesh *SkinnedMeshBuilder::finalize() &&
 		}
 	}
 
+	f32 morphMargin = 0.0f;
 	for (auto *buffer : mesh->LocalBuffers) {
 		// With HW skinning, the VBOs should be static by default.
 		// This hint is changed overwritten by calling useSwSkinning()
@@ -439,7 +502,23 @@ SkinnedMesh *SkinnedMeshBuilder::finalize() &&
 		buffer->setHardwareMappingHint(EHM_STATIC);
 		if (auto *weights = buffer->getWeights())
 			weights->finalize();
+
+		if (auto *morph = buffer->getMorph()) {
+			if (morph->hasAnimation()) {
+				// Animated morph: the vertex buffer is rewritten every frame,
+				// so only the vertices need a streaming hint (indices are constant).
+				buffer->setHardwareMappingHint(EHM_STREAM, EBT_VERTEX);
+				morphMargin = std::max(morphMargin,
+						morph->maxDisplacement() * morph->maxAbsWeight());
+			} else {
+				// Static morph: bake the constant deformation into the base
+				// vertices once and drop the runtime data.
+				morph->bakeStatic(buffer->getVertexBuffer());
+				buffer->Morph.reset();
+			}
+		}
 	}
+	mesh->MorphBBoxMargin = morphMargin;
 
 	mesh->recalculateBaseBoundingBoxes();
 	mesh->StaticPoseBox = mesh->calculateBoundingBox(matrices);

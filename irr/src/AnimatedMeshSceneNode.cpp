@@ -194,6 +194,10 @@ void AnimatedMeshSceneNode::render()
 
 	if (auto *sm = dynamic_cast<SkinnedMesh *>(Mesh)) {
 		sm->rigidAnimation(PerJoint.GlobalMatrices);
+		// Apply morph targets before skinning (morph -> skin). HW skinning then
+		// reads the morphed vertex buffer; this also covers the shadow pass,
+		// which re-enters render() with the depth shader.
+		sm->morphMesh(getFrameNr());
 		if (sm->useSoftwareSkinning()) {
 			// Perform software skinning; matrices have already been calculated in OnAnimate
 			sm->skinMesh(PerJoint.GlobalMatrices);
