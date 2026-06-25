@@ -6683,6 +6683,25 @@ Call these functions only at load time!
       definition whenever possible.
 * `core.register_on_punchnode(function(pos, node, puncher, pointed_thing))`
     * Called when a node is punched
+* `core.register_on_selectnode(function(pos, node, player))` (VOPI Engine)
+    * Called when a player selects (points at / highlights) a node, i.e. when
+      the selection box moves onto a new node. On touch clients this fires when
+      the player taps a node; with a crosshair it fires when the pointed node
+      changes.
+    * Fired once per selection change. Moving to a different face of the same
+      node does not refire. Selecting a different node fires
+      `on_deselectnode` for the previous node first, then `on_selectnode`.
+    * `pos`: position of the selected node
+    * `node`: the selected node (`{name=..., param1=..., param2=...}`)
+    * `player`: ObjectRef of the player that selected it
+    * Useful for showing a context-sensitive interaction HUD button, e.g. via
+      `player:hud_add(...)`, paired with `on_deselectnode` to hide it.
+* `core.register_on_deselectnode(function(pos, node, player))` (VOPI Engine)
+    * Called when a previously selected node is no longer selected: the player
+      pointed at a different node, at an object/air, or away from the world.
+    * `pos`: position of the node that was deselected
+    * `node`: the node that was deselected
+    * `player`: ObjectRef of the player that deselected it
 * `core.register_on_generated(function(minp, maxp, blockseed))`
     * Called after a piece of world between `minp` and `maxp` has been
       generated and written into the map.

@@ -283,6 +283,13 @@ public:
 	// Enforced client-side (TouchControls::applyContextControls is skipped) and
 	// server-side (handleCommand_Interact rejects the action). Default false.
 	bool block_interaction = false;
+
+	// VOPI: the node the player currently has selected (pointed at), as last
+	// reported by the client via TOSERVER_NODE_SELECTED. Used to fire the
+	// on_selectnode / on_deselectnode callbacks. m_has_selected_node == false
+	// means no node is currently selected.
+	bool m_has_selected_node = false;
+	v3s16 m_selected_node;
 #endif
 
 	// Get actual usable number of hotbar items (clamped to size of "main" list)

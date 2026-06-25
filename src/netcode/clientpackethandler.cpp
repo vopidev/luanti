@@ -589,6 +589,15 @@ void Client::handleCommand_SetInteractionBlock(NetworkPacket *pkt)
 	if (g_touchcontrols)
 		g_touchcontrols->setInteractionBlocked(blocked);
 }
+
+void Client::handleCommand_NodeSelectionReporting(NetworkPacket *pkt)
+{
+	bool enabled;
+
+	*pkt >> enabled;
+
+	m_server_wants_node_selection = enabled;
+}
 #endif
 
 void Client::handleCommand_HP(NetworkPacket *pkt)

@@ -1295,6 +1295,13 @@ PlayerSAO *Server::StageTwoClientInit(session_t peer_id)
 	// Send Breath
 	SendPlayerBreath(playersao);
 
+#if IS_VOPI_ENGINE
+	// Tell the client whether to report node selection (only when a mod registered
+	// on_selectnode / on_deselectnode), so we don't carry needless
+	// TOSERVER_NODE_SELECTED traffic when nothing consumes it.
+	SendNodeSelectionReporting(peer_id, m_script->has_on_select_callbacks());
+#endif
+
 	/*
 		Update player list and print action
 	*/
@@ -2145,6 +2152,15 @@ void Server::SendPlayerFov(session_t peer_id)
 }
 
 #if IS_VOPI_ENGINE
+void Server::SendNodeSelectionReporting(session_t peer_id, bool enabled)
+{
+	NetworkPacket pkt(TOCLIENT_NODE_SELECTION_REPORTING, 1, peer_id);
+
+	pkt << enabled;
+
+	Send(&pkt);
+}
+
 void Server::SendPlayerViewBobbing(session_t peer_id)
 {
 	RemotePlayer *player = m_env->getPlayer(peer_id);

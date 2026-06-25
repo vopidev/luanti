@@ -734,7 +734,16 @@ enum ToClientCommand : u16
 		u8 blocked  (1 = blocked, 0 = allowed)
 	*/
 
-	TOCLIENT_NUM_MSG_TYPES = 0x68,
+	TOCLIENT_NODE_SELECTION_REPORTING = 0x68,
+	/*
+		Tells the client whether the server wants TOSERVER_NODE_SELECTED reports
+		(i.e. whether any on_selectnode / on_deselectnode callback is registered).
+		The client only sends selection updates while enabled.
+
+		u8 enabled  (1 = report selection changes, 0 = don't)
+	*/
+
+	TOCLIENT_NUM_MSG_TYPES = 0x69,
 #else
 	TOCLIENT_NUM_MSG_TYPES = 0x65,
 #endif
@@ -944,7 +953,21 @@ enum ToServerCommand : u16
 		v2f32 max_fs_info
 	*/
 
+#if IS_VOPI_ENGINE
+	TOSERVER_NODE_SELECTED = 0x54,
+	/*
+		Reports the node the player currently has selected (pointed at), so the
+		server can fire on_selectnode / on_deselectnode callbacks. Edge-triggered:
+		sent only when the selected node identity changes.
+
+		u32 length of the next item (plen)
+		serialized PointedThing  (type POINTEDTHING_NOTHING = nothing selected)
+	*/
+
+	TOSERVER_NUM_MSG_TYPES = 0x55,
+#else
 	TOSERVER_NUM_MSG_TYPES = 0x54,
+#endif
 };
 
 enum AuthMechanism

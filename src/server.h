@@ -241,6 +241,9 @@ public:
 	void handleCommand_SrpBytesM(NetworkPacket* pkt);
 	void handleCommand_HaveMedia(NetworkPacket *pkt);
 	void handleCommand_UpdateClientInfo(NetworkPacket *pkt);
+#if IS_VOPI_ENGINE
+	void handleCommand_NodeSelected(NetworkPacket *pkt);
+#endif
 
 	void ProcessData(NetworkPacket *pkt);
 
@@ -429,6 +432,7 @@ public:
 	void SendPlayerSpeed(session_t peer_id, const v3f &added_vel);
 	void SendPlayerFov(session_t peer_id);
 #if IS_VOPI_ENGINE
+	void SendNodeSelectionReporting(session_t peer_id, bool enabled);
 	void SendPlayerViewBobbing(session_t peer_id);
 	void SendSetTouchButtons(session_t peer_id, u32 flags, u32 mask);
 	void SendSetInteractionBlock(session_t peer_id, bool blocked);

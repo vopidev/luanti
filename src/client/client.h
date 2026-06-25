@@ -175,6 +175,7 @@ public:
 	void handleCommand_ViewBobbing(NetworkPacket *pkt);
 	void handleCommand_SetTouchButtons(NetworkPacket *pkt);
 	void handleCommand_SetInteractionBlock(NetworkPacket *pkt);
+	void handleCommand_NodeSelectionReporting(NetworkPacket *pkt);
 #endif
 	void handleCommand_HP(NetworkPacket* pkt);
 	void handleCommand_Breath(NetworkPacket* pkt);
@@ -226,6 +227,15 @@ public:
 	void Send(NetworkPacket* pkt);
 
 	void interact(InteractAction action, const PointedThing &pointed);
+#if IS_VOPI_ENGINE
+	// VOPI: report the currently selected (pointed-at) node to the server so it
+	// can fire on_selectnode / on_deselectnode callbacks. Edge-triggered: call
+	// only when the selected node identity changes.
+	void sendNodeSelected(const PointedThing &pointed);
+	// True if the server asked us to report node selection (a mod registered
+	// on_selectnode / on_deselectnode). Gates the per-selection-change send.
+	bool wantsNodeSelectionReporting() const { return m_server_wants_node_selection; }
+#endif
 
 	void sendNodemetaFields(v3s16 p, const std::string &formname,
 		const StringMap &fields);
@@ -626,6 +636,12 @@ private:
 	v3s16 m_map_harvest_last_center;         // center of last harvest sweep
 	u32 m_map_harvest_ticks = 0;             // 0.5s ticks; every 6th = full rescan
 	bool m_map_harvest_done = false;         // has at least one sweep run
+
+#if IS_VOPI_ENGINE
+	// Whether the server wants us to report node selection (TOSERVER_NODE_SELECTED).
+	// Set by TOCLIENT_NODE_SELECTION_REPORTING; gates the per-selection-change send.
+	bool m_server_wants_node_selection = false;
+#endif
 
 	// Client modding
 	ClientScripting *m_script = nullptr;

@@ -116,6 +116,7 @@ const ToClientCommandHandler toClientCommandTable[TOCLIENT_NUM_MSG_TYPES] =
 	{ "TOCLIENT_VIEW_BOBBING",             TOCLIENT_STATE_CONNECTED, &Client::handleCommand_ViewBobbing }, // 0x65,
 	{ "TOCLIENT_SET_TOUCH_BUTTONS",        TOCLIENT_STATE_CONNECTED, &Client::handleCommand_SetTouchButtons }, // 0x66,
 	{ "TOCLIENT_SET_INTERACTION_BLOCK",    TOCLIENT_STATE_CONNECTED, &Client::handleCommand_SetInteractionBlock }, // 0x67,
+	{ "TOCLIENT_NODE_SELECTION_REPORTING", TOCLIENT_STATE_CONNECTED, &Client::handleCommand_NodeSelectionReporting }, // 0x68,
 #endif
 };
 
@@ -217,4 +218,7 @@ const ServerCommandFactory serverCommandFactoryTable[TOSERVER_NUM_MSG_TYPES] =
 	{ "TOSERVER_SRP_BYTES_A",        1, true }, // 0x51
 	{ "TOSERVER_SRP_BYTES_M",        1, true }, // 0x52
 	{ "TOSERVER_UPDATE_CLIENT_INFO", 2, true }, // 0x53
+#if IS_VOPI_ENGINE
+	{ "TOSERVER_NODE_SELECTED",      0, true }, // 0x54
+#endif
 };

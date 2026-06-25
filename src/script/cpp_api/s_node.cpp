@@ -139,6 +139,63 @@ bool ScriptApiNode::node_on_dig(v3s16 p, MapNode node,
 	return result;
 }
 
+#if IS_VOPI_ENGINE
+void ScriptApiNode::node_on_select(v3s16 p, MapNode node,
+		ServerActiveObject *player)
+{
+	SCRIPTAPI_PRECHECKHEADER
+
+	// Get core.registered_on_selectnodes
+	lua_getglobal(L, "core");
+	lua_getfield(L, -1, "registered_on_selectnodes");
+	// Builtin may not define the table (mismatched/old builtin) -> skip safely.
+	if (lua_isnil(L, -1))
+		return;
+
+	// Push data
+	push_v3s16(L, p);
+	pushnode(L, node);
+	objectrefGetOrCreate(L, player);
+
+	// Call callbacks
+	runCallbacks(3, RUN_CALLBACKS_MODE_FIRST);
+}
+
+void ScriptApiNode::node_on_deselect(v3s16 p, MapNode node,
+		ServerActiveObject *player)
+{
+	SCRIPTAPI_PRECHECKHEADER
+
+	// Get core.registered_on_deselectnodes
+	lua_getglobal(L, "core");
+	lua_getfield(L, -1, "registered_on_deselectnodes");
+	// Builtin may not define the table (mismatched/old builtin) -> skip safely.
+	if (lua_isnil(L, -1))
+		return;
+
+	// Push data
+	push_v3s16(L, p);
+	pushnode(L, node);
+	objectrefGetOrCreate(L, player);
+
+	// Call callbacks
+	runCallbacks(3, RUN_CALLBACKS_MODE_FIRST);
+}
+
+bool ScriptApiNode::has_on_select_callbacks()
+{
+	SCRIPTAPI_PRECHECKHEADER
+
+	lua_getglobal(L, "core");
+	lua_getfield(L, -1, "registered_on_selectnodes");
+	if (lua_istable(L, -1) && lua_objlen(L, -1) > 0)
+		return true;
+	lua_pop(L, 1);
+	lua_getfield(L, -1, "registered_on_deselectnodes");
+	return lua_istable(L, -1) && lua_objlen(L, -1) > 0;
+}
+#endif
+
 void ScriptApiNode::node_on_construct(v3s16 p, MapNode node)
 {
 	SCRIPTAPI_PRECHECKHEADER

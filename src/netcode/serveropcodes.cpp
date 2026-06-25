@@ -95,6 +95,9 @@ const ToServerCommandHandler toServerCommandTable[TOSERVER_NUM_MSG_TYPES] =
 	{ "TOSERVER_SRP_BYTES_A",              TOSERVER_STATE_NOT_CONNECTED, &Server::handleCommand_SrpBytesA }, // 0x51
 	{ "TOSERVER_SRP_BYTES_M",              TOSERVER_STATE_NOT_CONNECTED, &Server::handleCommand_SrpBytesM }, // 0x52
 	{ "TOSERVER_UPDATE_CLIENT_INFO",       TOSERVER_STATE_INGAME, &Server::handleCommand_UpdateClientInfo }, // 0x53
+#if IS_VOPI_ENGINE
+	{ "TOSERVER_NODE_SELECTED",            TOSERVER_STATE_INGAME, &Server::handleCommand_NodeSelected }, // 0x54
+#endif
 };
 
 const static ClientCommandFactory null_command_factory = { nullptr, 0, false };
@@ -217,5 +220,6 @@ const ClientCommandFactory clientCommandFactoryTable[TOCLIENT_NUM_MSG_TYPES] =
 	{ "TOCLIENT_VIEW_BOBBING",             0, true }, // 0x65
 	{ "TOCLIENT_SET_TOUCH_BUTTONS",        0, true }, // 0x66
 	{ "TOCLIENT_SET_INTERACTION_BLOCK",    0, true }, // 0x67
+	{ "TOCLIENT_NODE_SELECTION_REPORTING", 0, true }, // 0x68
 #endif
 };

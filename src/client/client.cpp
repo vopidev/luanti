@@ -1353,6 +1353,28 @@ void Client::interact(InteractAction action, const PointedThing& pointed)
 	Send(&pkt);
 }
 
+#if IS_VOPI_ENGINE
+void Client::sendNodeSelected(const PointedThing &pointed)
+{
+	if (m_state != LC_Ready)
+		return;
+
+	/*
+		[0] u16 command
+		[2] u32 length of the next item (plen)
+		[6] serialized PointedThing
+	*/
+
+	NetworkPacket pkt(TOSERVER_NODE_SELECTED, 0);
+
+	std::ostringstream tmp_os(std::ios::binary);
+	pointed.serialize(tmp_os);
+	pkt.putLongString(tmp_os.str());
+
+	Send(&pkt);
+}
+#endif
+
 void Client::deleteAuthData()
 {
 	if (!m_auth_data)

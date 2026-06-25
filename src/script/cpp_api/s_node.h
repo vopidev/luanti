@@ -33,6 +33,13 @@ public:
 			const std::string &formname,
 			const StringMap &fields,
 			ServerActiveObject *sender);
+#if IS_VOPI_ENGINE
+	// Global callbacks fired when a player selects/deselects (points at) a node.
+	void node_on_select(v3s16 p, MapNode node, ServerActiveObject *player);
+	void node_on_deselect(v3s16 p, MapNode node, ServerActiveObject *player);
+	// True if any on_selectnode / on_deselectnode callback is registered.
+	bool has_on_select_callbacks();
+#endif
 
 public:
 	static struct EnumString es_DrawType[];

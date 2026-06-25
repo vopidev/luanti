@@ -29,6 +29,8 @@ local register_functions = {
 	"register_on_punchnode",
 	"register_on_placenode",
 	"register_on_dignode",
+	"register_on_selectnode",
+	"register_on_deselectnode",
 	"register_on_generated",
 	"register_on_newplayer",
 	"register_on_dieplayer",

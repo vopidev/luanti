@@ -2967,6 +2967,27 @@ void Game::processPlayerInteraction(f32 dtime, bool show_hud)
 		handlePointingAtNothing(selected_item);
 	}
 
+#if IS_VOPI_ENGINE
+	// VOPI: report node-selection changes to the server so it can fire the
+	// on_selectnode / on_deselectnode callbacks. Edge-triggered: only send when
+	// the selected node identity changes. Pointing at a different face of the
+	// same node, or at objects/air, is not a node-selection change.
+	{
+		const bool now_node = pointed.type == POINTEDTHING_NODE;
+		const bool old_node = runData.pointed_old.type == POINTEDTHING_NODE;
+		bool selection_changed;
+		if (now_node != old_node)
+			selection_changed = true; // node <-> (object/air) transition
+		else if (now_node)
+			selection_changed = pointed.node_undersurface !=
+					runData.pointed_old.node_undersurface;
+		else
+			selection_changed = false; // both non-node: no node is selected
+		if (selection_changed && client->wantsNodeSelectionReporting())
+			client->sendNodeSelected(pointed);
+	}
+#endif
+
 	runData.pointed_old = pointed;
 
 	if (runData.punching || wasKeyPressed(KeyType::DIG))

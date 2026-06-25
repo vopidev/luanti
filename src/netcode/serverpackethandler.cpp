@@ -882,6 +882,64 @@ static inline void getWieldedItem(const PlayerSAO *playersao, std::optional<Item
 	playersao->getWieldedItem(&(*ret));
 }
 
+#if IS_VOPI_ENGINE
+void Server::handleCommand_NodeSelected(NetworkPacket *pkt)
+{
+	/*
+		[0] u16 command
+		[2] u32 length of the next item (plen)
+		[6] serialized PointedThing
+	*/
+
+	std::istringstream tmp_is(pkt->readLongString(), std::ios::binary);
+	PointedThing pointed;
+	pointed.deSerialize(tmp_is);
+
+	session_t peer_id = pkt->getPeerId();
+	RemotePlayer *player = m_env->getPlayer(peer_id);
+	if (!player) {
+		warningstream << FUNCTION_NAME << ": player is null" << std::endl;
+		return;
+	}
+
+	PlayerSAO *playersao = player->getPlayerSAO();
+	if (!playersao) {
+		warningstream << FUNCTION_NAME << ": player SAO is null" << std::endl;
+		return;
+	}
+
+	// The client only reports node selections; anything else means "deselected".
+	const bool has_new = pointed.type == POINTEDTHING_NODE;
+	const v3s16 new_pos = has_new ? pointed.node_undersurface : v3s16();
+
+	// Edge-triggered on the client, but guard against duplicates/replays anyway.
+	if (has_new == player->m_has_selected_node &&
+			(!has_new || new_pos == player->m_selected_node))
+		return;
+
+	// Fire deselect for the previously selected node (if it still exists).
+	if (player->m_has_selected_node) {
+		bool pos_ok;
+		MapNode old_n = m_env->getMap().getNode(player->m_selected_node, &pos_ok);
+		if (pos_ok)
+			m_script->node_on_deselect(player->m_selected_node, old_n, playersao);
+	}
+
+	// Update stored selection before firing on_select so callbacks see a
+	// consistent state.
+	player->m_has_selected_node = has_new;
+	player->m_selected_node = new_pos;
+
+	// Fire select for the newly selected node (if it exists).
+	if (has_new) {
+		bool pos_ok;
+		MapNode new_n = m_env->getMap().getNode(new_pos, &pos_ok);
+		if (pos_ok)
+			m_script->node_on_select(new_pos, new_n, playersao);
+	}
+}
+#endif
+
 void Server::handleCommand_Interact(NetworkPacket *pkt)
 {
 	/*
