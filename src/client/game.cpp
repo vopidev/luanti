@@ -1418,6 +1418,13 @@ void Game::processUserInput(f32 dtime)
 			m_game_focused = false;
 			infostream << "Game lost focus" << std::endl;
 			input->releaseAllKeys();
+#if defined(__ANDROID__) || defined(__IOS__)
+			// Focus lost to the system UI (notification shade, screenshot, app
+			// switcher): defer a pause menu until focus returns. See the regain
+			// branch below and m_lost_focus_needs_pause.
+			if (!device->isWindowActive())
+				m_lost_focus_needs_pause = true;
+#endif
 		} else {
 			input->clear();
 		}
@@ -1426,6 +1433,17 @@ void Game::processUserInput(f32 dtime)
 			g_touchcontrols->hide();
 
 	} else {
+#if defined(__ANDROID__) || defined(__IOS__)
+		// Show the pause menu the moment focus returns, and skip the touch
+		// control step this frame: the interrupted touch sequence can leave
+		// stale pointer state (a stuck pointer drifts the camera and hides the
+		// touch buttons), so resume from a clean state via the pause menu.
+		if (!m_game_focused && m_lost_focus_needs_pause && !isMenuActive()) {
+			m_lost_focus_needs_pause = false;
+			infostream << "Showing pause menu on focus regain" << std::endl;
+			m_game_formspec.showPauseMenu();
+		} else
+#endif
 		if (g_touchcontrols) {
 			/* on touchcontrols step may generate own input events which ain't
 			 * what we want in case we just did clear them */

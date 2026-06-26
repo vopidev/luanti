@@ -386,6 +386,15 @@ private:
 
 	bool m_does_lost_focus_pause_game = false;
 
+#if defined(__ANDROID__) || defined(__IOS__)
+	// VOPI: set when the game loses focus to the system UI (notification shade,
+	// screenshot, app switcher); consumed in processUserInput to show the pause
+	// menu the moment focus returns, so the player never resumes on stale touch
+	// input. Without this the interrupted touch sequence leaves stuck pointers
+	// (drifting camera) and hidden touch buttons.
+	bool m_lost_focus_needs_pause = false;
+#endif
+
 	// if true, (almost) the whole game is paused
 	// this happens in pause menu in singleplayer
 	bool m_is_paused = false;
