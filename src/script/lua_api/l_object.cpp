@@ -2040,8 +2040,11 @@ static const EnumString es_TouchGuiButton[] =
 	{1 << 16, "range"},
 	{1 << 17, "minimap"},
 	{1 << 18, "toggle_chat"},
-	// joystick_off/bg/center (ids 19-21) are intentionally not exposed: the
-	// joystick is rendered via a separate path, not the m_buttons mask loop.
+	// The movement joystick is rendered via a separate path (not the m_buttons
+	// mask loop) and spans joystick_off/bg/center (ids 19-21). We expose it under
+	// the single canonical bit of joystick_off_id (19); TouchControls hides all
+	// three visuals and disables movement capture when this bit is set.
+	{1 << 19, "joystick"},
 	{0, NULL},
 };
 

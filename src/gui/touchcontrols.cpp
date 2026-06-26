@@ -690,10 +690,19 @@ void TouchControls::translateEvent(const SEvent &event)
 			// already handled in isHotbarButton()
 			return;
 
+#if IS_VOPI_ENGINE
+		// A Lua-hidden joystick must not capture touches; the area then falls
+		// through to the move/look handler like any other empty screen region.
+		const bool joystick_hidden =
+				(m_hidden_mask & (1u << joystick_off_id)) != 0;
+#else
+		const bool joystick_hidden = false;
+#endif
 		// Select joystick when joystick tapped (fixed joystick position) or
 		// when left 1/3 of screen dragged (free joystick position)
-		if ((m_fixed_joystick && dir_fixed.getLengthSQ() <= fixed_joystick_range_sq) ||
-				(!m_fixed_joystick && X < m_screensize.X / 3.0f)) {
+		if (!joystick_hidden &&
+				((m_fixed_joystick && dir_fixed.getLengthSQ() <= fixed_joystick_range_sq) ||
+				(!m_fixed_joystick && X < m_screensize.X / 3.0f))) {
 			// If we don't already have a starting point for joystick, make this the one.
 			if (!m_has_joystick_id) {
 				m_has_joystick_id           = true;
@@ -942,9 +951,17 @@ void TouchControls::updateVisibility()
 #endif
 	}
 
-	m_joystick_btn_off->setVisible(regular_visible && !m_has_joystick_id);
-	m_joystick_btn_bg->setVisible(regular_visible && m_has_joystick_id);
-	m_joystick_btn_center->setVisible(regular_visible && m_has_joystick_id);
+#if IS_VOPI_ENGINE
+	// The joystick spans three GUI images but is exposed to Lua as a single
+	// button under joystick_off_id's bit; that bit hides all of them.
+	bool joystick_visible = regular_visible &&
+			(m_hidden_mask & (1u << joystick_off_id)) == 0;
+#else
+	bool joystick_visible = regular_visible;
+#endif
+	m_joystick_btn_off->setVisible(joystick_visible && !m_has_joystick_id);
+	m_joystick_btn_bg->setVisible(joystick_visible && m_has_joystick_id);
+	m_joystick_btn_center->setVisible(joystick_visible && m_has_joystick_id);
 
 	bool overflow_visible = m_visible && m_overflow_open;
 	m_overflow_bg->setVisible(overflow_visible);
@@ -998,6 +1015,19 @@ void TouchControls::setHiddenButtons(u32 mask)
 		return;
 
 	m_hidden_mask = mask;
+
+	// If the joystick is being hidden while held, drop the active gesture so the
+	// player stops moving instead of coasting until the finger is lifted. Mirror
+	// the release path (handleReleaseEvent) so the aux1 key it may hold is
+	// released immediately rather than on the next step().
+	if (m_has_joystick_id && (m_hidden_mask & (1u << joystick_off_id)) != 0) {
+		m_has_joystick_id      = false;
+		m_joystick_direction   = 0.0f;
+		m_joystick_speed       = 0.0f;
+		m_joystick_status_aux1 = false;
+		applyJoystickStatus();
+	}
+
 	updateVisibility();
 }
 

@@ -9447,10 +9447,15 @@ child will follow movement and rotation of that bone.
       (`true` = visible, `false` = hidden). A name set to `nil` is not modified.
     * Available button names: `dig`, `place`, `jump`, `sneak`, `zoom`, `aux1`,
       `overflow`, `chat`, `inventory`, `drop`, `exit` (the pause button), `fly`,
-      `fast`, `noclip`, `debug`, `camera`, `range`, `minimap`, `toggle_chat`.
+      `fast`, `noclip`, `debug`, `camera`, `range`, `minimap`, `toggle_chat`,
+      `joystick` (the movement joystick).
     * Only affects the on-screen button. It does not disable the underlying
       action (e.g. hiding `dig` does not stop tap-to-dig in tap interaction
       style; hiding `exit` does not block the OS pause path).
+    * Exception: `joystick` is both visual and functional -- hiding it also
+      stops it from capturing touches, so the player can no longer move with it
+      (the area then behaves like empty screen). Hiding it while it is held
+      cancels the active movement.
     * Has no effect on non-touch clients.
     * Like `hud_set_flags`, state is only synced on change and resets when a
       client (re)connects: re-apply it in `register_on_joinplayer` / after
