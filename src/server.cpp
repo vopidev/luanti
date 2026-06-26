@@ -2184,6 +2184,15 @@ void Server::SendSetTouchButtons(session_t peer_id, u32 flags, u32 mask)
 	Send(&pkt);
 }
 
+void Server::SendSetCameraPitchRange(session_t peer_id, f32 pitch_min, f32 pitch_max)
+{
+	NetworkPacket pkt(TOCLIENT_SET_CAMERA_PITCH_RANGE, 4 + 4, peer_id);
+
+	pkt << pitch_min << pitch_max;
+
+	Send(&pkt);
+}
+
 void Server::SendSetInteractionBlock(session_t peer_id, bool blocked)
 {
 	NetworkPacket pkt(TOCLIENT_SET_INTERACTION_BLOCK, 1, peer_id);
@@ -3674,6 +3683,28 @@ bool Server::setBlockInteraction(RemotePlayer *player, bool blocked)
 
 	player->block_interaction = blocked;
 	SendSetInteractionBlock(player->getPeerId(), blocked);
+
+	return true;
+}
+
+bool Server::setCameraPitchRange(RemotePlayer *player, f32 pitch_min, f32 pitch_max)
+{
+	if (!player)
+		return false;
+
+	// Keep within the physically meaningful range and well-ordered.
+	pitch_min = rangelim(pitch_min, -90.0f, 90.0f);
+	pitch_max = rangelim(pitch_max, -90.0f, 90.0f);
+	if (pitch_min > pitch_max)
+		pitch_min = pitch_max;
+
+	if (player->camera_pitch_min == pitch_min &&
+			player->camera_pitch_max == pitch_max) // no change
+		return true;
+
+	player->camera_pitch_min = pitch_min;
+	player->camera_pitch_max = pitch_max;
+	SendSetCameraPitchRange(player->getPeerId(), pitch_min, pitch_max);
 
 	return true;
 }

@@ -2122,6 +2122,43 @@ int ObjectRef::l_get_block_interaction(lua_State *L)
 	lua_pushboolean(L, player->block_interaction);
 	return 1;
 }
+
+// set_camera_pitch_range(self, min, max)
+// Clamps the player's camera pitch to [min, max] degrees (-90 = up, 90 = down).
+// Called with no/nil args it resets to the full range.
+int ObjectRef::l_set_camera_pitch_range(lua_State *L)
+{
+	NO_MAP_LOCK_REQUIRED;
+	ObjectRef *ref = checkObject<ObjectRef>(L, 1);
+	RemotePlayer *player = getplayer(ref);
+	if (player == nullptr)
+		return 0;
+
+	f32 pitch_min = -90.0f;
+	f32 pitch_max = 90.0f;
+	if (!lua_isnoneornil(L, 2))
+		pitch_min = readParam<f32>(L, 2);
+	if (!lua_isnoneornil(L, 3))
+		pitch_max = readParam<f32>(L, 3);
+
+	getServer(L)->setCameraPitchRange(player, pitch_min, pitch_max);
+
+	return 0;
+}
+
+// get_camera_pitch_range(self)
+int ObjectRef::l_get_camera_pitch_range(lua_State *L)
+{
+	NO_MAP_LOCK_REQUIRED;
+	ObjectRef *ref = checkObject<ObjectRef>(L, 1);
+	RemotePlayer *player = getplayer(ref);
+	if (player == nullptr)
+		return 0;
+
+	lua_pushnumber(L, player->camera_pitch_min);
+	lua_pushnumber(L, player->camera_pitch_max);
+	return 2;
+}
 #endif
 
 // hud_set_hotbar_itemcount(self, hotbar_itemcount)
@@ -3132,6 +3169,8 @@ luaL_Reg ObjectRef::methods[] = {
 	luamethod(ObjectRef, get_touch_buttons),
 	luamethod(ObjectRef, set_block_interaction),
 	luamethod(ObjectRef, get_block_interaction),
+	luamethod(ObjectRef, set_camera_pitch_range),
+	luamethod(ObjectRef, get_camera_pitch_range),
 #endif
 	luamethod(ObjectRef, hud_set_hotbar_itemcount),
 	luamethod(ObjectRef, hud_get_hotbar_itemcount),

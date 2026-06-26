@@ -221,5 +221,6 @@ const ClientCommandFactory clientCommandFactoryTable[TOCLIENT_NUM_MSG_TYPES] =
 	{ "TOCLIENT_SET_TOUCH_BUTTONS",        0, true }, // 0x66
 	{ "TOCLIENT_SET_INTERACTION_BLOCK",    0, true }, // 0x67
 	{ "TOCLIENT_NODE_SELECTION_REPORTING", 0, true }, // 0x68
+	{ "TOCLIENT_SET_CAMERA_PITCH_RANGE",   0, true }, // 0x69
 #endif
 };

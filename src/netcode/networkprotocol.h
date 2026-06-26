@@ -743,7 +743,16 @@ enum ToClientCommand : u16
 		u8 enabled  (1 = report selection changes, 0 = don't)
 	*/
 
-	TOCLIENT_NUM_MSG_TYPES = 0x69,
+	TOCLIENT_SET_CAMERA_PITCH_RANGE = 0x69,
+	/*
+		Sets the min/max camera pitch (degrees) the player may look to.
+		The client clamps its camera pitch into this range every frame.
+
+		f32 pitch_min  (-90 = straight up)
+		f32 pitch_max  ( 90 = straight down)
+	*/
+
+	TOCLIENT_NUM_MSG_TYPES = 0x6a,
 #else
 	TOCLIENT_NUM_MSG_TYPES = 0x65,
 #endif

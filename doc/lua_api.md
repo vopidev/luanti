@@ -9474,6 +9474,22 @@ child will follow movement and rotation of that bone.
       respawn.
 * `get_block_interaction()` (VOPI only): returns `true` if world interaction is
   currently blocked for the player.
+* `set_camera_pitch_range(min, max)` (VOPI only): limit how far up/down the
+  player may look. The client clamps its camera pitch into `[min, max]` every
+  frame.
+    * `min`/`max` are in degrees: `-90` = straight up, `0` = horizon,
+      `90` = straight down. Values are clamped to `[-90, 90]` and, if `min > max`,
+      `min` is lowered to `max`.
+    * Both arguments are optional; a `nil`/omitted value defaults to the full
+      extent (`min = -90`, `max = 90`). Calling it with no arguments therefore
+      resets the limit.
+    * Enforced client-side only (it constrains the local camera); it does not
+      restrict the look direction reported by non-VOPI or modified clients.
+    * Like other player flags, state is only synced on change and resets when a
+      client (re)connects: re-apply it in `register_on_joinplayer` / after
+      respawn.
+* `get_camera_pitch_range()` (VOPI only): returns two numbers, the current
+  `min` and `max` camera pitch (degrees) for the player.
 * `hud_set_hotbar_itemcount(count)`: sets amount of items in builtin hotbar
     * `count`: number of items, must be an integer in range [1, 32]
     * If `count` exceeds the `"main"` list size, the list size will be used instead.

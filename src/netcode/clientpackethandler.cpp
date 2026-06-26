@@ -590,6 +590,20 @@ void Client::handleCommand_SetInteractionBlock(NetworkPacket *pkt)
 		g_touchcontrols->setInteractionBlocked(blocked);
 }
 
+void Client::handleCommand_SetCameraPitchRange(NetworkPacket *pkt)
+{
+	f32 pitch_min, pitch_max;
+
+	*pkt >> pitch_min >> pitch_max;
+
+	LocalPlayer *player = m_env.getLocalPlayer();
+	assert(player != NULL);
+
+	// game.cpp reads these every frame when clamping the camera pitch.
+	player->camera_pitch_min = pitch_min;
+	player->camera_pitch_max = pitch_max;
+}
+
 void Client::handleCommand_NodeSelectionReporting(NetworkPacket *pkt)
 {
 	bool enabled;

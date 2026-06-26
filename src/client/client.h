@@ -176,6 +176,7 @@ public:
 	void handleCommand_SetTouchButtons(NetworkPacket *pkt);
 	void handleCommand_SetInteractionBlock(NetworkPacket *pkt);
 	void handleCommand_NodeSelectionReporting(NetworkPacket *pkt);
+	void handleCommand_SetCameraPitchRange(NetworkPacket *pkt);
 #endif
 	void handleCommand_HP(NetworkPacket* pkt);
 	void handleCommand_Breath(NetworkPacket* pkt);

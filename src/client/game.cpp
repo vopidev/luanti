@@ -2167,7 +2167,16 @@ void Game::updateCameraOrientation(CameraOrientation *cam, float dtime)
 	if (input->isKeyDown(KeyType::CAMERA_PITCH_DOWN))
 		cam->camera_pitch += rate;
 
+#if IS_VOPI_ENGINE
+	// VOPI: the pitch limits are per-player and set from Lua
+	// (set_camera_pitch_range); default to the full range.
+	LocalPlayer *pitch_player = client->getEnv().getLocalPlayer();
+	f32 pitch_min = pitch_player ? pitch_player->camera_pitch_min : -90.0f;
+	f32 pitch_max = pitch_player ? pitch_player->camera_pitch_max : 90.0f;
+	cam->camera_pitch = rangelim(cam->camera_pitch, pitch_min, pitch_max);
+#else
 	cam->camera_pitch = rangelim(cam->camera_pitch, -90, 90);
+#endif
 }
 
 

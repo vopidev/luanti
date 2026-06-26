@@ -284,6 +284,12 @@ public:
 	// server-side (handleCommand_Interact rejects the action). Default false.
 	bool block_interaction = false;
 
+	// VOPI: clamp range (in degrees) applied to the camera pitch each frame.
+	// Set per-player from Lua (set_camera_pitch_range) and synced server->client.
+	// Defaults to the full range; -90 = straight up, 90 = straight down.
+	f32 camera_pitch_min = -90.0f;
+	f32 camera_pitch_max = 90.0f;
+
 	// VOPI: the node the player currently has selected (pointed at), as last
 	// reported by the client via TOSERVER_NODE_SELECTED. Used to fire the
 	// on_selectnode / on_deselectnode callbacks. m_has_selected_node == false

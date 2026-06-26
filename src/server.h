@@ -383,6 +383,8 @@ public:
 	bool setTouchButtons(RemotePlayer *player, u32 flags, u32 mask);
 	// VOPI: block/unblock all world interaction (dig/place/punch/use).
 	bool setBlockInteraction(RemotePlayer *player, bool blocked);
+	// VOPI: clamp the player's camera pitch to [min, max] degrees.
+	bool setCameraPitchRange(RemotePlayer *player, f32 pitch_min, f32 pitch_max);
 #endif
 	bool hudSetHotbarItemcount(RemotePlayer *player, s32 hotbar_itemcount);
 	void hudSetHotbarImage(RemotePlayer *player, const std::string &name);
@@ -433,6 +435,7 @@ public:
 	void SendPlayerFov(session_t peer_id);
 #if IS_VOPI_ENGINE
 	void SendNodeSelectionReporting(session_t peer_id, bool enabled);
+	void SendSetCameraPitchRange(session_t peer_id, f32 pitch_min, f32 pitch_max);
 	void SendPlayerViewBobbing(session_t peer_id);
 	void SendSetTouchButtons(session_t peer_id, u32 flags, u32 mask);
 	void SendSetInteractionBlock(session_t peer_id, bool blocked);
