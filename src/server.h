@@ -385,6 +385,9 @@ public:
 	bool setBlockInteraction(RemotePlayer *player, bool blocked);
 	// VOPI: clamp the player's camera pitch to [min, max] degrees.
 	bool setCameraPitchRange(RemotePlayer *player, f32 pitch_min, f32 pitch_max);
+	// VOPI: clamp the player's (cyclic) camera yaw to an arc [min, max] degrees;
+	// limited = false removes the limit.
+	bool setCameraYawRange(RemotePlayer *player, bool limited, f32 yaw_min, f32 yaw_max);
 #endif
 	bool hudSetHotbarItemcount(RemotePlayer *player, s32 hotbar_itemcount);
 	void hudSetHotbarImage(RemotePlayer *player, const std::string &name);
@@ -436,6 +439,7 @@ public:
 #if IS_VOPI_ENGINE
 	void SendNodeSelectionReporting(session_t peer_id, bool enabled);
 	void SendSetCameraPitchRange(session_t peer_id, f32 pitch_min, f32 pitch_max);
+	void SendSetCameraYawRange(session_t peer_id, bool limited, f32 yaw_min, f32 yaw_max);
 	void SendPlayerViewBobbing(session_t peer_id);
 	void SendSetTouchButtons(session_t peer_id, u32 flags, u32 mask);
 	void SendSetInteractionBlock(session_t peer_id, bool blocked);

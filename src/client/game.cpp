@@ -2186,12 +2186,28 @@ void Game::updateCameraOrientation(CameraOrientation *cam, float dtime)
 		cam->camera_pitch += rate;
 
 #if IS_VOPI_ENGINE
-	// VOPI: the pitch limits are per-player and set from Lua
-	// (set_camera_pitch_range); default to the full range.
-	LocalPlayer *pitch_player = client->getEnv().getLocalPlayer();
-	f32 pitch_min = pitch_player ? pitch_player->camera_pitch_min : -90.0f;
-	f32 pitch_max = pitch_player ? pitch_player->camera_pitch_max : 90.0f;
+	// VOPI: the camera pitch/yaw limits are per-player and set from Lua
+	// (set_camera_pitch_range / set_camera_yaw_range).
+	LocalPlayer *vopi_player = client->getEnv().getLocalPlayer();
+	f32 pitch_min = vopi_player ? vopi_player->camera_pitch_min : -90.0f;
+	f32 pitch_max = vopi_player ? vopi_player->camera_pitch_max : 90.0f;
 	cam->camera_pitch = rangelim(cam->camera_pitch, pitch_min, pitch_max);
+
+	// Yaw is cyclic and camera_yaw accumulates unbounded, so nudge it back by
+	// just the overshoot past the allowed arc instead of re-centering it: a hard
+	// re-center would introduce a multi-turn numeric jump that the (non-cyclic)
+	// camera-smoothing damp would spin through. Inside the arc the yaw is left
+	// untouched. Only constrained in first person; third-person orbit stays free.
+	if (vopi_player && vopi_player->camera_yaw_limited &&
+			camera->getCameraMode() == CAMERA_MODE_FIRST) {
+		f32 center = (vopi_player->camera_yaw_min + vopi_player->camera_yaw_max) / 2.0f;
+		f32 half   = (vopi_player->camera_yaw_max - vopi_player->camera_yaw_min) / 2.0f;
+		f32 diff   = wrapDegrees_180(cam->camera_yaw - center);
+		if (diff > half)
+			cam->camera_yaw -= diff - half;
+		else if (diff < -half)
+			cam->camera_yaw -= diff + half;
+	}
 #else
 	cam->camera_pitch = rangelim(cam->camera_pitch, -90, 90);
 #endif

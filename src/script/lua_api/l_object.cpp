@@ -2159,6 +2159,47 @@ int ObjectRef::l_get_camera_pitch_range(lua_State *L)
 	lua_pushnumber(L, player->camera_pitch_max);
 	return 2;
 }
+
+// set_camera_yaw_range(self, min, max)
+// Clamps the player's camera yaw to the arc [min, max] degrees (cyclic; applied
+// only in first person, client-side). Called with no/nil args it removes the
+// limit.
+int ObjectRef::l_set_camera_yaw_range(lua_State *L)
+{
+	NO_MAP_LOCK_REQUIRED;
+	ObjectRef *ref = checkObject<ObjectRef>(L, 1);
+	RemotePlayer *player = getplayer(ref);
+	if (player == nullptr)
+		return 0;
+
+	if (lua_isnoneornil(L, 2) && lua_isnoneornil(L, 3)) {
+		getServer(L)->setCameraYawRange(player, false, 0.0f, 0.0f);
+	} else {
+		f32 yaw_min = readParam<f32>(L, 2);
+		f32 yaw_max = readParam<f32>(L, 3);
+		getServer(L)->setCameraYawRange(player, true, yaw_min, yaw_max);
+	}
+
+	return 0;
+}
+
+// get_camera_yaw_range(self)
+// Returns min, max degrees when a yaw limit is set, or nil when unlimited.
+int ObjectRef::l_get_camera_yaw_range(lua_State *L)
+{
+	NO_MAP_LOCK_REQUIRED;
+	ObjectRef *ref = checkObject<ObjectRef>(L, 1);
+	RemotePlayer *player = getplayer(ref);
+	if (player == nullptr)
+		return 0;
+
+	if (!player->camera_yaw_limited)
+		return 0;
+
+	lua_pushnumber(L, player->camera_yaw_min);
+	lua_pushnumber(L, player->camera_yaw_max);
+	return 2;
+}
 #endif
 
 // hud_set_hotbar_itemcount(self, hotbar_itemcount)
@@ -3171,6 +3212,8 @@ luaL_Reg ObjectRef::methods[] = {
 	luamethod(ObjectRef, get_block_interaction),
 	luamethod(ObjectRef, set_camera_pitch_range),
 	luamethod(ObjectRef, get_camera_pitch_range),
+	luamethod(ObjectRef, set_camera_yaw_range),
+	luamethod(ObjectRef, get_camera_yaw_range),
 #endif
 	luamethod(ObjectRef, hud_set_hotbar_itemcount),
 	luamethod(ObjectRef, hud_get_hotbar_itemcount),

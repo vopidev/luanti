@@ -290,6 +290,14 @@ public:
 	f32 camera_pitch_min = -90.0f;
 	f32 camera_pitch_max = 90.0f;
 
+	// VOPI: optional clamp arc (in degrees) for the camera yaw, set per-player
+	// from Lua (set_camera_yaw_range) and synced server->client. Yaw is cyclic,
+	// so the clamp is applied around the arc centre; only active when
+	// camera_yaw_limited is true (and only in first person, client-side).
+	bool camera_yaw_limited = false;
+	f32 camera_yaw_min = 0.0f;
+	f32 camera_yaw_max = 0.0f;
+
 	// VOPI: the node the player currently has selected (pointed at), as last
 	// reported by the client via TOSERVER_NODE_SELECTED. Used to fire the
 	// on_selectnode / on_deselectnode callbacks. m_has_selected_node == false

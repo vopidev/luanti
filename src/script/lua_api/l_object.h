@@ -341,6 +341,12 @@ private:
 
 	// get_camera_pitch_range(self)
 	static int l_get_camera_pitch_range(lua_State *L);
+
+	// set_camera_yaw_range(self, min, max)
+	static int l_set_camera_yaw_range(lua_State *L);
+
+	// get_camera_yaw_range(self)
+	static int l_get_camera_yaw_range(lua_State *L);
 #endif
 
 	// hud_set_hotbar_itemcount(self, hotbar_itemcount)

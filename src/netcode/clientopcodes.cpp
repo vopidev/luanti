@@ -118,6 +118,7 @@ const ToClientCommandHandler toClientCommandTable[TOCLIENT_NUM_MSG_TYPES] =
 	{ "TOCLIENT_SET_INTERACTION_BLOCK",    TOCLIENT_STATE_CONNECTED, &Client::handleCommand_SetInteractionBlock }, // 0x67,
 	{ "TOCLIENT_NODE_SELECTION_REPORTING", TOCLIENT_STATE_CONNECTED, &Client::handleCommand_NodeSelectionReporting }, // 0x68,
 	{ "TOCLIENT_SET_CAMERA_PITCH_RANGE",   TOCLIENT_STATE_CONNECTED, &Client::handleCommand_SetCameraPitchRange }, // 0x69,
+	{ "TOCLIENT_SET_CAMERA_YAW_RANGE",     TOCLIENT_STATE_CONNECTED, &Client::handleCommand_SetCameraYawRange }, // 0x6a,
 #endif
 };
 

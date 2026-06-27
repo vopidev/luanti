@@ -2193,6 +2193,15 @@ void Server::SendSetCameraPitchRange(session_t peer_id, f32 pitch_min, f32 pitch
 	Send(&pkt);
 }
 
+void Server::SendSetCameraYawRange(session_t peer_id, bool limited, f32 yaw_min, f32 yaw_max)
+{
+	NetworkPacket pkt(TOCLIENT_SET_CAMERA_YAW_RANGE, 1 + 4 + 4, peer_id);
+
+	pkt << limited << yaw_min << yaw_max;
+
+	Send(&pkt);
+}
+
 void Server::SendSetInteractionBlock(session_t peer_id, bool blocked)
 {
 	NetworkPacket pkt(TOCLIENT_SET_INTERACTION_BLOCK, 1, peer_id);
@@ -3705,6 +3714,35 @@ bool Server::setCameraPitchRange(RemotePlayer *player, f32 pitch_min, f32 pitch_
 	player->camera_pitch_min = pitch_min;
 	player->camera_pitch_max = pitch_max;
 	SendSetCameraPitchRange(player->getPeerId(), pitch_min, pitch_max);
+
+	return true;
+}
+
+bool Server::setCameraYawRange(RemotePlayer *player, bool limited, f32 yaw_min, f32 yaw_max)
+{
+	if (!player)
+		return false;
+
+	if (limited) {
+		// Keep the arc well-ordered and at most a full turn wide.
+		if (yaw_max < yaw_min)
+			yaw_max = yaw_min;
+		if (yaw_max - yaw_min > 360.0f)
+			yaw_max = yaw_min + 360.0f;
+	} else {
+		yaw_min = 0.0f;
+		yaw_max = 0.0f;
+	}
+
+	if (player->camera_yaw_limited == limited &&
+			player->camera_yaw_min == yaw_min &&
+			player->camera_yaw_max == yaw_max) // no change
+		return true;
+
+	player->camera_yaw_limited = limited;
+	player->camera_yaw_min = yaw_min;
+	player->camera_yaw_max = yaw_max;
+	SendSetCameraYawRange(player->getPeerId(), limited, yaw_min, yaw_max);
 
 	return true;
 }

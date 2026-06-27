@@ -604,6 +604,22 @@ void Client::handleCommand_SetCameraPitchRange(NetworkPacket *pkt)
 	player->camera_pitch_max = pitch_max;
 }
 
+void Client::handleCommand_SetCameraYawRange(NetworkPacket *pkt)
+{
+	bool limited;
+	f32 yaw_min, yaw_max;
+
+	*pkt >> limited >> yaw_min >> yaw_max;
+
+	LocalPlayer *player = m_env.getLocalPlayer();
+	assert(player != NULL);
+
+	// game.cpp reads these every frame when clamping the camera yaw.
+	player->camera_yaw_limited = limited;
+	player->camera_yaw_min = yaw_min;
+	player->camera_yaw_max = yaw_max;
+}
+
 void Client::handleCommand_NodeSelectionReporting(NetworkPacket *pkt)
 {
 	bool enabled;

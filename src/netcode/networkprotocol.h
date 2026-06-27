@@ -752,7 +752,18 @@ enum ToClientCommand : u16
 		f32 pitch_max  ( 90 = straight down)
 	*/
 
-	TOCLIENT_NUM_MSG_TYPES = 0x6a,
+	TOCLIENT_SET_CAMERA_YAW_RANGE = 0x6a,
+	/*
+		Sets an optional yaw arc (degrees) the player may turn within. Yaw is
+		cyclic, so the client clamps the wrapped difference from the arc centre,
+		and only in first person.
+
+		u8  limited    (1 = clamp to [yaw_min, yaw_max], 0 = no limit)
+		f32 yaw_min
+		f32 yaw_max
+	*/
+
+	TOCLIENT_NUM_MSG_TYPES = 0x6b,
 #else
 	TOCLIENT_NUM_MSG_TYPES = 0x65,
 #endif

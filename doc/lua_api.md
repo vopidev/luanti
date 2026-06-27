@@ -9490,6 +9490,23 @@ child will follow movement and rotation of that bone.
       respawn.
 * `get_camera_pitch_range()` (VOPI only): returns two numbers, the current
   `min` and `max` camera pitch (degrees) for the player.
+* `set_camera_yaw_range(min, max)` (VOPI only): limit how far left/right the
+  player may turn. The client clamps its camera yaw into the arc `[min, max]`
+  every frame.
+    * `min`/`max` are absolute yaw angles in degrees. Because yaw is cyclic, the
+      clamp is applied around the arc's centre (the wrapped difference), so the
+      arc may straddle 0/360. The arc is ordered (`max` raised to `min` if
+      smaller) and capped to one full turn (`360`).
+    * To restrict turning around a facing direction `d` by `±n`, pass
+      `set_camera_yaw_range(d - n, d + n)`.
+    * Applied **only in first person** and client-side; third-person camera and
+      the look direction reported by non-VOPI clients are unaffected.
+    * Both arguments are optional; calling it with no arguments removes the limit.
+    * Like other player flags, state is only synced on change and resets when a
+      client (re)connects: re-apply it in `register_on_joinplayer` / after
+      respawn.
+* `get_camera_yaw_range()` (VOPI only): returns two numbers, the current `min`
+  and `max` yaw (degrees), or `nil` when no yaw limit is set.
 * `hud_set_hotbar_itemcount(count)`: sets amount of items in builtin hotbar
     * `count`: number of items, must be an integer in range [1, 32]
     * If `count` exceeds the `"main"` list size, the list size will be used instead.
