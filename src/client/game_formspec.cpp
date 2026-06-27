@@ -10,7 +10,6 @@
 #include "client.h"
 #if IS_VOPI_ENGINE
 #include "camera.h"
-#include "util/numeric.h" // myrand_range() for the random pause-menu cat
 #endif
 #include "scripting_client.h"
 #include "cpp_api/s_client_common.h"
@@ -374,77 +373,30 @@ bool GameFormSpec::showPlayerInventory(const std::string *fs_override)
 
 void GameFormSpec::showPauseMenu()
 {
+#if IS_VOPI_ENGINE
+	// VOPI: the pause menu UI is built in Lua (builtin/pause_menu/), which also
+	// handles its buttons. Fetch the formspec from the pause-menu Lua env and
+	// route input back to it via LocalScriptingFormspecHandler, instead of
+	// building the menu here and dispatching in HardcodedPauseFormspecHandler.
+	bool simple_singleplayer_mode = m_client->m_simple_singleplayer_mode;
+	std::string formspec = m_pause_script->get_pause_menu_formspec(simple_singleplayer_mode);
+	if (formspec.empty())
+		return;
+
+	FormspecFormSource *fs_src = new FormspecFormSource(formspec);
+	LocalScriptingFormspecHandler *txt_dst =
+		new LocalScriptingFormspecHandler("MT_PAUSE_MENU", m_pause_script.get());
+
+	GUIFormSpecMenu::create(m_formspec, m_client, m_rendering_engine->get_gui_env(),
+			// Trusted pause env like the mainmenu; ignore the formspec prepend.
+			&m_input->joystick, fs_src, txt_dst, "",
+			m_client->getSoundManager());
+	// game will be paused in next step, if in singleplayer (see Game::m_is_paused)
+	m_formspec->doPause = true;
+#else
 	std::ostringstream os;
 	auto simple_singleplayer_mode = m_client->m_simple_singleplayer_mode;
 
-#if IS_VOPI_ENGINE
-	static constexpr const char *background_image = "gui_common/gui_pause_menu_bg.png";
-
-	// Buttons use a normal + pressed background; the label text is drawn on top by
-	// the engine (same pattern as the Lua menus, e.g. builtin/fstk/ui.lua).
-	static constexpr const char *green_button_image = "gui_common/gui_pause_menu_btn_green.png";
-	static constexpr const char *green_button_image_pressed = "gui_common/gui_pause_menu_btn_green_pressed.png";
-	static constexpr const char *red_button_image = "gui_common/gui_pause_menu_btn_red.png";
-	static constexpr const char *red_button_image_pressed = "gui_common/gui_pause_menu_btn_red_pressed.png";
-	static constexpr const char *blue_button_image = "gui_common/gui_pause_menu_btn_blue.png";
-	static constexpr const char *blue_button_image_pressed = "gui_common/gui_pause_menu_btn_blue_pressed.png";
-
-	// Relative font multipliers: font_size=*N renders text at N * VOPI_FONT_IMGSIZE_RATIO
-	// * imgsize, so it stays a constant fraction of the UI on every device (same scheme
-	// as the Lua menus, see builtin/fstk/ui.lua). These are start values — tune visually.
-	static constexpr float title_font_mult = 1.1f;     // "GAME PAUSED" heading
-	static constexpr float continue_font_mult = 0.52f; // CONTINUE button
-	static constexpr float exit_font_mult = 0.47f;     // EXIT TO MENU button (longest label)
-	static constexpr float password_font_mult = 0.52f; // PASSWORD button (multiplayer only)
-
-	// Each pause-menu cat has its own texture, position and size, so differently
-	// shaped art (tall, wide, ...) all sit nicely. To add a variant, just append a
-	// row below — PAUSE_CAT_VARIANTS counts the array automatically. A random cat is
-	// shown on each open, and never the same one twice in a row.
-	struct PauseCat {
-		const char *image; // texture name in textures/base/pack/gui_common/
-		float x, y, w, h;  // formspec position (x,y) and size (w,h)
-	};
-	static constexpr PauseCat pause_cats[] = {
-		// texture                                  x      y      w     h
-		{ "gui_common/gui_pause_menu_cat_1.png", 2.8f,  0.35f, 2.4f, 2.4f },
-		{ "gui_common/gui_pause_menu_cat_2.png", 2.75f,  0.5f, 2.3f, 2.3f },
-		{ "gui_common/gui_pause_menu_cat_3.png", 2.9f,  0.7f, 2.0f, 2.0f },
-		{ "gui_common/gui_pause_menu_cat_4.png", 2.75f,  0.5f, 2.3f, 2.3f },
-		{ "gui_common/gui_pause_menu_cat_5.png", 2.85f,  0.65f, 2.2f, 2.2f },
-	};
-	static constexpr int PAUSE_CAT_VARIANTS =
-		(int)(sizeof(pause_cats) / sizeof(pause_cats[0]));
-
-	static int s_last_cat = -1;
-	int cat_index = 0;
-	if (PAUSE_CAT_VARIANTS > 1) {
-		do {
-			cat_index = myrand_range(0, PAUSE_CAT_VARIANTS - 1);
-		} while (cat_index == s_last_cat);
-	}
-	s_last_cat = cat_index;
-	const PauseCat &cat = pause_cats[cat_index];
-
-	os  << "formspec_version[9]" << "size[6,3;false]"
-		<< "no_prepend[]"
-		<< "real_coordinates[true]" << "bgcolor[#00000060;true]"
-		<< "background[0,0;0,0;" << background_image << ";true]"
-		<< "image[" << cat.x << "," << cat.y << ";" << cat.w << "," << cat.h << ";" << cat.image << "]"
-		<< "style_type[label;font_size=*" << title_font_mult << ";textcolor=#FF8BB2;font=bold]"
-		<< "label[3,0.56;" << strgettext("GAME PAUSED") << ";center]"
-		<< "style[btn_continue;bgcolor=#00000000;border=false;font_size=*" << continue_font_mult << "]"
-		<< "style[btn_exit_menu;bgcolor=#00000000;border=false;font_size=*" << exit_font_mult << "]";
-	if (simple_singleplayer_mode) {
-		os	<< "image_button_exit[0.5,1.1;1.63,0.61;" << green_button_image << ";btn_continue;" << strgettext("CONTINUE") << ";false;false;" << green_button_image_pressed << "]"
-			<< "image_button_exit[0.5,1.85;1.63,0.61;" << red_button_image << ";btn_exit_menu;" << strgettext("EXIT TO MENU") << ";false;false;" << red_button_image_pressed << "]";
-	} else {
-		os	<< "style[btn_change_password;bgcolor=#00000000;border=false;font_size=*" << password_font_mult << "]"
-			<< "image_button_exit[0.5,0.9;1.63,0.53;" << green_button_image << ";btn_continue;" << strgettext("CONTINUE") << ";false;false;" << green_button_image_pressed << "]"
-			<< "image_button[0.5,1.47;1.63,0.53;" << blue_button_image << ";btn_change_password;" << strgettext("PASSWORD") << ";false;false;" << blue_button_image_pressed << "]"
-			<< "image_button_exit[0.5,2.05;1.63,0.53;" << red_button_image << ";btn_exit_menu;" << strgettext("EXIT TO MENU") << ";false;false;" << red_button_image_pressed << "]";
-	}
-#else
 	std::string control_text;
 
 	if (g_touchcontrols) {
@@ -539,7 +491,6 @@ void GameFormSpec::showPauseMenu()
 		}
 	}
 	os << ";]";
-#endif
 
 	/* Create menu */
 	/* Note: FormspecFormSource and LocalFormspecHandler  *
@@ -553,6 +504,7 @@ void GameFormSpec::showPauseMenu()
 	m_formspec->setFocus("btn_continue");
 	// game will be paused in next step, if in singleplayer (see Game::m_is_paused)
 	m_formspec->doPause = true;
+#endif
 }
 
 void GameFormSpec::showDeathFormspecLegacy()
