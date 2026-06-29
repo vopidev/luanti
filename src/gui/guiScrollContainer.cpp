@@ -107,3 +107,31 @@ void GUIScrollContainer::updateScrolling()
 
 	setRelativePosition(rect);
 }
+
+#if IS_VOPI_ENGINE
+bool GUIScrollContainer::isScrollable() const
+{
+	return m_scrollbar && m_scrollfactor != 0.0f &&
+			m_scrollbar->getMax() > m_scrollbar->getMin();
+}
+
+void GUIScrollContainer::scrollByPixels(s32 origin_scrollpos, const v2s32 &pixel_delta)
+{
+	if (!m_scrollbar || m_scrollfactor == 0.0f)
+		return;
+
+	// Content follows the finger: shifting the mover by `axis_px` pixels means
+	// changing the scrollbar position by axis_px / scrollfactor. This mirrors
+	// the scroll-into-view math in guiFormSpecMenu. m_scrollfactor is negative
+	// for the supported (positive) scroll_factor, so dragging in the positive
+	// direction decreases the position, as expected.
+	s32 axis_px = axisDelta(pixel_delta);
+	s32 new_pos = origin_scrollpos + (s32)std::round(axis_px / m_scrollfactor);
+
+	// setPos() clamps to [min, max] internally (CGUIScrollBar::setPosRaw).
+	const s32 old_pos = m_scrollbar->getPos();
+	m_scrollbar->setPos(new_pos);
+	if (m_scrollbar->getPos() != old_pos)
+		updateScrolling();
+}
+#endif

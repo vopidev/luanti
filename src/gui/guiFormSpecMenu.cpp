@@ -3574,6 +3574,13 @@ void GUIFormSpecMenu::removeAll()
 	m_scene_models.clear();
 #endif
 
+#if IS_VOPI_ENGINE && (defined(__ANDROID__) || defined(__IOS__))
+	// Drop any in-flight touch drag-to-scroll tracking before the scroll
+	// containers it may reference are torn down. Lives here (not in
+	// regenerateGui) so the destructor path is covered too.
+	resetTouchScroll();
+#endif
+
 	// Remove children
 	removeAllChildren();
 	removeTooltip();
@@ -4960,8 +4967,129 @@ bool GUIFormSpecMenu::remapClickOutside(const SEvent &event)
 	return GUIModalMenu::remapClickOutside(event);
 }
 
+#if IS_VOPI_ENGINE && (defined(__ANDROID__) || defined(__IOS__))
+
+void GUIFormSpecMenu::resetTouchScroll()
+{
+	m_touch_scroll_phase = TouchScrollPhase::Inactive;
+	m_touch_scroll_target = nullptr;
+}
+
+GUIScrollContainer *GUIFormSpecMenu::findScrollableAt(v2s32 p) const
+{
+	// Pick the innermost (deepest) scrollable container whose viewport contains
+	// the point. m_scroll_containers preserves declaration order and nested
+	// containers are declared after their parent, so reverse iteration yields
+	// the innermost match first.
+	for (auto it = m_scroll_containers.rbegin(); it != m_scroll_containers.rend(); ++it) {
+		GUIScrollContainer *c = it->second;
+		if (c && c->isVisible() && c->isScrollable() &&
+				c->getAbsoluteClippingRect().isPointInside(p))
+			return c;
+	}
+	return nullptr;
+}
+
+bool GUIFormSpecMenu::handleTouchScroll(const SEvent &event)
+{
+	if (event.EventType != EET_TOUCH_INPUT_EVENT)
+		return false;
+
+	// Only single-finger gestures pan. Anything else (e.g. the two-finger
+	// right-click) cancels tracking and is left to the normal pipeline.
+	if (event.TouchInput.touchedCount != 1) {
+		resetTouchScroll();
+		return false;
+	}
+
+	const v2s32 pointer(event.TouchInput.X, event.TouchInput.Y);
+	const size_t id = event.TouchInput.ID;
+
+	switch (event.TouchInput.Event) {
+	case ETIE_PRESSED_DOWN: {
+		// If the finger landed on a scrollbar, leave it to the scrollbar's own
+		// thumb/track handling instead of panning.
+		for (const auto &sb : m_scrollbars) {
+			if (sb.second && sb.second->isVisible() &&
+					sb.second->getAbsoluteClippingRect().isPointInside(pointer)) {
+				resetTouchScroll();
+				return false;
+			}
+		}
+		GUIScrollContainer *target = findScrollableAt(pointer);
+		if (!target) {
+			resetTouchScroll();
+			return false; // not over a scrollable container: normal handling
+		}
+		// Withhold the press; classify it on the following move/up events.
+		m_touch_scroll_phase = TouchScrollPhase::Pending;
+		m_touch_scroll_target = target;
+		m_touch_scroll_id = id;
+		m_touch_scroll_down_pos = pointer;
+		m_touch_scroll_press = event;
+		return true; // consume: do not forward to children yet
+	}
+
+	case ETIE_MOVED: {
+		if (!isTrackingTouch(id))
+			return false;
+
+		if (m_touch_scroll_phase == TouchScrollPhase::Pending) {
+			// Classify: did the finger travel past the threshold along the
+			// scroll axis? The threshold scales with the formspec unit size.
+			s32 travel = m_touch_scroll_target->axisDelta(pointer - m_touch_scroll_down_pos);
+			if (travel < 0)
+				travel = -travel;
+			const s32 threshold = std::max<s32>(8, std::min(imgsize.X, imgsize.Y) / 4);
+			if (travel < threshold)
+				return true; // still ambiguous: keep withholding
+
+			// Promote to panning. Anchor the origin here so the motion is
+			// smooth (the threshold pixels are not counted as scroll).
+			m_touch_scroll_phase = TouchScrollPhase::Scrolling;
+			m_touch_scroll_origin_pos = pointer;
+			m_touch_scroll_origin_scrollpos = m_touch_scroll_target->getScrollPos();
+		}
+
+		m_touch_scroll_target->scrollByPixels(m_touch_scroll_origin_scrollpos,
+				pointer - m_touch_scroll_origin_pos);
+		return true;
+	}
+
+	case ETIE_LEFT_UP: {
+		if (!isTrackingTouch(id))
+			return false;
+
+		const bool was_tap = m_touch_scroll_phase == TouchScrollPhase::Pending;
+		const SEvent press = m_touch_scroll_press;
+		resetTouchScroll();
+
+		if (was_tap) {
+			// Tap, not a drag: replay the withheld press so the child reacts,
+			// then let this release flow through the normal pipeline.
+			GUIModalMenu::preprocessEvent(press);
+			return false;
+		}
+		return true; // end of a pan: swallow the release
+	}
+
+	default:
+		return false;
+	}
+}
+
+#endif
+
 bool GUIFormSpecMenu::preprocessEvent(const SEvent& event)
 {
+#if IS_VOPI_ENGINE && (defined(__ANDROID__) || defined(__IOS__))
+	// VOPI: touch drag-to-scroll. Must run before the base handler so the
+	// finger-down can be withheld from child widgets until the gesture is
+	// classified as a tap or a pan.
+	if (handleTouchScroll(event))
+		return true;
+#endif
+
 	// This must be done first so that GUIModalMenu can set m_pointer_type
 	// correctly.
 	if (GUIModalMenu::preprocessEvent(event))

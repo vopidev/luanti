@@ -386,6 +386,42 @@ protected:
 #if IS_VOPI_ENGINE && (defined(__ANDROID__) || defined(__IOS__))
 	gui::IGUIImage *m_selected_item_bg = nullptr;
 	bool m_selected_active = false;
+
+	// --- Touch drag-to-scroll (VOPI Engine, mobile) ---
+	// Pan a scroll_container's content by dragging a finger, not only via the
+	// scrollbar. Touch-only by design. Uses a deferred-press model (cf. iOS
+	// UIScrollView delaysContentTouches): the finger-down inside a scrollable
+	// container is withheld from child widgets until the gesture is classified.
+	// A tap (threshold not crossed) replays the press so children react; a drag
+	// is consumed as scrolling. Safe on mobile because the inventory there is
+	// tap-based (no press-drag item distribution).
+	enum class TouchScrollPhase
+	{
+		Inactive, // no finger tracked
+		Pending,  // finger down in a scrollable container, press withheld
+		Scrolling // movement threshold crossed, panning the container
+	};
+	TouchScrollPhase m_touch_scroll_phase = TouchScrollPhase::Inactive;
+	GUIScrollContainer *m_touch_scroll_target = nullptr;
+	size_t m_touch_scroll_id = 0;            // id of the tracked finger
+	v2s32 m_touch_scroll_down_pos;           // finger pos at press (threshold)
+	v2s32 m_touch_scroll_origin_pos;         // finger pos when panning started
+	s32 m_touch_scroll_origin_scrollpos = 0; // scroll pos when panning started
+	SEvent m_touch_scroll_press{};           // withheld press, replayed on tap
+
+	// Handles raw touch events for drag-to-scroll. Returns true if the event
+	// was consumed and must not be processed further.
+	bool handleTouchScroll(const SEvent &event);
+	// Innermost scrollable scroll_container whose viewport contains p, or null.
+	GUIScrollContainer *findScrollableAt(v2s32 p) const;
+	// Resets drag-to-scroll tracking to idle.
+	void resetTouchScroll();
+	// True while a finger gesture with the given id is being tracked.
+	inline bool isTrackingTouch(size_t id) const
+	{
+		return m_touch_scroll_phase != TouchScrollPhase::Inactive &&
+				id == m_touch_scroll_id;
+	}
 #endif
 
 	std::unique_ptr<GUIInventoryList::ItemSpec> m_selected_item;
