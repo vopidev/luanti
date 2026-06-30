@@ -405,9 +405,14 @@ protected:
 	GUIScrollContainer *m_touch_scroll_target = nullptr;
 	size_t m_touch_scroll_id = 0;            // id of the tracked finger
 	v2s32 m_touch_scroll_down_pos;           // finger pos at press (threshold)
+	u64 m_touch_scroll_down_ms = 0;          // time of press (for flick velocity)
 	v2s32 m_touch_scroll_origin_pos;         // finger pos when panning started
 	s32 m_touch_scroll_origin_scrollpos = 0; // scroll pos when panning started
 	SEvent m_touch_scroll_press{};           // withheld press, replayed on tap
+	v2s32 m_touch_scroll_last_pos;            // finger pos at last velocity sample
+	u64 m_touch_scroll_last_ms = 0;           // time of last velocity sample
+	f32 m_touch_scroll_velocity = 0.0f;       // smoothed finger speed (axis px/ms)
+	bool m_touch_scroll_caught_fling = false; // press landed on a flinging list
 
 	// Handles raw touch events for drag-to-scroll. Returns true if the event
 	// was consumed and must not be processed further.

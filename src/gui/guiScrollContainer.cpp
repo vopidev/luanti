@@ -4,6 +4,10 @@
 
 #include "guiScrollContainer.h"
 #include <IGUIEnvironment.h>
+#if IS_VOPI_ENGINE
+#include "porting.h" // getTimeMs() for inertial scrolling
+#include <cmath>
+#endif
 
 GUIScrollContainer::GUIScrollContainer(gui::IGUIEnvironment *env,
 		gui::IGUIElement *parent, s32 id, const core::rect<s32> &rectangle,
@@ -128,10 +132,118 @@ void GUIScrollContainer::scrollByPixels(s32 origin_scrollpos, const v2s32 &pixel
 	s32 axis_px = axisDelta(pixel_delta);
 	s32 new_pos = origin_scrollpos + (s32)std::round(axis_px / m_scrollfactor);
 
-	// setPos() clamps to [min, max] internally (CGUIScrollBar::setPosRaw).
-	const s32 old_pos = m_scrollbar->getPos();
-	m_scrollbar->setPos(new_pos);
-	if (m_scrollbar->getPos() != old_pos)
-		updateScrolling();
+	// Drive the scrollbar via setPosAndSend (it clamps internally and emits
+	// EGET_SCROLL_BAR_CHANGED only when the position changes) so a touch drag
+	// behaves exactly like moving the scrollbar: the formspec handler
+	// repositions the bound container(s) and notifies the server, so the scroll
+	// position survives a server-driven formspec rebuild.
+	if (new_pos != m_scrollbar->getPos())
+		m_scrollbar->setPosAndSend(new_pos);
+}
+
+namespace {
+	// Inertial-scroll tuning (touch fling); tweak for feel, device-tested.
+	// Fraction of velocity retained per 16.667 ms frame (~0.7 s glide).
+	constexpr f32 FLING_DECAY_PER_FRAME = 0.95f;
+	// Minimum launch speed needed to start a fling (finger pixels per ms).
+	constexpr f32 FLING_MIN_START_SPEED = 0.2f;
+	// Speed below which an in-flight fling stops (finger pixels per ms).
+	constexpr f32 FLING_MIN_SPEED = 0.05f;
+	// Cap on launch speed so a hard flick can't rocket the content (px per ms).
+	constexpr f32 FLING_MAX_SPEED = 6.0f;
+}
+
+void GUIScrollContainer::startFling(f32 axis_velocity_px_per_ms)
+{
+	if (!isScrollable())
+		return;
+	if (std::fabs(axis_velocity_px_per_ms) < FLING_MIN_START_SPEED) {
+		stopFling();
+		return;
+	}
+	m_fling_vel = std::max(-FLING_MAX_SPEED,
+			std::min(axis_velocity_px_per_ms, FLING_MAX_SPEED));
+	// Start from the current (quantised) content offset so the hand-off from
+	// the drag is seamless.
+	m_fling_px = (f32)m_scrollbar->getPos() * m_scrollfactor;
+	m_fling_last_ms = porting::getTimeMs();
+	m_flinging = true;
+}
+
+void GUIScrollContainer::stopFling()
+{
+	m_flinging = false;
+	m_fling_vel = 0.0f;
+}
+
+void GUIScrollContainer::setContentOffset(s32 offset_px)
+{
+	core::rect<s32> rect = getRelativePosition();
+	if (m_orientation == VERTICAL) {
+		if (rect.UpperLeftCorner.Y == offset_px)
+			return;
+		rect.UpperLeftCorner.Y = offset_px;
+	} else if (m_orientation == HORIZONTAL) {
+		if (rect.UpperLeftCorner.X == offset_px)
+			return;
+		rect.UpperLeftCorner.X = offset_px;
+	} else {
+		return; // no defined scroll axis
+	}
+	setRelativePosition(rect);
+}
+
+void GUIScrollContainer::stepFling()
+{
+	if (!m_scrollbar) {
+		stopFling();
+		return;
+	}
+
+	const u64 now = porting::getTimeMs();
+	u64 dt = now - m_fling_last_ms;
+	m_fling_last_ms = now;
+	if (dt == 0)
+		return;
+	if (dt > 64)
+		dt = 64; // clamp after a hitch so the content can't teleport
+
+	// Integrate in pixel space so the glide is smooth (1 px), not quantised to
+	// coarse scrollbar-position units.
+	m_fling_px += m_fling_vel * (f32)dt;
+
+	// Clamp to the content-offset range (endpoints are min/max * scrollfactor).
+	const f32 end_a = (f32)m_scrollbar->getMax() * m_scrollfactor;
+	const f32 end_b = (f32)m_scrollbar->getMin() * m_scrollfactor;
+	const f32 lo = std::min(end_a, end_b);
+	const f32 hi = std::max(end_a, end_b);
+	bool hit_bound = false;
+	if (m_fling_px <= lo) { m_fling_px = lo; hit_bound = true; }
+	else if (m_fling_px >= hi) { m_fling_px = hi; hit_bound = true; }
+
+	// Sync the integer scrollbar position and notify like a real scrollbar move
+	// (setPosAndSend emits EGET_SCROLL_BAR_CHANGED when the position changes), so
+	// momentum reaches the server / bound containers the same way a scrollbar
+	// drag does and the position survives a formspec rebuild.
+	const s32 pos = (s32)std::lround(m_fling_px / m_scrollfactor);
+	if (pos != m_scrollbar->getPos())
+		m_scrollbar->setPosAndSend(pos);
+
+	// Re-apply the smooth sub-quantum pixel offset: the EGET handler above
+	// repositions the content to the coarse scrollbar quantum, so override it to
+	// keep the glide 1 px smooth (the helper skips an unchanged recompute).
+	setContentOffset((s32)std::lround(m_fling_px));
+
+	// Exponential friction, frame-rate independent.
+	m_fling_vel *= std::pow(FLING_DECAY_PER_FRAME, (f32)dt / 16.667f);
+	if (hit_bound || std::fabs(m_fling_vel) < FLING_MIN_SPEED)
+		stopFling();
+}
+
+void GUIScrollContainer::OnPostRender(u32 timeMs)
+{
+	if (m_flinging)
+		stepFling();
+	IGUIElement::OnPostRender(timeMs);
 }
 #endif

@@ -4969,10 +4969,23 @@ bool GUIFormSpecMenu::remapClickOutside(const SEvent &event)
 
 #if IS_VOPI_ENGINE && (defined(__ANDROID__) || defined(__IOS__))
 
+namespace {
+	// Touch drag-to-scroll fling feel.
+	// Smoothing window (ms) for the release-velocity estimate: a finger-move gap
+	// at or above this fully trusts the newest sample (so a pause decays a stale
+	// velocity), shorter gaps blend for smoothness.
+	constexpr f32 TOUCH_SCROLL_VELOCITY_TAU_MS = 50.0f;
+	// If the finger was motionless longer than this before lifting, the release
+	// is a stop, not a flick (no fling).
+	constexpr u64 TOUCH_SCROLL_FLING_STALE_MS = 70;
+}
+
 void GUIFormSpecMenu::resetTouchScroll()
 {
 	m_touch_scroll_phase = TouchScrollPhase::Inactive;
 	m_touch_scroll_target = nullptr;
+	m_touch_scroll_velocity = 0.0f;
+	m_touch_scroll_caught_fling = false;
 }
 
 GUIScrollContainer *GUIFormSpecMenu::findScrollableAt(v2s32 p) const
@@ -5021,11 +5034,18 @@ bool GUIFormSpecMenu::handleTouchScroll(const SEvent &event)
 			resetTouchScroll();
 			return false; // not over a scrollable container: normal handling
 		}
+		// Catching an in-flight fling: stop it now. The tap that catches the
+		// momentum must not also activate a child (see ETIE_LEFT_UP).
+		const bool caught = target->isFlinging();
+		if (caught)
+			target->stopFling();
 		// Withhold the press; classify it on the following move/up events.
 		m_touch_scroll_phase = TouchScrollPhase::Pending;
 		m_touch_scroll_target = target;
 		m_touch_scroll_id = id;
 		m_touch_scroll_down_pos = pointer;
+		m_touch_scroll_down_ms = porting::getTimeMs();
+		m_touch_scroll_caught_fling = caught;
 		m_touch_scroll_press = event;
 		return true; // consume: do not forward to children yet
 	}
@@ -5049,6 +5069,32 @@ bool GUIFormSpecMenu::handleTouchScroll(const SEvent &event)
 			m_touch_scroll_phase = TouchScrollPhase::Scrolling;
 			m_touch_scroll_origin_pos = pointer;
 			m_touch_scroll_origin_scrollpos = m_touch_scroll_target->getScrollPos();
+			// Seed the release-velocity estimate from the press->threshold
+			// motion, so a short fast flick (few post-promote samples) still
+			// launches at its real speed instead of from zero.
+			const u64 now = porting::getTimeMs();
+			const u64 dt0 = now - m_touch_scroll_down_ms;
+			m_touch_scroll_velocity = dt0 > 0
+					? (f32)m_touch_scroll_target->axisDelta(
+							pointer - m_touch_scroll_down_pos) / (f32)dt0
+					: 0.0f;
+			m_touch_scroll_last_pos = pointer;
+			m_touch_scroll_last_ms = now;
+		} else {
+			// Refine the smoothed finger speed (axis px/ms). The blend weight
+			// grows with the time gap, so a pause-then-move decays a stale
+			// velocity toward the slow motion instead of preserving it.
+			const u64 now = porting::getTimeMs();
+			const u64 dt = now - m_touch_scroll_last_ms;
+			if (dt > 0) {
+				const f32 inst = (f32)m_touch_scroll_target->axisDelta(
+						pointer - m_touch_scroll_last_pos) / (f32)dt;
+				const f32 w = std::min(1.0f,
+						(f32)dt / TOUCH_SCROLL_VELOCITY_TAU_MS);
+				m_touch_scroll_velocity += (inst - m_touch_scroll_velocity) * w;
+				m_touch_scroll_last_pos = pointer;
+				m_touch_scroll_last_ms = now;
+			}
 		}
 
 		m_touch_scroll_target->scrollByPixels(m_touch_scroll_origin_scrollpos,
@@ -5061,15 +5107,28 @@ bool GUIFormSpecMenu::handleTouchScroll(const SEvent &event)
 			return false;
 
 		const bool was_tap = m_touch_scroll_phase == TouchScrollPhase::Pending;
+		const bool caught = m_touch_scroll_caught_fling;
 		const SEvent press = m_touch_scroll_press;
+		GUIScrollContainer *target = m_touch_scroll_target;
+		const f32 velocity = m_touch_scroll_velocity;
+		// Ignore stale velocity if the finger paused before lifting.
+		const bool moving = (porting::getTimeMs() - m_touch_scroll_last_ms)
+				<= TOUCH_SCROLL_FLING_STALE_MS;
 		resetTouchScroll();
 
 		if (was_tap) {
-			// Tap, not a drag: replay the withheld press so the child reacts,
-			// then let this release flow through the normal pipeline.
+			// A tap that caught an in-flight fling only stops it; it must not
+			// activate the child underneath.
+			if (caught)
+				return true;
+			// Plain tap: replay the withheld press so the child reacts, then
+			// let this release flow through the normal pipeline.
 			GUIModalMenu::preprocessEvent(press);
 			return false;
 		}
+		// End of a pan: launch inertial scrolling if the finger was still moving.
+		if (target && moving)
+			target->startFling(velocity);
 		return true; // end of a pan: swallow the release
 	}
 

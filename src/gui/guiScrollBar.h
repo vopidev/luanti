@@ -39,6 +39,11 @@ public:
 	using CGUIScrollBar::setArrowsVisible;
 	void setArrowsVisible(bool visible);
 
+	// Expose the (protected) interactive scroll setter so touch drag-to-scroll
+	// and momentum can move the bar exactly like a user drag, emitting
+	// EGET_SCROLL_BAR_CHANGED (server notify + bound-container sync).
+	using CGUIScrollBar::setPosAndSend;
+
 private:
 	void drawTexture(video::ITexture *texture, const core::rect<s32> &dest) const;
 
