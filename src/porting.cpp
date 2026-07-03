@@ -189,6 +189,10 @@ std::string path_cache = "UNINITIALIZED";
 #if IS_VOPI_ENGINE
 std::atomic<int> thermal_fps_cap(0);
 #endif
+#if IS_VOPI_ENGINE
+std::atomic<int> memory_view_range_cap(0);
+std::atomic<int> memory_mapblock_cap(0);
+#endif
 
 
 std::string getDataPath(const char *subpath)

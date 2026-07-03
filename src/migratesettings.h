@@ -1,6 +1,7 @@
 // Minetest
 // SPDX-License-Identifier: LGPL-2.1-or-later
 
+#include "config.h"
 #include "settings.h"
 #include "server.h"
 
@@ -41,4 +42,16 @@ void migrate_settings()
 		g_settings->setBool("fxaa", true);
 		g_settings->remove("antialiasing");
 	}
+
+#if IS_VOPI_ENGINE && (defined(__ANDROID__) || defined(__IOS__))
+	// Repair configs damaged by the old mobile memory-pressure response,
+	// which ratcheted viewing_range and client_mapblock_limit down in the
+	// user layer and let the result persist. Nothing else ever writes
+	// client_mapblock_limit to the user layer, so its presence identifies
+	// the damage; drop both keys so the per-device defaults apply again.
+	if (g_settings->existsLocal("client_mapblock_limit")) {
+		g_settings->remove("client_mapblock_limit");
+		g_settings->remove("viewing_range");
+	}
+#endif
 }

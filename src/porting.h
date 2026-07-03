@@ -115,6 +115,20 @@ extern std::string path_cache;
 extern std::atomic<int> thermal_fps_cap;
 #endif
 
+#if IS_VOPI_ENGINE
+/*
+	Transient caps for mobile memory pressure (0 = no cap).
+	Set by the platform layer while the OS reports memory pressure:
+	memory_view_range_cap bounds the effective viewing range (nodes),
+	memory_mapblock_cap bounds the client mapblock cache limit (blocks).
+	Deliberately not settings writes: the config is persisted whenever the
+	player leaves a game or the main menu, which would make a temporary
+	reduction permanent and let repeated reductions compound across launches.
+*/
+extern std::atomic<int> memory_view_range_cap;
+extern std::atomic<int> memory_mapblock_cap;
+#endif
+
 /*
 	Gets the path of our executable.
 */

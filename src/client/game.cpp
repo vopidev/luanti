@@ -2029,9 +2029,17 @@ void Game::increaseViewRange()
 				fwgettext("Viewing range changed to %d (the maximum)", range_new);
 		m_game_ui->showStatusText(msg);
 	} else {
-		std::wstring msg = server_limit >= 0 && range_new > server_limit ?
-				fwgettext("Viewing range changed to %d, but limited to %d by game or mod", range_new, server_limit) :
-				fwgettext("Viewing range changed to %d", range_new);
+		std::wstring msg;
+#if IS_VOPI_ENGINE
+		const int memory_limit = porting::memory_view_range_cap.load(std::memory_order_relaxed);
+		if (memory_limit > 0 && range_new > memory_limit)
+			msg = fwgettext("Viewing range changed to %d, but limited to %d by low memory", range_new, memory_limit);
+		else
+#endif
+		if (server_limit >= 0 && range_new > server_limit)
+			msg = fwgettext("Viewing range changed to %d, but limited to %d by game or mod", range_new, server_limit);
+		else
+			msg = fwgettext("Viewing range changed to %d", range_new);
 		m_game_ui->showStatusText(msg);
 	}
 	g_settings->set("viewing_range", itos(range_new));
@@ -2051,9 +2059,17 @@ void Game::decreaseViewRange()
 				fwgettext("Viewing changed to %d (the minimum)", range_new);
 		m_game_ui->showStatusText(msg);
 	} else {
-		std::wstring msg = server_limit >= 0 && range_new > server_limit ?
-				fwgettext("Viewing range changed to %d, but limited to %d by game or mod", range_new, server_limit) :
-				fwgettext("Viewing range changed to %d", range_new);
+		std::wstring msg;
+#if IS_VOPI_ENGINE
+		const int memory_limit = porting::memory_view_range_cap.load(std::memory_order_relaxed);
+		if (memory_limit > 0 && range_new > memory_limit)
+			msg = fwgettext("Viewing range changed to %d, but limited to %d by low memory", range_new, memory_limit);
+		else
+#endif
+		if (server_limit >= 0 && range_new > server_limit)
+			msg = fwgettext("Viewing range changed to %d, but limited to %d by game or mod", range_new, server_limit);
+		else
+			msg = fwgettext("Viewing range changed to %d", range_new);
 		m_game_ui->showStatusText(msg);
 	}
 	g_settings->set("viewing_range", itos(range_new));

@@ -11,6 +11,7 @@
 #include "client/renderingengine.h"
 #include "client/content_cao.h"
 #include "settings.h"
+#include "porting.h"
 #include "wieldmesh.h"
 #include "noise.h"         // easeCurve
 #include "mtevent.h"
@@ -661,6 +662,15 @@ void Camera::update(LocalPlayer* player, f32 frametime, f32 tool_reload_ratio)
 void Camera::updateViewingRange()
 {
 	f32 viewing_range = g_settings->getFloat("viewing_range");
+
+#if IS_VOPI_ENGINE
+	// Mobile memory governor: transient cap while the OS reports memory
+	// pressure. Applied to the effective range rather than the setting so
+	// it never persists and lifts the moment the platform layer clears it.
+	const int memory_cap = porting::memory_view_range_cap.load(std::memory_order_relaxed);
+	if (memory_cap > 0)
+		viewing_range = std::fmin(viewing_range, (f32)memory_cap);
+#endif
 
 #if IS_VOPI_ENGINE
 	m_cameranode->setNearValue(0.05f * BS);

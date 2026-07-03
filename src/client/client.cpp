@@ -32,6 +32,7 @@
 #include "minimap.h"
 #include "mapCanvas.h"
 #include "node_visuals.h"
+#include "porting.h"
 #include "profiler.h"
 #include "shader.h"
 #include "translation.h"
@@ -544,6 +545,17 @@ void Client::step(float dtime)
 				m_mapblock_limit_logged = mapblock_limit;
 			}
 		}
+
+#if IS_VOPI_ENGINE
+		// Mobile memory governor: transient cap on the block cache while
+		// the OS reports memory pressure. Applied to the final limit so
+		// neither the 360° sphere floor above nor an unlimited (-1)
+		// configuration can override it. Never written back to settings.
+		const s32 memory_cap = porting::memory_mapblock_cap.load(std::memory_order_relaxed);
+		if (memory_cap > 0)
+			mapblock_limit = mapblock_limit < 0 ?
+					memory_cap : std::min(mapblock_limit, memory_cap);
+#endif
 
 		m_env.getMap().timerUpdate(map_timer_and_unload_dtime,
 			std::max(g_settings->getFloat("client_unload_unused_data_timeout"), 0.0f),
@@ -1502,14 +1514,17 @@ void Client::flushFarBlocksIfTeleported(v3f old_pos, v3f new_pos)
 	// client_unload_unused_data_timeout and several teleports in a row peg
 	// the cache at client_mapblock_limit, costing memory and frame time
 	// (severe on mobile).
-	const float view_range_bs =
-		(float)g_settings->getS16("viewing_range") * BS;
+	s16 view_range = g_settings->getS16("viewing_range");
+	const int memory_cap = porting::memory_view_range_cap.load(std::memory_order_relaxed);
+	if (memory_cap > 0)
+		view_range = std::min<s16>(view_range, (s16)memory_cap);
+
+	const float view_range_bs = (float)view_range * BS;
 	const float jump_threshold_bs = 3.0f * view_range_bs;
 	if (old_pos.getDistanceFrom(new_pos) <= jump_threshold_bs)
 		return;
 
-	const float keep_range_nodes =
-		2.0f * (float)g_settings->getS16("viewing_range");
+	const float keep_range_nodes = 2.0f * (float)view_range;
 	std::vector<v3s16> deleted_blocks;
 	const u32 n = m_env.getClientMap().unloadFarBlocks(new_pos,
 		keep_range_nodes, &deleted_blocks);
