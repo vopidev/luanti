@@ -41,9 +41,19 @@ void FpsControl::reset()
 
 void FpsControl::limit(IrrlichtDevice *device, f32 *dtime)
 {
-	const float fps_limit = device->isWindowFocused()
+	float fps_limit = device->isWindowFocused()
 			? g_settings->getFloat("fps_max")
 			: g_settings->getFloat("fps_max_unfocused");
+
+#if IS_VOPI_ENGINE
+	// Mobile thermal governor: transient cap while the OS reports thermal
+	// pressure. Applied here (not as a settings write) so it takes effect
+	// next frame, holds regardless of settings edits and never persists.
+	const int thermal_cap = porting::thermal_fps_cap.load(std::memory_order_relaxed);
+	if (thermal_cap > 0)
+		fps_limit = std::min(fps_limit, (float)thermal_cap);
+#endif
+
 	const u64 frametime_min = 1000000.0f / std::max(fps_limit, 1.0f);
 
 	u64 time = porting::getTimeUs();

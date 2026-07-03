@@ -13,6 +13,9 @@
 #endif
 
 // Be mindful of what you include here!
+#if IS_VOPI_ENGINE
+#include <atomic> // transient performance caps (see below)
+#endif
 #include <csignal>
 #include <string>
 #include "config.h"
@@ -101,6 +104,16 @@ extern std::string path_locale;
 	Path to directory for storing caches.
 */
 extern std::string path_cache;
+
+#if IS_VOPI_ENGINE
+/*
+	Transient FPS cap for mobile thermal throttling (0 = no cap).
+	Set by the platform layer while the OS reports thermal pressure,
+	read by FpsControl every frame. Deliberately not a setting: it must
+	never persist and must stop applying the moment it is cleared.
+*/
+extern std::atomic<int> thermal_fps_cap;
+#endif
 
 /*
 	Gets the path of our executable.

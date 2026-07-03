@@ -186,6 +186,10 @@ std::string path_user = "UNINITIALIZED";
 std::string path_locale = "UNINITIALIZED";
 std::string path_cache = "UNINITIALIZED";
 
+#if IS_VOPI_ENGINE
+std::atomic<int> thermal_fps_cap(0);
+#endif
+
 
 std::string getDataPath(const char *subpath)
 {
