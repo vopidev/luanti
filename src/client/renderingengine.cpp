@@ -321,6 +321,16 @@ void RenderingEngine::draw_load_screen(const std::wstring &text,
 		gui::IGUIEnvironment *guienv, ITextureSource *tsrc, float dtime,
 		int percent, float *indef_pos)
 {
+	// Pump events so the window visibility state is current, then skip
+	// rendering while the app is in background: loading code calls this
+	// between long stretches of work without running the event loop, and
+	// submitting GPU work while backgrounded kills the process on mobile
+	// (e.g. gpus_ReturnNotPermittedKillClient on iOS). The interactive
+	// loops already guard drawing with isWindowVisible(); see #15883.
+	m_device->run();
+	if (!m_device->isWindowVisible())
+		return;
+
 	v2u32 screensize = getWindowSize();
 
 	v2s32 textsize(g_fontengine->getTextWidth(text), g_fontengine->getLineHeight());
