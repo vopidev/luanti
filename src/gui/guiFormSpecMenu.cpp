@@ -6265,7 +6265,7 @@ bool GUIFormSpecMenu::OnEvent(const SEvent& event)
 							   rect.UpperLeftCorner
 						   );
 						   found_slot = true;
-						   return false;
+						   break;
 					   }
 				   }
 			   }
@@ -6285,13 +6285,13 @@ bool GUIFormSpecMenu::OnEvent(const SEvent& event)
 							   rect.UpperLeftCorner
 						   );
 						   found_slot = true;
-						   return false;
+						   break;
 					   }
 				   }
 			   }
 
 			   if (found_slot)
-				   return false;
+				   break;
 			}
 
 			if (!found_slot) {
