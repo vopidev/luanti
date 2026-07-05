@@ -238,6 +238,25 @@ public:
 	//! Returns if a texture creation flag is enabled or disabled.
 	bool getTextureCreationFlag(E_TEXTURE_CREATION_FLAG flag) const override;
 
+	//! Tells the driver whether a rendering context is currently available.
+	void setContextAvailable(bool available) override
+	{
+		ContextAvailable = available;
+	}
+
+	//! Returns whether a rendering context is currently available.
+	bool isContextAvailable() const
+	{
+		return ContextAvailable;
+	}
+
+	//! Called by textures whose GPU-side creation was deferred because no
+	//! context was available; the driver creates them when rendering resumes.
+	void notifyDeferredTexture()
+	{
+		HasDeferredTextures = true;
+	}
+
 	IImage *createImageFromFile(const io::path &filename) override;
 
 	IImage *createImageFromFile(io::IReadFile *file) override;
@@ -575,6 +594,14 @@ protected:
 		void regenerateMipMapLevels() override {}
 	};
 	core::array<SSurface> Textures;
+
+	//! Whether a rendering context is available (false while a mobile app
+	//! is backgrounded and its window surface is destroyed).
+	bool ContextAvailable = true;
+
+	//! Whether any texture deferred its GPU-side creation because the
+	//! context was unavailable.
+	bool HasDeferredTextures = false;
 
 	struct SOccQuery
 	{

@@ -254,6 +254,10 @@ protected:
 	ITexture *createDeviceDependentTexture(const io::path &name, E_TEXTURE_TYPE type,
 		const std::vector<IImage*> &images) override;
 
+	//! Create the GL objects of textures whose creation was deferred while
+	//! no rendering context was available. Requires a current context.
+	void recreateDeferredTextures();
+
 	//! Map Irrlicht wrap mode to OpenGL enum
 	GLint getTextureWrapMode(u8 clamp) const;
 

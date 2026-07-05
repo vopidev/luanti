@@ -940,6 +940,14 @@ public:
 	Usually, there is no need to call this method. */
 	virtual void OnResize(const core::dimension2d<u32> &size) = 0;
 
+	//! Tells the driver whether a rendering context is currently available.
+	/** Only used by the engine internally. On mobile platforms the window
+	surface can be destroyed while the application keeps running in the
+	background; GPU-side object creation fails in that state. While the
+	context is unavailable, drivers that support it defer texture creation
+	and create the deferred textures when rendering resumes. */
+	virtual void setContextAvailable(bool available) {}
+
 	//! Adds a new material renderer to the video device.
 	/** Use this method to extend the VideoDriver with new material
 	types. To extend the engine using this method do the following:

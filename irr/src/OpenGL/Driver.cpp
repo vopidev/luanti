@@ -477,9 +477,27 @@ bool COpenGL3DriverBase::beginScene(u16 clearFlag, SColor clearColor, f32 clearD
 	if (ContextManager)
 		ContextManager->activateContext(videoData, true);
 
+	// The context is current again: textures created while it was
+	// unavailable (backgrounded mobile app) can now get their GL objects.
+	if (HasDeferredTextures)
+		recreateDeferredTextures();
+
 	clearBuffers(clearFlag, clearColor, clearDepth, clearStencil);
 
 	return true;
+}
+
+void COpenGL3DriverBase::recreateDeferredTextures()
+{
+	HasDeferredTextures = false;
+
+	for (u32 i = 0; i < Textures.size(); ++i) {
+		auto *texture = static_cast<COpenGL3Texture *>(Textures[i].Surface);
+
+		if (!texture->recreateDeferred())
+			os::Printer::log("Could not create deferred texture",
+					texture->getName().getPath().c_str(), ELL_WARNING);
+	}
 }
 
 bool COpenGL3DriverBase::endScene()

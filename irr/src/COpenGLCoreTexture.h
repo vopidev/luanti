@@ -75,47 +75,31 @@ public:
 
 		const auto *tmpImages = &srcImages;
 
-		if (KeepImage || OriginalSize != Size || OriginalColorFormat != ColorFormat) {
-			Images.resize(srcImages.size());
+		// Also keep a CPU-side copy when the GL object cannot be created
+		// right now (see below), so creation can happen later.
+		const bool defer_creation = !Driver->isContextAvailable();
 
-			for (size_t i = 0; i < srcImages.size(); ++i) {
-				Images[i] = Driver->createImage(ColorFormat, Size);
-
-				if (srcImages[i]->getDimension() == Size)
-					srcImages[i]->copyTo(Images[i]);
-				else
-					srcImages[i]->copyToScaling(Images[i]);
-			}
-
+		if (KeepImage || OriginalSize != Size || OriginalColorFormat != ColorFormat || defer_creation) {
+			copyImages(srcImages);
 			tmpImages = &Images;
 		}
 
-		GL.GenTextures(1, &TextureName);
-		TEST_GL_ERROR(Driver);
-		if (!TextureName) {
-			os::Printer::log("COpenGLCoreTexture: texture not created", ELL_ERROR);
+		if (defer_creation) {
+			// No rendering context (e.g. a backgrounded mobile app whose
+			// window surface is gone): GL object creation would fail. The
+			// driver creates the texture from Images when rendering resumes.
+			Driver->notifyDeferredTexture();
+			os::Printer::log("COpenGLCoreTexture: creation deferred, no context", ELL_DEBUG);
 			return;
 		}
 
-		const COpenGLCoreTexture *prevTexture = Driver->getCacheHandler()->getTextureCache().get(0);
-		Driver->getCacheHandler()->getTextureCache().set(0, this);
-
-		GL.TexParameteri(TextureType, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-		GL.TexParameteri(TextureType, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-
-		TEST_GL_ERROR(Driver);
-
-		initTexture(tmpImages->size());
-
-		if (Type == ETT_2D_ARRAY) {
-			upload2DArrayTexture(tmpImages->size(), tmpImages->data());
-		} else {
-			for (size_t i = 0; i < tmpImages->size(); ++i)
-				uploadTexture(i, 0, (*tmpImages)[i]->getData());
-		}
-
-		if (HasMipMaps) {
-			regenerateMipMapLevels();
+		if (!createGLTexture(*tmpImages)) {
+			// The context may have gone away between the check above and
+			// now — keep the images so the driver can retry later.
+			if (tmpImages != &Images)
+				copyImages(srcImages);
+			Driver->notifyDeferredTexture();
+			return;
 		}
 
 		if (!KeepImage) {
@@ -124,13 +108,6 @@ public:
 
 			Images.clear();
 		}
-
-		if (!name.empty())
-			Driver->irrGlObjectLabel(GL_TEXTURE, TextureName, name.c_str());
-
-		Driver->getCacheHandler()->getTextureCache().set(0, prevTexture);
-
-		TEST_GL_ERROR(Driver);
 	}
 
 	COpenGLCoreTexture(const io::path &name, const core::dimension2d<u32> &size, E_TEXTURE_TYPE type, ECOLOR_FORMAT format, TOpenGLDriver *driver, u8 msaa = 0) :
@@ -236,6 +213,30 @@ public:
 
 		for (auto *image : Images)
 			image->drop();
+	}
+
+	//! Create the GL object of a texture whose creation was deferred because
+	//! no rendering context was available. Requires a current context.
+	//! Returns whether the texture is usable.
+	bool recreateDeferred()
+	{
+		if (TextureName)
+			return true;
+
+		if (Images.empty())
+			return false;
+
+		if (!createGLTexture(Images))
+			return false;
+
+		if (!KeepImage) {
+			for (auto *image : Images)
+				image->drop();
+
+			Images.clear();
+		}
+
+		return true;
 	}
 
 	void *lock(E_TEXTURE_LOCK_MODE mode = ETLM_READ_WRITE, u32 mipmapLevel = 0, u32 layer = 0, E_TEXTURE_LOCK_FLAGS lockFlags = ETLF_FLIP_Y_UP_RTT) override
@@ -467,6 +468,63 @@ protected:
 		}
 
 		return destFormat;
+	}
+
+	//! Fill Images with CPU-side copies of the source images, converted to
+	//! the texture size and color format.
+	void copyImages(const std::vector<IImage *> &srcImages)
+	{
+		Images.resize(srcImages.size());
+
+		for (size_t i = 0; i < srcImages.size(); ++i) {
+			Images[i] = Driver->createImage(ColorFormat, Size);
+
+			if (srcImages[i]->getDimension() == Size)
+				srcImages[i]->copyTo(Images[i]);
+			else
+				srcImages[i]->copyToScaling(Images[i]);
+		}
+	}
+
+	//! Create and upload the GL object from the given images. Requires a
+	//! current rendering context; returns false when creation failed.
+	bool createGLTexture(const std::vector<IImage *> &images)
+	{
+		GL.GenTextures(1, &TextureName);
+		TEST_GL_ERROR(Driver);
+		if (!TextureName) {
+			os::Printer::log("COpenGLCoreTexture: texture not created", ELL_ERROR);
+			return false;
+		}
+
+		const COpenGLCoreTexture *prevTexture = Driver->getCacheHandler()->getTextureCache().get(0);
+		Driver->getCacheHandler()->getTextureCache().set(0, this);
+
+		GL.TexParameteri(TextureType, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+		GL.TexParameteri(TextureType, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+
+		TEST_GL_ERROR(Driver);
+
+		initTexture(images.size());
+
+		if (Type == ETT_2D_ARRAY) {
+			upload2DArrayTexture(images.size(), images.data());
+		} else {
+			for (size_t i = 0; i < images.size(); ++i)
+				uploadTexture(i, 0, images[i]->getData());
+		}
+
+		if (HasMipMaps) {
+			regenerateMipMapLevels();
+		}
+
+		if (!getName().getPath().empty())
+			Driver->irrGlObjectLabel(GL_TEXTURE, TextureName, getName().getPath().c_str());
+
+		Driver->getCacheHandler()->getTextureCache().set(0, prevTexture);
+
+		TEST_GL_ERROR(Driver);
+		return true;
 	}
 
 	void getImageValues(const IImage *image)

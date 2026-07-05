@@ -1111,6 +1111,12 @@ bool CIrrDeviceSDL::run()
 
 		case SDL_EVENT_WILL_ENTER_BACKGROUND:
 			IsInBackground = true;
+			// The window surface may be destroyed while backgrounded (the
+			// application keeps running, see SDL_HINT_ANDROID_BLOCK_ON_PAUSE
+			// above); GL object creation fails in that state, so have the
+			// driver defer it until rendering resumes.
+			if (VideoDriver)
+				VideoDriver->setContextAvailable(false);
 			break;
 
 #ifdef _IRR_IOS_PLATFORM_
@@ -1119,6 +1125,8 @@ bool CIrrDeviceSDL::run()
 		case SDL_EVENT_WILL_ENTER_FOREGROUND:
 #endif
 			IsInBackground = false;
+			if (VideoDriver)
+				VideoDriver->setContextAvailable(true);
 			break;
 
 		case SDL_EVENT_RENDER_TARGETS_RESET:
