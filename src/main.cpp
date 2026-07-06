@@ -146,6 +146,12 @@ int main(int argc, char *argv[])
 	debug_set_exception_handler();
 
 	g_logger.registerThread("Main");
+#if IS_VOPI_ENGINE && defined(__ANDROID__)
+	// When the SDL Activity is re-created within the same JNI process,
+	// main() runs again (see init_common()); drop the previous run's
+	// stderr output so every logcat line is not printed twice.
+	g_logger.removeOutput(&stderr_output);
+#endif
 	g_logger.addOutputMaxLevel(&stderr_output, LL_ACTION);
 
 	porting::osSpecificInit();
@@ -798,6 +804,18 @@ static bool init_common(const Settings &cmd_args, int argc, char *argv[])
 	if (g_settings) {
 		for (int i = (int)SL_TOTAL_COUNT - 1; i >= 0; --i)
 			delete Settings::getLayer((SettingsLayer)i);
+
+		// Further globals survive a re-entered main() the same way and are
+		// otherwise only reset at process exit:
+		// - a stale g_settings_path trips sanity_check() in read_config_file()
+		// - a still-live g_httpfetch_thread trips FATAL_ERROR_IF() in
+		//   httpfetch_init(); cleaning up here also joins the previous run's
+		//   fetch thread and balances its curl_global_init()
+		// - a stale g_first_run would re-trigger first-run behavior in the
+		//   main menu
+		g_settings_path.clear();
+		g_first_run = false;
+		httpfetch_cleanup();
 	}
 #endif
 
