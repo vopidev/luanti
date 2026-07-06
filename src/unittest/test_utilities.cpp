@@ -299,6 +299,18 @@ void TestUtilities::testStrToFloatConversion()
 
 	// Boundary values
 	UASSERT(std::isfinite(mystof("1.0e30")));
+
+	// Result is always finite: non-finite literals and out-of-range
+	// magnitudes parse to 0 on every platform (glibc atof would return
+	// inf/nan for these)
+	UASSERT(mystof("inf") == 0.0f);
+	UASSERT(mystof("-inf") == 0.0f);
+	UASSERT(mystof("infinity") == 0.0f);
+	UASSERT(mystof("nan") == 0.0f);
+	UASSERT(mystof("-nan") == 0.0f);
+	UASSERT(mystof("1e999") == 0.0f);
+	UASSERT(mystof("-1e999") == 0.0f);
+	UASSERT(mystof("1e39") == 0.0f); // overflows float, not double
 }
 
 
@@ -837,6 +849,41 @@ void TestUtilities::testMyDoubleStringConversions()
 	test_round_trip(-std::numeric_limits<double>::infinity());
 	test_round_trip(0.3);
 	test_round_trip(0.1 + 0.2);
+
+	// Whole-string non-finite forms parse like strtod() on every platform
+	const double inf = std::numeric_limits<double>::infinity();
+	expect_double("inf", inf);
+	expect_double("+inf", inf);
+	expect_double("-inf", -inf);
+	expect_double("INF", inf);
+	expect_double("Infinity", inf);
+	UASSERT(std::isnan(my_string_to_double("nan").value()));
+	UASSERT(std::isnan(my_string_to_double("-NaN").value()));
+	UASSERT(std::isnan(my_string_to_double("nan(chars2)").value()));
+	expect_parse_failure("in");
+	expect_parse_failure("infx");
+	expect_parse_failure("nan(");
+	expect_parse_failure("nan(chars)x");
+
+	// Out-of-range input keeps strtod() semantics
+	expect_double("1e999", inf);
+	expect_double("-1e999", -inf);
+	expect_double("1e-999", 0.0);
+	expect_double("4.9406564584124654e-324",
+			std::numeric_limits<double>::denorm_min());
+
+	// Leading whitespace is skipped, trailing junk (incl. whitespace) is not
+	expect_double(" 42", 42.0);
+	expect_parse_failure("42 ");
+	expect_parse_failure("12e34e56");
+
+	// Inputs of the class that crashed Apple's strtod() fast path;
+	// must parse without crashing everywhere
+	expect_double("2.2250738585072011e-308", 2.2250738585072009e-308);
+	{
+		auto got = my_string_to_double(std::string(2000, '7'));
+		UASSERT(got.has_value() && *got == inf);
+	}
 }
 
 void TestUtilities::testGetMemorySize()

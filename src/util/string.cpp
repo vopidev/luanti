@@ -14,6 +14,8 @@
 
 #include <algorithm>
 #include <array>
+#include <cerrno>
+#include <cmath>
 #include <sstream>
 #include <iomanip>
 #include <unordered_map>
@@ -1080,14 +1082,70 @@ std::string my_double_to_string(double number)
 	return "nan";
 }
 
+#if defined(__APPLE__)
+// Matches the whole-string non-finite forms accepted by strtod(): an optional
+// sign followed by "inf", "infinity" or "nan"/"nan(n-char-sequence)",
+// case-insensitive. Returns nullopt if \p s is not such a form.
+static std::optional<double> parse_non_finite(std::string_view s)
+{
+	double sign = 1.0;
+	if (!s.empty() && (s[0] == '+' || s[0] == '-')) {
+		if (s[0] == '-')
+			sign = -1.0;
+		s.remove_prefix(1);
+	}
+	if (str_equal(s, std::string_view("inf"), true) ||
+			str_equal(s, std::string_view("infinity"), true))
+		return sign * std::numeric_limits<double>::infinity();
+	if (s.size() >= 3 && str_equal(s.substr(0, 3), std::string_view("nan"), true)) {
+		std::string_view payload = s.substr(3);
+		bool valid_payload = payload.empty() || (payload.size() >= 2 &&
+				payload.front() == '(' && payload.back() == ')' &&
+				payload.substr(1, payload.size() - 2).find_first_not_of(
+					"0123456789_abcdefghijklmnopqrstuvwxyz"
+					"ABCDEFGHIJKLMNOPQRSTUVWXYZ") == std::string_view::npos);
+		if (valid_payload)
+			return std::copysign(std::numeric_limits<double>::quiet_NaN(), sign);
+	}
+	return std::nullopt;
+}
+#endif
+
 std::optional<double> my_string_to_double(const std::string &s)
 {
 	if (s.empty())
 		return std::nullopt;
+#if defined(__APPLE__)
+	// Apple's strtod() fast path can crash on edge-case inputs (see mystof()
+	// in string.h for details), and this function receives untrusted strings
+	// e.g. via item metadata. Parse with an istringstream in the classic
+	// locale instead; num_get also covers the hexadecimal notation. It does
+	// not reliably accept "inf"/"nan" though, so match those explicitly to
+	// keep the round-trip contract with my_double_to_string().
+	if (auto non_finite = parse_non_finite(s))
+		return non_finite;
+	std::istringstream iss(s);
+	iss.imbue(std::locale::classic());
+	double number = 0.0;
+	errno = 0;
+	iss >> number;
+	if (iss.bad())
+		return std::nullopt;
+	// A failure without ERANGE means malformed input. With ERANGE, keep
+	// strtod() semantics: ±inf on overflow, a denormal or 0 on underflow.
+	if (iss.fail() && errno != ERANGE)
+		return std::nullopt;
+	// Unconsumed characters are trailing junk, same as the *end check of
+	// the strtod() branch.
+	if (iss.rdbuf()->in_avail() > 0)
+		return std::nullopt;
+	return number;
+#else
 	char *end = nullptr;
 	// Note: this also supports hexadecimal notation like "0x1.0p+1"
 	double number = std::strtod(s.c_str(), &end);
 	if (end && *end != '\0')
 		return std::nullopt;
 	return number;
+#endif
 }

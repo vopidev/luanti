@@ -9,6 +9,7 @@
 #if IS_CLIENT_BUILD
 #include "irrString.h"
 #endif
+#include <cmath>
 #include <cstdlib>
 #include <string>
 #include <string_view>
@@ -430,6 +431,13 @@ inline s32 mystoi(const std::string &str)
 
 /**
  * Returns a float reprensented by the string \p str (decimal).
+ *
+ * Contract on every platform: malformed input and non-finite values
+ * ("inf"/"nan" literals, out-of-range magnitudes) parse to 0.0f, so the
+ * result is always finite. Callers pass untrusted formspec/settings strings
+ * and expect a usable number (note that NaN would pass through rangelim()).
+ * A number followed by trailing garbage ("3.14x") parses to the number or
+ * to 0 depending on the platform — do not rely on either.
  * @see atof(3)
  */
 inline float mystof(const std::string &str)
@@ -453,9 +461,15 @@ inline float mystof(const std::string &str)
 		return 0.0f;
 	if (iss.fail() && !iss.eof())
 		return 0.0f;
-	return result;
+	return std::isfinite(result) ? result : 0.0f;
 #else
-	return atof(str.c_str());
+	// atof() parses to double; range-check while still in double space so
+	// that the conversion to float cannot overflow.
+	double result = atof(str.c_str());
+	if (!std::isfinite(result) ||
+			std::fabs(result) > (double)std::numeric_limits<float>::max())
+		return 0.0f;
+	return (float)result;
 #endif
 }
 
