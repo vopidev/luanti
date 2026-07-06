@@ -31,6 +31,15 @@ std::string ScriptApiPauseMenu::get_pause_menu_formspec(bool simple_singleplayer
 
 	lua_getglobal(L, "core");
 	lua_getfield(L, -1, "get_pause_menu_formspec");
+	if (!lua_isfunction(L, -1)) {
+		// The builtin (or a game overlay replacing it) does not define the
+		// function: degrade to "no pause menu" instead of throwing a
+		// LuaError that would abort the session on the first ESC.
+		warningstream << "ScriptApiPauseMenu: core.get_pause_menu_formspec"
+				" is not defined, showing no pause menu" << std::endl;
+		lua_pop(L, 3); // Pop value, core, error handler
+		return "";
+	}
 	lua_pushboolean(L, simple_singleplayer_mode);
 
 	PCALL_RES(lua_pcall(L, 1, 1, error_handler));

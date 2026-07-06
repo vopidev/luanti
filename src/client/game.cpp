@@ -624,7 +624,7 @@ void Game::run()
 		// from background on iOS, causing a duplicate showPauseMenu() call
 		// that reuses an orphaned formspec (removed from GUI tree but with
 		// refcount > 1), rendering it invisible.
-#if !defined(__ANDROID__) && !defined(__IOS__)
+#if !IS_VOPI_ENGINE || (!defined(__ANDROID__) && !defined(__IOS__))
 		if (m_does_lost_focus_pause_game && !device->isWindowFocused() && !isMenuActive()) {
 			m_game_formspec.showPauseMenu();
 		}
@@ -1418,7 +1418,7 @@ void Game::processUserInput(f32 dtime)
 			m_game_focused = false;
 			infostream << "Game lost focus" << std::endl;
 			input->releaseAllKeys();
-#if defined(__ANDROID__) || defined(__IOS__)
+#if IS_VOPI_ENGINE && (defined(__ANDROID__) || defined(__IOS__))
 			// Focus lost to the system UI (notification shade, screenshot, app
 			// switcher): defer a pause menu until focus returns. See the regain
 			// branch below and m_lost_focus_needs_pause.
@@ -1433,15 +1433,20 @@ void Game::processUserInput(f32 dtime)
 			g_touchcontrols->hide();
 
 	} else {
-#if defined(__ANDROID__) || defined(__IOS__)
+#if IS_VOPI_ENGINE && (defined(__ANDROID__) || defined(__IOS__))
 		// Show the pause menu the moment focus returns, and skip the touch
 		// control step this frame: the interrupted touch sequence can leave
 		// stale pointer state (a stuck pointer drifts the camera and hides the
 		// touch buttons), so resume from a clean state via the pause menu.
 		if (!m_game_focused && m_lost_focus_needs_pause && !isMenuActive()) {
-			m_lost_focus_needs_pause = false;
 			infostream << "Showing pause menu on focus regain" << std::endl;
 			m_game_formspec.showPauseMenu();
+			// The pause env may return no formspec (menu not created); keep
+			// the flag armed then. This cannot retry-loop: m_game_focused
+			// goes true below, blocking this branch until the next focus
+			// loss re-arms the flag.
+			if (isMenuActive())
+				m_lost_focus_needs_pause = false;
 		} else
 #endif
 		if (g_touchcontrols) {
