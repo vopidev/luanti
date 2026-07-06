@@ -132,10 +132,20 @@ private:
 		// which targets a node, to that node's mesh buffers.
 		std::vector<std::vector<SSkinMeshBuffer *>> m_node_to_meshbufs;
 
+		// Running total of morph-target delta memory allocated for the whole
+		// file, to bound amplification from untrusted media (the per-primitive
+		// target cap alone does not limit the primitive count).
+		std::size_t m_morph_delta_bytes = 0;
+
 		std::unordered_set<std::string> warnings;
 		void warn(const std::string &warning) {
 			warnings.insert(warning);
 		}
+
+		// Charge n_vertices worth of vector3df deltas against the per-file
+		// morph budget; throws std::runtime_error when the total exceeds the
+		// limit so a malicious file fails the load instead of exhausting RAM.
+		void countMorphBytes(std::size_t n_vertices);
 
 		void copyPositions(const std::size_t accessorIdx,
 				std::vector<video::S3DVertex>& vertices) const;

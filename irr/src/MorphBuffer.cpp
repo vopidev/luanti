@@ -36,7 +36,9 @@ void MorphBuffer::WeightChannel::sample(f32 frame, std::size_t numTargets,
 	const std::size_t i1 = static_cast<std::size_t>(std::distance(times.begin(), next));
 	const std::size_t i0 = i1 - 1;
 	if (!interpolate) {
-		copyFrame(i0);
+		// STEP: the value on [t_k, t_{k+1}) is v_k, so when frame lands
+		// exactly on keyframe i1 hold that one, not the previous keyframe.
+		copyFrame(times[i1] == frame ? i1 : i0);
 		return;
 	}
 
@@ -54,7 +56,10 @@ f32 MorphBuffer::maxDisplacement() const
 {
 	if (targets.empty())
 		return 0.0f;
-	const std::size_t n = targets[0].positions.size();
+	// Delta arrays may be empty for dataless targets, so take the largest.
+	std::size_t n = 0;
+	for (const auto &t : targets)
+		n = std::max(n, t.positions.size());
 	f32 maxd = 0.0f;
 	for (std::size_t v = 0; v < n; ++v) {
 		f32 sum = 0.0f;
@@ -98,8 +103,11 @@ void MorphBuffer::computeMorphedVertex(std::size_t v, const std::vector<f32> &we
 		const f32 wt = (t < weights.size()) ? weights[t] : 0.0f;
 		if (wt == 0.0f)
 			continue;
-		outPos += targets[t].positions[v] * wt;
-		if (doNormals && targets[t].normals)
+		// Delta arrays are empty for declared-but-dataless targets (the
+		// loader does not allocate them); such targets contribute nothing.
+		if (v < targets[t].positions.size())
+			outPos += targets[t].positions[v] * wt;
+		if (doNormals && targets[t].normals && v < targets[t].normals->size())
 			nrm += (*targets[t].normals)[v] * wt;
 	}
 	if (doNormals) {
@@ -140,8 +148,14 @@ void MorphBuffer::apply(IVertexBuffer *vbuf, f32 frame)
 		computeMorphedVertex(v, m_weights, m_morph_normals,
 				m_rest[v].pos, m_rest[v].normal, pos, nrm);
 		vbuf->getPosition(v) = pos;
-		if (m_morph_normals)
-			vbuf->getNormal(v) = nrm;
+		// Always restore the normal. Software skinning reads from a rest-pose
+		// snapshot that morphMesh() refreshes from this buffer right after
+		// apply() each frame; if a normal is left untouched here, that
+		// snapshot re-captures the previous frame's already-skinned (rotated)
+		// normal, so it accumulates rotation every frame. Writing the rest
+		// normal when the targets carry no normal deltas keeps the snapshot
+		// stable.
+		vbuf->getNormal(v) = m_morph_normals ? nrm : m_rest[v].normal;
 	}
 	vbuf->setDirty();
 }

@@ -62,6 +62,43 @@ SECTION("error cases") {
 	}
 }
 
+SECTION("excess morph targets") {
+	// Untrusted media may declare more morph targets than the loader stores.
+	// The model declares 18 targets (> the cap of 16); target 0 is dataless
+	// (tangent-only, so it carries no position/normal deltas), targets 1..17
+	// share one POSITION delta accessor. A weights animation laid out for all
+	// 18 declared targets activates declared target 1 at frame 1.
+	auto *mesh = loadMesh(model_stem + "excess_morph_targets.gltf");
+	REQUIRE(mesh);
+	auto *sk = dynamic_cast<scene::SkinnedMesh *>(mesh);
+	REQUIRE(sk);
+	REQUIRE(sk->getMeshBufferCount() == 1);
+	auto *mb = dynamic_cast<scene::SSkinMeshBuffer *>(sk->getMeshBuffer(0));
+	REQUIRE(mb);
+
+	auto *morph = mb->getMorph();
+	REQUIRE(morph);
+	// The cap kept only 16 targets, but the file's declared count (= the
+	// weights-channel stride) is remembered so the animation reads correctly.
+	CHECK(morph->numTargets() == 16);
+	CHECK(morph->declaredTargets == 18);
+	CHECK(morph->hasAnimation());
+
+	auto *vb = mb->getVertexBuffer();
+	// vertex 0 rest = (0,0,0); the delta of target 1 adds (+5 X) at weight 1.
+	// Getting this right requires reading the weights channel with the declared
+	// stride (18) while applying only the stored targets — a regression in that
+	// stride math would drive the wrong weight and move vertex 0 elsewhere.
+	sk->morphMesh(0.0f);
+	CHECK((vb->getPosition(0) - core::vector3df(0.f, 0.f, 0.f)).getLength() < 1e-4f);
+	sk->morphMesh(1.0f);
+	CHECK((vb->getPosition(0) - core::vector3df(5.f, 0.f, 0.f)).getLength() < 1e-4f);
+	// The dataless target 0 (empty position deltas) must not corrupt or crash
+	// the per-vertex apply; the other vertices stay at rest throughout.
+	CHECK((vb->getPosition(1) - core::vector3df(1.f, 0.f, 0.f)).getLength() < 1e-4f);
+	CHECK((vb->getPosition(2) - core::vector3df(0.f, 1.f, 0.f)).getLength() < 1e-4f);
+}
+
 SECTION("minimal triangle") {
 	const auto path = GENERATE(
 			model_stem + "minimal_triangle.gltf",
@@ -525,6 +562,33 @@ SECTION("morph targets: static morph baked at load")
 	auto *vb = mb->getVertexBuffer();
 	// baked vertex 2 = rest(0,1,0) + 1.0 * delta(0.5,0,0)
 	CHECK((vb->getPosition(2) - core::vector3df(0.5f, 1.f, 0.f)).getLength() < 1e-4f);
+}
+
+SECTION("morph targets: STEP interpolation holds the current keyframe")
+{
+	// Weights [0, 1, 0] at keyframes [0, 1, 2] with STEP interpolation; the
+	// single target adds (+5 X) to vertex 0. STEP holds v_k on [t_k, t_{k+1}),
+	// so sampling exactly on keyframe 1 must yield weight 1 (not the previous
+	// keyframe's 0).
+	auto *mesh = loadMesh(model_stem + "step_morph.gltf");
+	REQUIRE(mesh);
+	auto *sk = dynamic_cast<scene::SkinnedMesh *>(mesh);
+	REQUIRE(sk);
+	auto *mb = dynamic_cast<scene::SSkinMeshBuffer *>(sk->getMeshBuffer(0));
+	REQUIRE(mb);
+	REQUIRE(mb->getMorph());
+
+	auto *vb = mb->getVertexBuffer();
+	const core::vector3df rest(0.f, 0.f, 0.f);
+	const core::vector3df morphed(5.f, 0.f, 0.f);
+	sk->morphMesh(0.0f); // keyframe 0, weight 0
+	CHECK((vb->getPosition(0) - rest).getLength() < 1e-4f);
+	sk->morphMesh(1.0f); // exactly keyframe 1, weight 1 (regression point)
+	CHECK((vb->getPosition(0) - morphed).getLength() < 1e-4f);
+	sk->morphMesh(0.5f); // between 0 and 1: STEP holds keyframe 0, weight 0
+	CHECK((vb->getPosition(0) - rest).getLength() < 1e-4f);
+	sk->morphMesh(1.5f); // between 1 and 2: STEP holds keyframe 1, weight 1
+	CHECK((vb->getPosition(0) - morphed).getLength() < 1e-4f);
 }
 
 driver->closeDevice();

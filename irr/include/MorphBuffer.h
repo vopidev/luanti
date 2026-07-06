@@ -29,7 +29,8 @@ struct MorphBuffer final
 	//! A single morph target: per-vertex position (and optional normal) deltas.
 	struct Target
 	{
-		//! Position deltas, one per vertex (size == vertex count).
+		//! Position deltas, one per vertex (size == vertex count), or empty
+		//! when the target declares no POSITION accessor.
 		std::vector<core::vector3df> positions;
 		//! Normal deltas, present iff the target provides NORMAL deltas.
 		std::optional<std::vector<core::vector3df>> normals;
@@ -54,6 +55,11 @@ struct MorphBuffer final
 	std::vector<Target> targets;
 	WeightChannel channel;        //!< empty() => static morph (baked at load)
 	std::vector<f32> baseWeights; //!< fallback/default weights (size == numTargets)
+
+	//! Number of targets declared in the source file. May exceed
+	//! numTargets() when the loader capped the stored targets; the weights
+	//! animation data in the file is laid out with this stride.
+	std::size_t declaredTargets = 0;
 
 	std::size_t numTargets() const { return targets.size(); }
 	bool hasAnimation() const { return !channel.empty(); }

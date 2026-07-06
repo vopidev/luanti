@@ -24,6 +24,7 @@
 #include <cassert>
 #include <limits>
 #include <memory>
+#include <new>
 #include <optional>
 #include <stdexcept>
 #include <tuple>
@@ -346,7 +347,6 @@ IAnimatedMesh* SelfType::createMesh(io::IReadFile* file)
 	const char *filename = file->getFileName().c_str();
 	try {
 		tiniergltf::GlTF model = parseGLTF(file);
-		SkinnedMeshBuilder mesh(SkinnedMesh::SourceFormat::GLTF);
 		MeshExtractor extractor(std::move(model));
 		try {
 			auto *res = extractor.load();
@@ -359,6 +359,10 @@ IAnimatedMesh* SelfType::createMesh(io::IReadFile* file)
 		}
 	} catch (const std::runtime_error &e) {
 		os::Printer::log("error parsing gltf", e.what(), ELL_ERROR);
+	} catch (const std::bad_alloc &) {
+		// Models are untrusted media; a file demanding absurd amounts of
+		// memory must fail the load, not the process.
+		os::Printer::log("out of memory while loading gltf", filename, ELL_ERROR);
 	}
 	return nullptr;
 }
@@ -395,6 +399,19 @@ static video::E_TEXTURE_CLAMP convertTextureWrap(const Wrap wrap) {
 		default:
 			throw std::runtime_error("invalid sampler wrapping mode");
     }
+}
+
+void SelfType::MeshExtractor::countMorphBytes(std::size_t n_vertices)
+{
+	// Generous ceiling: far above any legitimate model, but it bounds a
+	// malicious file's total morph allocation to a recoverable peak rather
+	// than letting many primitives amplify it into an OOM kill. Written as a
+	// subtraction so the comparison cannot overflow.
+	constexpr std::size_t MAX_MORPH_DELTA_BYTES = 256 * 1024 * 1024;
+	const std::size_t add = n_vertices * sizeof(core::vector3df);
+	if (add > MAX_MORPH_DELTA_BYTES - m_morph_delta_bytes)
+		throw std::runtime_error("morph target data exceeds the size limit");
+	m_morph_delta_bytes += add;
 }
 
 void SelfType::MeshExtractor::addPrimitive(
@@ -448,21 +465,41 @@ void SelfType::MeshExtractor::addPrimitive(
 	// primitives. Deltas are differences of positions/normals, so they take the
 	// same handedness conversion as the base attributes.
 	if (primitive.targets.has_value() && !primitive.targets->empty()) {
+		// Cap the number of morph targets: each stored target costs delta
+		// arrays sized by the vertex count, and models arrive as untrusted
+		// server media. Extra targets keep their weight slots (see
+		// declaredTargets) but are not stored or applied.
+		constexpr std::size_t MAX_MORPH_TARGETS = 16;
+		const std::size_t n_declared = primitive.targets->size();
+		std::size_t n_targets = n_declared;
+		if (n_targets > MAX_MORPH_TARGETS) {
+			warn("too many morph targets, ignoring the extra ones");
+			n_targets = MAX_MORPH_TARGETS;
+		}
 		auto morph = std::make_unique<MorphBuffer>();
-		morph->targets.reserve(primitive.targets->size());
-		for (const auto &gltfTarget : *primitive.targets) {
+		morph->declaredTargets = n_declared;
+		morph->targets.reserve(n_targets);
+		for (std::size_t t = 0; t < n_targets; ++t) {
+			const auto &gltfTarget = (*primitive.targets)[t];
 			MorphBuffer::Target target;
-			// Always size delta arrays to the vertex count so the per-frame apply
-			// can index them unconditionally, even if an accessor is malformed.
-			target.positions.assign(n_vertices, core::vector3df(0, 0, 0));
+			// Allocate delta arrays only for targets that actually carry
+			// data: a declared-but-dataless target must not cost memory
+			// (a tiny malicious file could otherwise declare thousands),
+			// and the per-frame apply bounds-checks its accesses.
+			// countMorphBytes charges each allocation against a per-file
+			// budget so many primitives cannot amplify memory past the
+			// per-primitive target cap.
 			if (gltfTarget.position.has_value()) {
 				const auto acc = Accessor<core::vector3df>::make(m_gltf_model, *gltfTarget.position);
+				countMorphBytes(n_vertices);
+				target.positions.assign(n_vertices, core::vector3df(0, 0, 0));
 				const std::size_t count = acc.getCount() < n_vertices ? acc.getCount() : n_vertices;
 				for (std::size_t i = 0; i < count; ++i)
 					target.positions[i] = convertHandedness(acc.get(i));
 			}
 			if (gltfTarget.normal.has_value()) {
 				const auto acc = Accessor<core::vector3df>::make(m_gltf_model, *gltfTarget.normal);
+				countMorphBytes(n_vertices);
 				std::vector<core::vector3df> normals(n_vertices, core::vector3df(0, 0, 0));
 				const std::size_t count = acc.getCount() < n_vertices ? acc.getCount() : n_vertices;
 				for (std::size_t i = 0; i < count; ++i)
@@ -752,11 +789,16 @@ void SelfType::MeshExtractor::loadAnimation(const std::size_t animIdx)
 				break;
 			}
 			const std::size_t nTargets = bufs.front()->getMorph()->numTargets();
+			// The file lays the channel out for the DECLARED target count,
+			// which can exceed the stored count when the loader capped the
+			// targets; read with the declared stride, keep the stored ones.
+			const std::size_t nDeclared = bufs.front()->getMorph()->declaredTargets;
 			// All of the node's morph buffers must share the target count the
 			// channel is laid out for, otherwise weights would be misrouted.
 			bool consistent = true;
 			for (const auto *buf : bufs) {
-				if (buf->getMorph()->numTargets() != nTargets) {
+				if (buf->getMorph()->numTargets() != nTargets
+						|| buf->getMorph()->declaredTargets != nDeclared) {
 					consistent = false;
 					break;
 				}
@@ -773,9 +815,14 @@ void SelfType::MeshExtractor::loadAnimation(const std::size_t animIdx)
 				warn("morph weights animation output must be float scalar");
 				break;
 			}
-			// glTF weights output is SCALAR float: n_frames * nTargets values.
+			// glTF weights output is SCALAR float: n_frames * nDeclared values.
+			// Validate with division, not multiplication: nDeclared is
+			// attacker-controlled (untrusted media) and n_frames * nDeclared
+			// could overflow size_t on 32-bit targets, letting a crafted file
+			// pass the check and then read out of bounds in the repack loop.
 			const auto outputAccessor = Accessor<f32>::make(m_gltf_model, sampler.output);
-			if (outputAccessor.getCount() != n_frames * nTargets) {
+			if (nDeclared == 0 || outputAccessor.getCount() % nDeclared != 0
+					|| outputAccessor.getCount() / nDeclared != n_frames) {
 				warn("morph weights animation output size mismatch");
 				break;
 			}
@@ -786,7 +833,7 @@ void SelfType::MeshExtractor::loadAnimation(const std::size_t animIdx)
 			for (std::size_t i = 0; i < n_frames; ++i) {
 				ch.times[i] = inputAccessor.get(i);
 				for (std::size_t t = 0; t < nTargets; ++t)
-					ch.values[i * nTargets + t] = outputAccessor.get(i * nTargets + t);
+					ch.values[i * nTargets + t] = outputAccessor.get(i * nDeclared + t);
 			}
 			for (auto *buf : bufs)
 				buf->getMorph()->channel = ch;
