@@ -867,8 +867,11 @@ void GUIFormSpecMenu::parseScrollBar(parserData* data, const std::string &elemen
 
 		std::vector<video::ITexture *> itextures;
 
-		if (textures.empty()) {
-			// Fall back to the scrollbar textures specified in style[]
+		// The custom-texture draw path indexes [0..3] (plus [4],[5] for a
+		// 3-part thumb, guarded by size); a partial set from a served formspec
+		// would read past the vector. Require the full bg/thumb/top/bottom set,
+		// otherwise fall back to the style[]/stock textures.
+		if (textures.size() < 4) {
 			e->setStyle(style, m_tsrc);
 		} else {
 			for (u32 i = 0; i < textures.size(); ++i)
@@ -3319,7 +3322,14 @@ void GUIFormSpecMenu::parseMap(parserData *data, const std::string &element)
 			if (f.size() < 4)
 				continue;
 			GUIMapElement::MapPoint mp;
-			mp.world_pos = v3f(stof(f[0]), stof(f[1]), stof(f[2]));
+			// Clamp to the map limit like the focus field: the coords are
+			// later narrowed float->s32 in GUIMapElement::draw, and an
+			// out-of-range (or NaN, via core::clamp->finite bound) value from
+			// an untrusted formspec would be UB.
+			mp.world_pos = v3f(
+					core::clamp(stof(f[0]), -31000.f, 31000.f),
+					core::clamp(stof(f[1]), -31000.f, 31000.f),
+					core::clamp(stof(f[2]), -31000.f, 31000.f));
 			if (!parseColorString(f[3], mp.color, false))
 				mp.color = video::SColor(255, 255, 0, 0);
 			if (f.size() >= 5)

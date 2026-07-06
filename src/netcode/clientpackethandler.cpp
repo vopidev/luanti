@@ -1339,7 +1339,14 @@ void Client::handleCommand_HudAdd(NetworkPacket* pkt)
 	try {
 		s32 mx, my, mw, mh;
 		*pkt >> mx >> my >> mw >> mh >> middle_scale;
-		middle = core::rect<s32>(mx, my, mw, mh);
+		// Clamp untrusted server input to match HUD_STAT_MIDDLE (HudChange):
+		// the rect avoids signed-overflow in the 9-slice math, and the scale
+		// (core::clamp, so NaN maps to a finite bound) avoids UB in the
+		// client's float*scale cast.
+		middle = core::rect<s32>(rangelim(mx, -4096, 4096),
+				rangelim(my, -4096, 4096), rangelim(mw, -4096, 4096),
+				rangelim(mh, -4096, 4096));
+		middle_scale = core::clamp(middle_scale, 0.0f, 64.0f);
 		*pkt >> touchable >> pressed_text;
 		*pkt >> anchor_above_hotbar;
 		*pkt >> max_width;

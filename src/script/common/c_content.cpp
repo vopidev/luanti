@@ -2461,7 +2461,11 @@ void read_hud_element(lua_State *L, HudElement *elem)
 				rangelim(getintfield_default(L, -1, "h", 0), -4096, 4096));
 	}
 	lua_pop(L, 1);
-	elem->middle_scale = getfloatfield_default(L, 2, "middle_scale", 1.0f);
+	// Clamp like the 9-slice middle field: this flows into a float*scale cast
+	// on the client, where an out-of-range value would be undefined behavior.
+	// core::clamp (not rangelim) so a NaN maps to the finite bound.
+	elem->middle_scale = core::clamp(
+			getfloatfield_default(L, 2, "middle_scale", 1.0f), 0.0f, 64.0f);
 
 	elem->touchable = getboolfield_default(L, 2, "touchable", false);
 	elem->pressed_text = getstringfield_default(L, 2, "pressed_texture", "");

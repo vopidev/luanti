@@ -419,7 +419,10 @@ void GUIMapElement::drawMarkers(const core::rect<s32> &rect, v3s16 center)
 	for (const MapPoint &p : m_points) {
 		const f32 fx = ((f32)p.world_pos.X - (f32)center.X) / extent + 0.5f;
 		const f32 fz = 0.5f - ((f32)p.world_pos.Z - (f32)center.Z) / extent;
-		if (fx < 0.0f || fx > 1.0f || fz < 0.0f || fz > 1.0f)
+		// Positive test so a non-finite fx/fz (should be clamped at parse, but
+		// belt-and-braces) also fails and is skipped rather than reaching the
+		// out-of-range float->s32 cast below.
+		if (!(fx >= 0.0f && fx <= 1.0f) || !(fz >= 0.0f && fz <= 1.0f))
 			continue;
 
 		const s32 cx = origin.X + (s32)(fx * w);
