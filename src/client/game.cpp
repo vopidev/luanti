@@ -2161,8 +2161,20 @@ f32 Game::getSensitivityScaleFactor() const
 
 bool Game::isTouchShootlineUsed() const
 {
+#if IS_VOPI_ENGINE
+	// VOPI: also allow tap-to-interact in the behind-the-player third-person
+	// view, not only first person. This both hides the crosshair (see
+	// draw_crosshair in updateFrame) and lets the player tap a node directly to
+	// dig/place instead of aiming it under a center crosshair. THIRD_FRONT is
+	// intentionally excluded: it keeps the crosshair path and cannot point at
+	// anything (reach is forced to 0 there).
+	return g_touchcontrols && g_touchcontrols->isShootlineAvailable() &&
+			(camera->getCameraMode() == CAMERA_MODE_FIRST ||
+			 camera->getCameraMode() == CAMERA_MODE_THIRD);
+#else
 	return g_touchcontrols && g_touchcontrols->isShootlineAvailable() &&
 			camera->getCameraMode() == CAMERA_MODE_FIRST;
+#endif
 }
 
 void Game::updateCameraOrientation(CameraOrientation *cam, float dtime)
@@ -2924,6 +2936,25 @@ void Game::processPlayerInteraction(f32 dtime, bool show_hud)
 				shootline.getVector().normalize() * BS * d;
 		shootline.start += intToFloat(camera_offset, BS);
 		shootline.end += intToFloat(camera_offset, BS);
+
+#if IS_VOPI_ENGINE
+		// VOPI: in third person the tap ray starts at the camera, which sits a
+		// few nodes behind the player, so it reaches visibly shorter than in
+		// first person. Advance the ray start along the ray to the point
+		// closest to the player's head (keeping the same line, so the tap
+		// still hits exactly the node under the finger) and re-extend the end
+		// to the full reach, measuring it from the player like the crosshair
+		// third-person path does.
+		if (camera->getCameraMode() == CAMERA_MODE_THIRD) {
+			v3f dir = shootline.getVector().normalize();
+			f32 forward = dir.dotProduct(
+					camera->getHeadPosition() - shootline.start);
+			if (forward > 0.0f) {
+				shootline.start += dir * forward;
+				shootline.end = shootline.start + dir * BS * d;
+			}
+		}
+#endif
 	}
 
 	PointedThing pointed = updatePointedThing(shootline,
