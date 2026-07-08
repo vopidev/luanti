@@ -1464,11 +1464,18 @@ void Game::processUserInput(f32 dtime)
 			g_touchcontrols->setInteractionBlocked(touch_player->block_interaction);
 			// Lua-defined tappable HUD buttons: feed TouchControls the current
 			// button rects, and tell the HUD which one is held (pressed visual).
-			if (hud) {
+			// Gated on show_hud like the other HUD consumers: a hidden HUD
+			// draws nothing, so nothing may stay tappable either — drop the
+			// HUD-derived touch state instead (also cancels a held press).
+			if (hud && m_game_ui->m_flags.show_hud) {
 				g_touchcontrols->pushTouchableHudRects(hud->getTouchableHudRects());
 				// pass the held button's id; HUD resolves it to a live element
 				// during draw (no pointer held across the client-event pump).
 				hud->setPressedTouchableId(g_touchcontrols->getPressedHudButton());
+			} else {
+				g_touchcontrols->resetHudState();
+				if (hud)
+					hud->setPressedTouchableId(std::nullopt);
 			}
 #else
 			g_touchcontrols->show();

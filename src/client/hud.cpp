@@ -1062,6 +1062,13 @@ void Hud::drawHotbar(const v2s32 &pos, const v2f &offset, u16 dir, const v2f &al
 	InventoryList *mainlist = inventory->getList("main");
 	if (mainlist == NULL) {
 		// Silently ignore this. We may not be initialized completely.
+#if IS_VOPI_ENGINE
+		// The inventory button anchor is normally refreshed further down;
+		// hide it (zero-size rect) so it cannot linger tappable at a stale
+		// position while the hotbar itself is not drawn.
+		if (g_touchcontrols)
+			g_touchcontrols->setInventoryButtonRect(core::recti(0, 0, 0, 0));
+#endif
 		return;
 	}
 

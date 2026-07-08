@@ -135,6 +135,11 @@ public:
 	std::optional<u32> getPressedHudButton() const;
 	// A completed release-inside click (read-once-clear), polled by game.cpp.
 	std::optional<u32> getHudButtonClick();
+
+	// Drops all HUD-derived touch state: touchable HUD rects (cancelling a
+	// held press), hotbar slot rects and the inventory button. Called each
+	// frame the HUD is hidden, so nothing invisible stays tappable.
+	void resetHudState();
 #endif
 
 	void resetHotbarRects();

@@ -511,6 +511,15 @@ void TouchControls::pushTouchableHudRects(std::vector<std::pair<u32, recti>> rec
 	}
 }
 
+void TouchControls::resetHudState()
+{
+	pushTouchableHudRects({});
+	resetHotbarRects();
+	// A zero-size rect hides the inventory button: not rendered by Irrlicht
+	// and impossible to hit, same as the placeholder it is created with.
+	setInventoryButtonRect(recti(0, 0, 0, 0));
+}
+
 bool TouchControls::isTouchableHudButton(const SEvent &event)
 {
 	if (m_has_hud_btn_id)
