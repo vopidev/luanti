@@ -185,6 +185,19 @@ bool MyEventReceiver::OnEvent(const SEvent &event)
 	else if (event.EventType == EET_TOUCH_INPUT_EVENT)
 		last_pointer_type = PointerType::Touch;
 
+	// Synthetic game-key events (emitted by TouchControls) must always reach
+	// the key state, even while a menu or formspec is active. They are internal
+	// state updates, not user input for the menu: hiding the touch controls
+	// below emits the releases of still-pressed keys (releaseAll), and if those
+	// were swallowed by the menu the key would stay logically held forever --
+	// the tap state machine already considers it released and will never emit
+	// another release.
+	if (event.EventType == EET_USER_EVENT && event.UserEvent.type == EUET_GAME_KEY) {
+		KeyPress keyCode(static_cast<GameKeyType>(event.UserEvent.UserData1));
+		setKeyDown(keyCode, event.UserEvent.UserData2 != 0);
+		return true;
+	}
+
 	// Let the menu handle events, if one is active.
 	if (isMenuActive()) {
 		if (g_touchcontrols)
@@ -225,10 +238,6 @@ bool MyEventReceiver::OnEvent(const SEvent &event)
 		default:
 			break;
 		}
-	} else if (event.EventType == EET_USER_EVENT && event.UserEvent.type == EUET_GAME_KEY) {
-		KeyPress keyCode(static_cast<GameKeyType>(event.UserEvent.UserData1));
-		setKeyDown(keyCode, event.UserEvent.UserData2 != 0);
-		return true;
 	}
 
 	// tell Irrlicht to continue processing this event
