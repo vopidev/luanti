@@ -1363,6 +1363,15 @@ void Client::interact(InteractAction action, const PointedThing& pointed)
 	writePlayerPos(myplayer, &m_env.getClientMap(), &pkt, m_camera->getCameraMode() == CAMERA_MODE_THIRD_FRONT);
 
 	Send(&pkt);
+
+	// The interact packet carries a full player-pos snapshot (written above),
+	// so the server has just seen the current key state. Record it as the last
+	// sent one: a key that is pressed and released again between two
+	// sendPlayerPos snapshots (e.g. a simulated tap click cut short by a
+	// wielded-item change) is otherwise never noticed by sendPlayerPos, which
+	// keeps deeming the state unchanged and stops sending -- the server would
+	// stay stuck with the pressed key from this packet until the player moves.
+	myplayer->last_keyPressed = myplayer->control.getKeysPressed();
 }
 
 #if IS_VOPI_ENGINE
