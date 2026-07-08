@@ -75,8 +75,8 @@ void GameUI::init()
 	m_guitext_chat = gui::StaticText::add(guienv, L"", core::recti(),
 		false, true, guiroot);
 #if IS_VOPI_ENGINE
-	const u16 chat_font_size = std::round(base_font_size *
-			g_settings->getFloat("chat_font_scale"));
+	const u16 chat_font_size = rangelim(std::round(base_font_size *
+			g_settings->getFloat("chat_font_scale")), 0.0f, 72.0f);
 #else
 	u16 chat_font_size = g_settings->getU16("chat_font_size");
 #endif
@@ -102,8 +102,8 @@ void GameUI::init()
 			false, true, guiroot);
 
 #if IS_VOPI_ENGINE
-	const u16 info_font_size = std::round(base_font_size *
-			g_settings->getFloat("info_font_scale"));
+	const u16 info_font_size = rangelim(std::round(base_font_size *
+			g_settings->getFloat("info_font_scale")), 0.0f, 72.0f);
 	if (info_font_size != 0)
 		m_guitext_info->setOverrideFont(g_fontengine->getFont(
 			rangelim(info_font_size, 5, 72), FM_Unspecified));

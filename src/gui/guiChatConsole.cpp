@@ -70,8 +70,9 @@ GUIChatConsole::GUIChatConsole(
 #if IS_VOPI_ENGINE
 	const f32 chat_font_scale = g_settings->getFloat("chat_font_scale");
 	const u16 base_font_size = g_fontengine->getDefaultFontSize();
-	// Calculate the new font size and round it to the nearest integer
-	const u16 chat_font_size = std::round(base_font_size * chat_font_scale);
+	// Calculate the new font size, clamped in float space so the u16
+	// conversion cannot overflow on extreme user settings (0 = keep default)
+	const u16 chat_font_size = rangelim(std::round(base_font_size * chat_font_scale), 0.0f, 72.0f);
 #else
 	const u16 chat_font_size = g_settings->getU16("chat_font_size");
 #endif

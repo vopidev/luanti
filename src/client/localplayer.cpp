@@ -620,8 +620,16 @@ void LocalPlayer::applyControl(float dtime, Environment *env)
 				else
 					speedV.Y = -speed_walk;
 			} else if ((in_liquid || in_liquid_stable) && !m_disable_descend) {
+#if IS_VOPI_ENGINE
+				// Same guard as the sneak-descend branch below: a mod's
+				// swim-block must not be bypassable via aux1_descends.
+				if (!physics_override.disable_swim_down) {
+#endif
 				speedV.Y = -speed_walk;
 				swimming_vertical = true;
+#if IS_VOPI_ENGINE
+				}
+#endif
 			} else if (is_climbing && !m_disable_descend) {
 				speedV.Y = -movement_speed_climb * physics_override.speed_climb;
 			} else {

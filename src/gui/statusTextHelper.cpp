@@ -237,7 +237,9 @@ void StatusTextHelper::setFontScale(f32 scale)
 		return;
 
 	const u16 base_font_size = g_fontengine->getDefaultFontSize();
-	const u16 font_size = std::round(base_font_size * scale);
+	// Clamped in float space so the u16 conversion cannot overflow on
+	// extreme user settings (0 = keep the default font)
+	const u16 font_size = rangelim(std::round(base_font_size * scale), 0.0f, 72.0f);
 	if (font_size == 0)
 		return;
 
