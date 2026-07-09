@@ -773,6 +773,11 @@ static bool use_debugger(int argc, char *argv[])
 }
 
 #if CHECK_CLIENT_BUILD() && IS_VOPI_ENGINE
+// Runs on whatever thread called set("language"). Translations::clear() is
+// not synchronized with its readers (client/main thread), so "language" must
+// only ever be set from the main thread — true for all current writers (menu
+// UI, device-language sync in init_common). A server-side mod setting it
+// through Lua would race; do not add such a path without adding locking.
 static void language_setting_changed(const std::string &name, void *userdata)
 {
 	init_gettext(porting::path_locale.c_str(),
