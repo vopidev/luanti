@@ -83,6 +83,12 @@ video::ITexture *MenuTextureSource::getTexture(const std::string &name, u32 *id)
 	if (!image)
 		return NULL;
 
+	// Seed the GUI scaling filter's image cache while the CPU-side image is
+	// still at hand (same as TextureSource::generateTexture does in-game).
+	// Without this, gui_scaling_filter has to read the texture back from the
+	// GPU on first draw — a stall, and the GLES readback path is fragile.
+	guiScalingCache(io::path(name.c_str()), m_driver, image);
+
 	retval = m_driver->addTexture(name.c_str(), image);
 	image->drop();
 
