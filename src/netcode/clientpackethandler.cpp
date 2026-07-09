@@ -37,6 +37,7 @@
 #include "gettext.h"
 #include "skyparams.h"
 #include "particles.h"
+#include <cmath>
 #include <memory>
 #include <sstream>
 
@@ -596,6 +597,14 @@ void Client::handleCommand_SetCameraPitchRange(NetworkPacket *pkt)
 
 	*pkt >> pitch_min >> pitch_max;
 
+	// These feed rangelim() on the camera pitch every frame, so an
+	// out-of-range or non-finite bound (e.g. +inf) from a hostile server
+	// would pin the pitch there for the rest of the session. core::clamp
+	// maps NaN to a finite bound, and clamping the max to [pitch_min, 90]
+	// keeps the pair well-ordered.
+	pitch_min = core::clamp(pitch_min, -90.0f, 90.0f);
+	pitch_max = core::clamp(pitch_max, pitch_min, 90.0f);
+
 	LocalPlayer *player = m_env.getLocalPlayer();
 	assert(player != NULL);
 
@@ -610,6 +619,15 @@ void Client::handleCommand_SetCameraYawRange(NetworkPacket *pkt)
 	f32 yaw_min, yaw_max;
 
 	*pkt >> limited >> yaw_min >> yaw_max;
+
+	// The yaw-limit math in game.cpp happens to be NaN-tolerant, but never
+	// store non-finite bounds in fields read every frame; treat them as
+	// "no limit" instead of trusting the server.
+	if (!std::isfinite(yaw_min) || !std::isfinite(yaw_max)) {
+		limited = false;
+		yaw_min = 0.0f;
+		yaw_max = 0.0f;
+	}
 
 	LocalPlayer *player = m_env.getLocalPlayer();
 	assert(player != NULL);

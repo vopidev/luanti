@@ -72,6 +72,7 @@
 #include <iostream>
 #include <queue>
 #include <algorithm>
+#include <cmath>
 #include <sstream>
 #include <csignal>
 
@@ -3703,6 +3704,16 @@ bool Server::setCameraPitchRange(RemotePlayer *player, f32 pitch_min, f32 pitch_
 	if (!player)
 		return false;
 
+	// Every comparison below is false for NaN (rangelim included), so a
+	// non-finite bound would reach the synced fields and the Lua getter
+	// unclamped, and the no-change check would re-send the packet forever.
+	if (!std::isfinite(pitch_min) || !std::isfinite(pitch_max)) {
+		warningstream << "Server::setCameraPitchRange(): non-finite range ["
+				<< pitch_min << ", " << pitch_max << "] for player \""
+				<< player->getName() << "\", ignoring" << std::endl;
+		return false;
+	}
+
 	// Keep within the physically meaningful range and well-ordered.
 	pitch_min = rangelim(pitch_min, -90.0f, 90.0f);
 	pitch_max = rangelim(pitch_max, -90.0f, 90.0f);
@@ -3726,6 +3737,15 @@ bool Server::setCameraYawRange(RemotePlayer *player, bool limited, f32 yaw_min, 
 		return false;
 
 	if (limited) {
+		// Same rationale as in setCameraPitchRange(); additionally
+		// "inf < inf" is false, so [+inf, +inf] would pass both arc checks.
+		if (!std::isfinite(yaw_min) || !std::isfinite(yaw_max)) {
+			warningstream << "Server::setCameraYawRange(): non-finite arc ["
+					<< yaw_min << ", " << yaw_max << "] for player \""
+					<< player->getName() << "\", ignoring" << std::endl;
+			return false;
+		}
+
 		// Keep the arc well-ordered and at most a full turn wide.
 		if (yaw_max < yaw_min)
 			yaw_max = yaw_min;
