@@ -118,7 +118,7 @@ public:
 
 	//! Get the display density in dots per inch.
 	float getDisplayDensity() const override;
-	
+
 #ifdef _IRR_IOS_PLATFORM_
 	void *getViewController();
 #endif

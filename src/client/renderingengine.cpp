@@ -233,7 +233,7 @@ RenderingEngine::RenderingEngine(MyEventReceiver *receiver)
 
 	g_settings->registerChangedCallback("fullscreen", settingChangedCallback, this);
 	g_settings->registerChangedCallback("window_maximized", settingChangedCallback, this);
-	
+
 #ifdef __IOS__
 	if (m_device) {
 		CIrrDeviceSDL* dev = dynamic_cast<CIrrDeviceSDL*>(m_device);

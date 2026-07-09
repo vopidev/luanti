@@ -547,7 +547,7 @@ void Camera::update(LocalPlayer* player, f32 frametime, f32 tool_reload_ratio)
 		m_curr_fov_degrees = m_cache_fov;
 	}
 	m_curr_fov_degrees = rangelim(m_curr_fov_degrees, 1.0f, 160.0f);
-		
+
 #if IS_VOPI_ENGINE
 	/*
 	 * Apply server-sent view bobbing amount, instantaneous or smooth transition.

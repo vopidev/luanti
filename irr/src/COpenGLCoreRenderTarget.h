@@ -185,7 +185,7 @@ public:
 							// iOS supports only OpenGL ES 3.0, and GL_TEXTURE_2D_MULTISAMPLE appeared in ES 3.1
 							os::Printer::log("GL_TEXTURE_2D_MULTISAMPLE is not supported on iOS (requires OpenGL ES 3.1+)", ELL_WARNING);
 							os::Printer::log("MSAA disabled for this texture", ELL_WARNING);
-							
+
 							// Fallback to a regular 2D texture
 							textarget = GL_TEXTURE_2D;
 #endif

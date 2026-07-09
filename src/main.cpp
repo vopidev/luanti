@@ -861,7 +861,7 @@ static bool init_common(const Settings &cmd_args, int argc, char *argv[])
 #endif
 
 	init_log_streams(cmd_args);
-	
+
 	// Initialize random seed
 	u64 seed;
 	if (!porting::secure_rand_fill_buf(&seed, sizeof(seed))) {

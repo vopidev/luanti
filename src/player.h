@@ -249,7 +249,7 @@ public:
 	{
 		return m_fov_override_spec;
 	}
-	
+
 #if IS_VOPI_ENGINE
 	bool setViewBobbing(const PlayerViewBobbingSpec &spec)
 	{
