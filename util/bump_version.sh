@@ -43,7 +43,11 @@ read_versions() {
 # in: $1
 read_proto_ver() {
 	local ref=$1
-	local output=$(git show "$ref":src/network/networkprotocol.cpp 2>/dev/null)
+	local output=$(git show "$ref":src/netcode/networkprotocol.cpp 2>/dev/null)
+	if [ -z "$output" ]; then
+		# Fallback for tags before the network -> netcode rename
+		output=$(git show "$ref":src/network/networkprotocol.cpp 2>/dev/null)
+	fi
 	if [ -z "$output" ]; then
 		# Fallback to previous file (for tags < 5.10.0)
 		output=$(git show "$ref":src/network/networkprotocol.h)
