@@ -4293,9 +4293,10 @@ void GUIFormSpecMenu::drawSelectedItem()
 			if (m_selected_active) {
 				// Cached once at first call (lazy static init). Defaults registered
 				// in defaultsettings.cpp with platform-specific values.
-				static thread_local const s32 bg_padding  = g_settings->getS32("selected_slot_bg_padding");
-				static thread_local const s32 bg_offset_x = g_settings->getS32("selected_slot_bg_offset_x");
-				static thread_local const s32 bg_offset_y = g_settings->getS32("selected_slot_bg_offset_y");
+				// Sanity-clamped (±4096): they feed plain s32 rect arithmetic.
+				static thread_local const s32 bg_padding  = rangelim(g_settings->getS32("selected_slot_bg_padding"), -4096, 4096);
+				static thread_local const s32 bg_offset_x = rangelim(g_settings->getS32("selected_slot_bg_offset_x"), -4096, 4096);
+				static thread_local const s32 bg_offset_y = rangelim(g_settings->getS32("selected_slot_bg_offset_y"), -4096, 4096);
 				core::rect<s32> bg_rect(
 					rect.UpperLeftCorner.X - bg_padding + bg_offset_x,
 					rect.UpperLeftCorner.Y - bg_padding + bg_offset_y,
@@ -4534,11 +4535,12 @@ void GUIFormSpecMenu::showTooltip(const std::wstring &text,
 #if IS_VOPI_ENGINE
 	// Cached once at first call (lazy static init). Defaults registered in
 	// defaultsettings.cpp with platform-specific values.
-	static thread_local const s32 corner_size    = g_settings->getS32("tooltip_corner_size");
-	static thread_local const s32 padding_width  = g_settings->getS32("tooltip_padding_width");
-	static thread_local const s32 padding_height = g_settings->getS32("tooltip_padding_height");
-	static thread_local const s32 bg_offset_x    = g_settings->getS32("tooltip_bg_offset_x");
-	static thread_local const s32 bg_offset_y    = g_settings->getS32("tooltip_bg_offset_y");
+	// Sanity-clamped (±4096): they feed plain s32 rect arithmetic.
+	static thread_local const s32 corner_size    = rangelim(g_settings->getS32("tooltip_corner_size"), -4096, 4096);
+	static thread_local const s32 padding_width  = rangelim(g_settings->getS32("tooltip_padding_width"), -4096, 4096);
+	static thread_local const s32 padding_height = rangelim(g_settings->getS32("tooltip_padding_height"), -4096, 4096);
+	static thread_local const s32 bg_offset_x    = rangelim(g_settings->getS32("tooltip_bg_offset_x"), -4096, 4096);
+	static thread_local const s32 bg_offset_y    = rangelim(g_settings->getS32("tooltip_bg_offset_y"), -4096, 4096);
 #else
 	setStaticText(m_tooltip_element, ntext);
 #endif

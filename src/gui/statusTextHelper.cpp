@@ -179,12 +179,14 @@ void StatusTextHelper::updatePosition()
 		// Padding, corner size and background offset are configurable (mirrors
 		// the tooltip) so the panel can be tuned relative to the text. Cached
 		// once (lazy static), like the tooltip's knobs.
-		static thread_local const s32 cfg_corner  = g_settings->getS32("status_text_corner_size");
-		static thread_local const s32 pad_w       = g_settings->getS32("status_text_padding_width");
-		static thread_local const s32 pad_h       = g_settings->getS32("status_text_padding_height");
-		static thread_local const s32 bg_offset_x = g_settings->getS32("status_bg_offset_x");
-		static thread_local const s32 bg_offset_y = g_settings->getS32("status_bg_offset_y");
-		static thread_local const s32 hotbar_gap  = g_settings->getS32("status_hotbar_gap");
+		// Sanity-clamped (±4096, like the HUD rect fields): they feed plain
+		// s32 rect arithmetic, where an absurd value could overflow.
+		static thread_local const s32 cfg_corner  = rangelim(g_settings->getS32("status_text_corner_size"), -4096, 4096);
+		static thread_local const s32 pad_w       = rangelim(g_settings->getS32("status_text_padding_width"), -4096, 4096);
+		static thread_local const s32 pad_h       = rangelim(g_settings->getS32("status_text_padding_height"), -4096, 4096);
+		static thread_local const s32 bg_offset_x = rangelim(g_settings->getS32("status_bg_offset_x"), -4096, 4096);
+		static thread_local const s32 bg_offset_y = rangelim(g_settings->getS32("status_bg_offset_y"), -4096, 4096);
+		static thread_local const s32 hotbar_gap  = rangelim(g_settings->getS32("status_hotbar_gap"), -4096, 4096);
 
 		const s32 central_height = text_height + (2 * pad_h);
 		// Side (corner) width: a positive setting pins it; 0 keeps the
