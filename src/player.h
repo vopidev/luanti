@@ -304,6 +304,13 @@ public:
 	// means no node is currently selected.
 	bool m_has_selected_node = false;
 	v3s16 m_selected_node;
+
+	// VOPI: token bucket rate-limiting TOSERVER_NODE_SELECTED handling, so a
+	// modified client alternating positions (which defeats the same-position
+	// dedupe) cannot force node callbacks at network rate. Refilled on demand
+	// from the wall clock; see Server::handleCommand_NodeSelected.
+	f32 m_node_select_tokens = 0.0f;
+	u64 m_node_select_last_ms = 0;
 #endif
 
 	// Get actual usable number of hotbar items (clamped to size of "main" list)

@@ -1298,8 +1298,10 @@ PlayerSAO *Server::StageTwoClientInit(session_t peer_id)
 #if IS_VOPI_ENGINE
 	// Tell the client whether to report node selection (only when a mod registered
 	// on_selectnode / on_deselectnode), so we don't carry needless
-	// TOSERVER_NODE_SELECTED traffic when nothing consumes it.
-	SendNodeSelectionReporting(peer_id, m_script->has_on_select_callbacks());
+	// TOSERVER_NODE_SELECTED traffic when nothing consumes it. Cache it too, so
+	// the handler can drop reports from a modified client that ignores this.
+	m_node_selection_enabled = m_script->has_on_select_callbacks();
+	SendNodeSelectionReporting(peer_id, m_node_selection_enabled);
 #endif
 
 	/*

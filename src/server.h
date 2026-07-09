@@ -696,6 +696,12 @@ private:
 	// If true, do not allow multiple players and hide some multiplayer
 	// functionality
 	bool m_simple_singleplayer_mode;
+#if IS_VOPI_ENGINE
+	// Whether any mod registered on_selectnode / on_deselectnode. Cached from
+	// the value sent to clients via SendNodeSelectionReporting so the node-
+	// selected handler can drop reports cheaply when nothing consumes them.
+	bool m_node_selection_enabled = false;
+#endif
 	u16 m_max_chatmessage_length;
 	// For "dedicated" server list flag
 	bool m_dedicated;

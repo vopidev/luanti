@@ -891,6 +891,13 @@ void Server::handleCommand_NodeSelected(NetworkPacket *pkt)
 		[6] serialized PointedThing
 	*/
 
+	// A well-behaved client only reports selections when a mod consumes them
+	// (SendNodeSelectionReporting tells it so). Drop the report before any
+	// deserialization when nothing is listening, so a modified client that
+	// ignores that cannot spend server work here.
+	if (!m_node_selection_enabled)
+		return;
+
 	std::istringstream tmp_is(pkt->readLongString(), std::ios::binary);
 	PointedThing pointed;
 	pointed.deSerialize(tmp_is);
@@ -913,9 +920,41 @@ void Server::handleCommand_NodeSelected(NetworkPacket *pkt)
 	const v3s16 new_pos = has_new ? pointed.node_undersurface : v3s16();
 
 	// Edge-triggered on the client, but guard against duplicates/replays anyway.
+	// Done before the rate limit so repeats cost nothing and never spend tokens.
 	if (has_new == player->m_has_selected_node &&
 			(!has_new || new_pos == player->m_selected_node))
 		return;
+
+	// Token-bucket rate limit. A real client is edge-triggered and stays well
+	// under the cap even when turning fast; a modified client alternating two
+	// positions (which defeats the dedupe above) is throttled here. Placed
+	// before the range check so far-position spam cannot drive that check or
+	// its on_cheat callback at network rate either.
+	{
+		const f32 bucket_capacity = 30.0f; // burst allowance
+		const f32 refill_per_s = 60.0f;    // sustained rate, >= worst-case turn
+		const u64 now = porting::getTimeMs();
+		if (player->m_node_select_last_ms == 0) {
+			player->m_node_select_tokens = bucket_capacity;
+		} else {
+			const f32 dt = (now - player->m_node_select_last_ms) / 1000.0f;
+			const f32 t = player->m_node_select_tokens + dt * refill_per_s;
+			player->m_node_select_tokens = t > bucket_capacity ? bucket_capacity : t;
+		}
+		player->m_node_select_last_ms = now;
+		if (player->m_node_select_tokens < 1.0f)
+			return; // over rate: drop (may also be a lag spike, so no on_cheat)
+		player->m_node_select_tokens -= 1.0f;
+	}
+
+	// Range-check the newly selected node like handleCommand_Interact, so a mod
+	// is never fed a selection for an arbitrary far (but loaded) position.
+	if (has_new) {
+		const f32 d = playersao->getEyePosition()
+				.getDistanceFrom(intToFloat(new_pos, BS));
+		if (!checkInteractDistance(player, d, "node_selected"))
+			return; // too far: checkInteractDistance fired on_cheat; keep state
+	}
 
 	// Fire deselect for the previously selected node (if it still exists).
 	if (player->m_has_selected_node) {
