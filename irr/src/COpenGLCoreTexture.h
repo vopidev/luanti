@@ -307,8 +307,15 @@ public:
 				GLuint tmpFBO = 0;
 				Driver->irrGlGenFramebuffers(1, &tmpFBO);
 
-				GLuint prevFBO = 0;
-				Driver->getCacheHandler()->getFBO(prevFBO);
+				// Query the real framebuffer binding from GL instead of the
+				// cache handler: before the first setRenderTarget() the cache
+				// still holds its initial 0 while the actual binding may be
+				// non-zero (on iOS the screen framebuffer is a CAEAGLLayer
+				// FBO bound behind the cache's back). Restoring a stale 0
+				// would redirect all subsequent rendering into a nonexistent
+				// framebuffer.
+				GLint prevFBO = 0;
+				GL.GetIntegerv(GL_FRAMEBUFFER_BINDING, &prevFBO);
 				Driver->getCacheHandler()->setFBO(tmpFBO);
 
 				GLenum tmpTextureType = getTextureTarget(layer);
@@ -325,7 +332,8 @@ public:
 				Driver->irrGlFramebufferTexture2D(GL_FRAMEBUFFER,
 					GL_COLOR_ATTACHMENT0, tmpTextureType, 0, 0);
 
-				Driver->getCacheHandler()->setFBO(prevFBO);
+				// Also resyncs the cache handler with the real GL state.
+				Driver->getCacheHandler()->setFBO(static_cast<GLuint>(prevFBO));
 
 				Driver->irrGlDeleteFramebuffers(1, &tmpFBO);
 
