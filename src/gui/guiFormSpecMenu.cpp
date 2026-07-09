@@ -2088,6 +2088,14 @@ void GUIFormSpecMenu::parseLabel(parserData* data, const std::string &element)
 	// - label[x,y;text;alignment]
 	// - label[x,y;w,h;text]
 	// - label[x,y;w,h;text;alignment]
+	//
+	// The alignment ("left" default, "center", "right") is an anchor: it
+	// selects what x means — the left edge, the middle or the right edge of
+	// the label (of the text when no size is given, of the w,h rect
+	// otherwise). Unlike every other formspec element, x is therefore not
+	// always the top-left corner. This is deliberate: it lets a label be
+	// pinned to a layout point regardless of its width, identically in both
+	// formats, and existing formspecs rely on it.
 	if (!precheckElement("label", element, 2, 4, parts))
 #else
 	// Original logic: [pos], [size], [text] or [pos], [text]
