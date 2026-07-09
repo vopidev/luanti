@@ -4022,7 +4022,10 @@ Some types may inherit styles from parent types.
     * scrollbar_thumb_top_img - (textarea only) image, top/left cap of slider (optional).
     * scrollbar_thumb_bottom_img - (textarea only) image, bottom/right cap of slider (optional).
     * scrollbar_thumb_top_size - (textarea only) integer, size in pixels of the top cap.
+      If not set (or <= 0), the cap auto-sizes to the scrollbar's width, so a
+      square cap texture stays round at any display scale.
     * scrollbar_thumb_bottom_size - (textarea only) integer, size in pixels of the bottom cap.
+      Auto-sizes like scrollbar_thumb_top_size when not set.
 * model
     * bgcolor - color, sets background color.
     * noclip - boolean, set to true to allow the element to exceed formspec bounds.
@@ -4059,7 +4062,10 @@ Some types may inherit styles from parent types.
     * scrollbar_thumb_top_img - image, top/left cap of slider (optional).
     * scrollbar_thumb_bottom_img - image, bottom/right cap of slider (optional).
     * scrollbar_thumb_top_size - integer, size in pixels of the top cap.
+      If not set (or <= 0), the cap auto-sizes to the scrollbar's width, so a
+      square cap texture stays round at any display scale.
     * scrollbar_thumb_bottom_size - integer, size in pixels of the bottom cap.
+      Auto-sizes like scrollbar_thumb_top_size when not set.
 * tabheader
     * noclip - boolean, set to true to allow the element to exceed formspec bounds.
     * sound - a sound to be played when a different tab is selected.

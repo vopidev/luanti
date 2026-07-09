@@ -7,10 +7,12 @@ For conditions of distribution and use, see copyright notice in irrlicht.h
 #include "guiScrollBar.h"
 #include "guiButton.h"
 #if IS_VOPI_ENGINE
+#include "client/guiscalingfilter.h"
 #include "util/numeric.h"
 #include <IVideoDriver.h>
 #include <IGUIEnvironment.h>
 #include <IGUISkin.h>
+#include <algorithm>
 #endif
 
 GUIScrollBar::GUIScrollBar(IGUIEnvironment *environment, IGUIElement *parent, s32 id,
@@ -86,7 +88,12 @@ void GUIScrollBar::drawTexture(video::ITexture *texture, const core::rect<s32> &
 	if (!texture || !driver)
 		return;
 	const core::dimension2du ts = texture->getOriginalSize();
-	driver->draw2DImage(texture, dest,
+	// Filtered-scaled draw (same path as image[] / drawItemStack): with
+	// gui_scaling_filter enabled the texture is pre-scaled on the CPU to the
+	// exact dest size instead of GPU nearest-sampling, which drops/duplicates
+	// texel rows of thin art at fractional scales. Falls back to a plain
+	// draw2DImage when the setting is off.
+	draw2DImageFilterScaled(driver, texture, dest,
 			core::rect<s32>(0, 0, ts.Width, ts.Height),
 			&AbsoluteClippingRect, nullptr, true);
 }
@@ -155,7 +162,7 @@ void GUIScrollBar::draw()
 		}
 	}
 
-	// Thumb (texture 1), optionally 3-part with fixed-size end caps (4,5).
+	// Thumb (texture 1), optionally 3-part with end caps (4,5).
 	if (core::isnotzero(range())) {
 		if (Horizontal) {
 			SliderRect.UpperLeftCorner.X = track.UpperLeftCorner.X + DrawPos - DrawHeight / 2;
@@ -167,29 +174,38 @@ void GUIScrollBar::draw()
 		const core::rect<s32> thumb = SliderRect;
 
 		if (m_textures.size() >= 6) {
+			// Cap sizes: explicit style px when configured (> 0), otherwise
+			// auto-match the bar's cross-axis width so square cap art stays
+			// round at any client display scale — a fixed px value in the
+			// style can't fit every DPI, since one formspec string is sent
+			// to all clients. Clamped so the caps never overlap inside a
+			// short thumb.
+			const s32 cross = Horizontal ? h : w;
+			const s32 thumb_len = Horizontal ? thumb.getWidth() : thumb.getHeight();
+			s32 top_size = m_slider_top_size > 0 ? m_slider_top_size : cross;
+			s32 bottom_size = m_slider_bottom_size > 0 ? m_slider_bottom_size : cross;
+			top_size = std::min(top_size, thumb_len / 2);
+			bottom_size = std::min(bottom_size, thumb_len - top_size);
+			s32 mid = thumb_len - (top_size + bottom_size);
+			if (mid <= 0)
+				mid = 1;
 			if (Horizontal) {
-				s32 mid = thumb.getWidth() - (m_slider_top_size + m_slider_bottom_size);
-				if (mid <= 0)
-					mid = 1;
 				core::rect<s32> a(thumb.UpperLeftCorner.X, thumb.UpperLeftCorner.Y,
-						thumb.UpperLeftCorner.X + m_slider_top_size, thumb.LowerRightCorner.Y);
+						thumb.UpperLeftCorner.X + top_size, thumb.LowerRightCorner.Y);
 				core::rect<s32> b(a.LowerRightCorner.X, thumb.UpperLeftCorner.Y,
 						a.LowerRightCorner.X + mid, thumb.LowerRightCorner.Y);
 				core::rect<s32> c(b.LowerRightCorner.X, thumb.UpperLeftCorner.Y,
-						b.LowerRightCorner.X + m_slider_bottom_size, thumb.LowerRightCorner.Y);
+						b.LowerRightCorner.X + bottom_size, thumb.LowerRightCorner.Y);
 				drawTexture(m_textures[1], b);
 				drawTexture(m_textures[4], a);
 				drawTexture(m_textures[5], c);
 			} else {
-				s32 mid = thumb.getHeight() - (m_slider_top_size + m_slider_bottom_size);
-				if (mid <= 0)
-					mid = 1;
 				core::rect<s32> a(thumb.UpperLeftCorner.X, thumb.UpperLeftCorner.Y,
-						thumb.LowerRightCorner.X, thumb.UpperLeftCorner.Y + m_slider_top_size);
+						thumb.LowerRightCorner.X, thumb.UpperLeftCorner.Y + top_size);
 				core::rect<s32> b(thumb.UpperLeftCorner.X, a.LowerRightCorner.Y,
 						thumb.LowerRightCorner.X, a.LowerRightCorner.Y + mid);
 				core::rect<s32> c(thumb.UpperLeftCorner.X, b.LowerRightCorner.Y,
-						thumb.LowerRightCorner.X, b.LowerRightCorner.Y + m_slider_bottom_size);
+						thumb.LowerRightCorner.X, b.LowerRightCorner.Y + bottom_size);
 				drawTexture(m_textures[1], b);
 				drawTexture(m_textures[4], a);
 				drawTexture(m_textures[5], c);
