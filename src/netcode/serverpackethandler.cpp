@@ -956,25 +956,31 @@ void Server::handleCommand_NodeSelected(NetworkPacket *pkt)
 			return; // too far: checkInteractDistance fired on_cheat; keep state
 	}
 
-	// Fire deselect for the previously selected node (if it still exists).
-	if (player->m_has_selected_node) {
-		bool pos_ok;
-		MapNode old_n = m_env->getMap().getNode(player->m_selected_node, &pos_ok);
-		if (pos_ok)
-			m_script->node_on_deselect(player->m_selected_node, old_n, playersao);
-	}
+	// Fire deselect for the previously selected node, reporting the node that
+	// was selected (snapshotted at select time), not whatever is at the
+	// position now — it may have been dug or replaced since.
+	if (player->m_has_selected_node)
+		m_script->node_on_deselect(player->m_selected_node,
+				player->m_selected_node_content, playersao);
 
 	// Update stored selection before firing on_select so callbacks see a
 	// consistent state.
 	player->m_has_selected_node = has_new;
 	player->m_selected_node = new_pos;
 
-	// Fire select for the newly selected node (if it exists).
+	// Fire select for the newly selected node (if it exists), and snapshot its
+	// content for the matching deselect.
 	if (has_new) {
 		bool pos_ok;
 		MapNode new_n = m_env->getMap().getNode(new_pos, &pos_ok);
-		if (pos_ok)
+		if (pos_ok) {
+			player->m_selected_node_content = new_n;
 			m_script->node_on_select(new_pos, new_n, playersao);
+		} else {
+			// Position not loaded: don't report a select, and clear the
+			// selection so no stale deselect fires later.
+			player->m_has_selected_node = false;
+		}
 	}
 }
 #endif

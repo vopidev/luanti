@@ -6,6 +6,7 @@
 
 #include "irrlichttypes_bloated.h"
 #include "inventory.h"
+#include "mapnode.h" // MapNode (VOPI: node-selection snapshot)
 #include "util/basic_macros.h"
 #include <string>
 #include <string_view>
@@ -304,6 +305,9 @@ public:
 	// means no node is currently selected.
 	bool m_has_selected_node = false;
 	v3s16 m_selected_node;
+	// Snapshot of the node content at select time, so on_deselectnode reports
+	// the node that was selected even if it was dug or replaced since.
+	MapNode m_selected_node_content;
 
 	// VOPI: token bucket rate-limiting TOSERVER_NODE_SELECTED handling, so a
 	// modified client alternating positions (which defeats the same-position

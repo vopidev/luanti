@@ -3071,22 +3071,27 @@ void Game::processPlayerInteraction(f32 dtime, bool show_hud)
 
 #if IS_VOPI_ENGINE
 	// VOPI: report node-selection changes to the server so it can fire the
-	// on_selectnode / on_deselectnode callbacks. Edge-triggered: only send when
-	// the selected node identity changes. Pointing at a different face of the
-	// same node, or at objects/air, is not a node-selection change.
+	// on_selectnode / on_deselectnode callbacks. Edge-triggered against what we
+	// last reported (not pointed_old, which also drives digging). While a menu
+	// is open or the player is dead they cannot point at a node, so report
+	// "none" — otherwise the frozen crosshair keeps the old selection and a mod
+	// HUD keyed to on_deselectnode sticks.
 	{
-		const bool now_node = pointed.type == POINTEDTHING_NODE;
-		const bool old_node = runData.pointed_old.type == POINTEDTHING_NODE;
+		const bool can_select = !isMenuActive() && !player->isDead();
+		const bool now_node = can_select && pointed.type == POINTEDTHING_NODE;
+		const v3s16 now_pos = now_node ? pointed.node_undersurface : v3s16();
 		bool selection_changed;
-		if (now_node != old_node)
-			selection_changed = true; // node <-> (object/air) transition
+		if (now_node != runData.reported_node_sel)
+			selection_changed = true; // node <-> none transition
 		else if (now_node)
-			selection_changed = pointed.node_undersurface !=
-					runData.pointed_old.node_undersurface;
+			selection_changed = now_pos != runData.reported_node_sel_pos;
 		else
-			selection_changed = false; // both non-node: no node is selected
-		if (selection_changed && client->wantsNodeSelectionReporting())
-			client->sendNodeSelected(pointed);
+			selection_changed = false;
+		if (selection_changed && client->wantsNodeSelectionReporting()) {
+			client->sendNodeSelected(now_node ? pointed : PointedThing());
+			runData.reported_node_sel = now_node;
+			runData.reported_node_sel_pos = now_pos;
+		}
 	}
 #endif
 

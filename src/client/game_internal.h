@@ -49,6 +49,15 @@ struct GameRunData {
 	u16 dig_index;
 	u16 new_playeritem;
 	PointedThing pointed_old;
+#if IS_VOPI_ENGINE
+	// Client-side mirror of the node selection last reported to the server
+	// (edge-triggered). Kept separate from pointed_old, which also drives
+	// digging, so selection can be forced to "none" (menu open / dead) without
+	// disturbing dig state — see the node-selection reporting in
+	// processPlayerInteraction.
+	bool reported_node_sel = false;
+	v3s16 reported_node_sel_pos;
+#endif
 	bool digging;
 	bool punching;
 	bool btn_down_for_dig;
