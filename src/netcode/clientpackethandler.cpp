@@ -553,7 +553,11 @@ void Client::handleCommand_ViewBobbing(NetworkPacket *pkt)
 	LocalPlayer *player = m_env.getLocalPlayer();
 	assert(player);
 	player->setViewBobbing({ amount, is_multiplier, transition_time });
-	m_camera->notifyViewBobbingChange();
+	// The camera is created only after media download (Game::createClient),
+	// so this packet can arrive while m_camera is still null. The spec is
+	// already stored on the player; only the transition kick is skipped.
+	if (m_camera)
+		m_camera->notifyViewBobbingChange();
 }
 
 void Client::handleCommand_SetTouchButtons(NetworkPacket *pkt)

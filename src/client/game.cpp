@@ -1453,15 +1453,20 @@ void Game::processUserInput(f32 dtime)
 			/* on touchcontrols step may generate own input events which ain't
 			 * what we want in case we just did clear them */
 #if IS_VOPI_ENGINE
+			// Null-guarded for consistency with the other getLocalPlayer()
+			// consumers around here (in practice updateFrame has already
+			// dereferenced the player unguarded by this point).
 			LocalPlayer *touch_player = client->getEnv().getLocalPlayer();
-			if (touch_player->hud_flags & HUD_FLAG_TOUCH_CONTROLS_VISIBLE)
-				g_touchcontrols->show();
-			else
-				g_touchcontrols->hide();
-			// Re-assert per-button visibility every frame so it survives a
-			// TouchControls recreation (the mask lives on the player, not here).
-			g_touchcontrols->setHiddenButtons(touch_player->touch_hidden_mask);
-			g_touchcontrols->setInteractionBlocked(touch_player->block_interaction);
+			if (touch_player) {
+				if (touch_player->hud_flags & HUD_FLAG_TOUCH_CONTROLS_VISIBLE)
+					g_touchcontrols->show();
+				else
+					g_touchcontrols->hide();
+				// Re-assert per-button visibility every frame so it survives a
+				// TouchControls recreation (the mask lives on the player, not here).
+				g_touchcontrols->setHiddenButtons(touch_player->touch_hidden_mask);
+				g_touchcontrols->setInteractionBlocked(touch_player->block_interaction);
+			}
 			// Lua-defined tappable HUD buttons: feed TouchControls the current
 			// button rects, and tell the HUD which one is held (pressed visual).
 			// Gated on show_hud like the other HUD consumers: a hidden HUD

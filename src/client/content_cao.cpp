@@ -1604,10 +1604,20 @@ void GenericCAO::processMessage(const std::string &data)
 		}
 
 #if IS_VOPI_ENGINE
-		// VOPI: disable swim controls for custom swimming behavior
+		// VOPI: disable swim controls for custom swimming behavior.
+		// Both flags or none: canRead() only guarantees one byte, and the
+		// second readU8 on a truncated message would throw SerializationError
+		// (uncaught in debug builds). Treat a half block as malformed and
+		// keep the defaults.
 		if (canRead(is)) {
-			phys.disable_swim_up = readU8(is);
-			phys.disable_swim_down = readU8(is);
+			u8 swim_up = readU8(is);
+			if (canRead(is)) {
+				phys.disable_swim_up = swim_up;
+				phys.disable_swim_down = readU8(is);
+			} else {
+				warningstream << "GenericCAO: truncated swim-override block"
+						" in physics override message" << std::endl;
+			}
 		}
 #endif
 
