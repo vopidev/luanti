@@ -54,6 +54,12 @@ public:
 		return m_orientation == HORIZONTAL ? delta.X : delta.Y;
 	}
 
+	// Projects a pointer delta onto the axis perpendicular to scrolling.
+	inline s32 crossAxisDelta(const v2s32 &delta) const
+	{
+		return m_orientation == HORIZONTAL ? delta.Y : delta.X;
+	}
+
 	// Pans the content by a pixel delta along the orientation, relative to the
 	// given reference scrollbar position. The scrollbar clamps to its range.
 	void scrollByPixels(s32 origin_scrollpos, const v2s32 &pixel_delta);
@@ -96,6 +102,13 @@ private:
 	f32 m_fling_vel = 0.0f; //< axis velocity, pixels per millisecond
 	f32 m_fling_px = 0.0f;  //< current content offset along the axis, in pixels
 	u64 m_fling_last_ms = 0;
+	// Field sends during a fling are throttled: setPosAndSend() emits a scrollbar
+	// change that a named scroll_container turns into a TOSERVER_INVENTORY_FIELDS
+	// (on_player_receive_fields), which at frame rate for the whole momentum
+	// glide would spam server mods. Between throttled sends the thumb is moved
+	// silently; a pending change is flushed when the fling stops.
+	u64 m_fling_last_send_ms = 0;
+	bool m_fling_send_pending = false;
 #endif
 
 };

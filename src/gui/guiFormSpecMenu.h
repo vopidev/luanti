@@ -397,9 +397,10 @@ protected:
 	// tap-based (no press-drag item distribution).
 	enum class TouchScrollPhase
 	{
-		Inactive, // no finger tracked
-		Pending,  // finger down in a scrollable container, press withheld
-		Scrolling // movement threshold crossed, panning the container
+		Inactive,  // no finger tracked
+		Pending,   // finger down in a scrollable container, press withheld
+		Scrolling, // movement threshold crossed, panning the container
+		Cancelled  // swipe went across the scroll axis: neither pan nor tap
 	};
 	TouchScrollPhase m_touch_scroll_phase = TouchScrollPhase::Inactive;
 	GUIScrollContainer *m_touch_scroll_target = nullptr;

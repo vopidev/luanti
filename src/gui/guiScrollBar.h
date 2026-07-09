@@ -44,6 +44,21 @@ public:
 	// EGET_SCROLL_BAR_CHANGED (server notify + bound-container sync).
 	using CGUIScrollBar::setPosAndSend;
 
+	// Emit EGET_SCROLL_BAR_CHANGED for the current position without moving the
+	// bar, to flush a value reached via the silent setPos() (used by fling
+	// send-throttling) to listeners.
+	void sendChanged()
+	{
+		if (Parent) {
+			SEvent e;
+			e.EventType = EET_GUI_EVENT;
+			e.GUIEvent.Caller = this;
+			e.GUIEvent.Element = nullptr;
+			e.GUIEvent.EventType = EGET_SCROLL_BAR_CHANGED;
+			Parent->OnEvent(e);
+		}
+	}
+
 private:
 	void drawTexture(video::ITexture *texture, const core::rect<s32> &dest) const;
 

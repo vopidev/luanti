@@ -151,6 +151,8 @@ namespace {
 	constexpr f32 FLING_MIN_SPEED = 0.05f;
 	// Cap on launch speed so a hard flick can't rocket the content (px per ms).
 	constexpr f32 FLING_MAX_SPEED = 6.0f;
+	// Minimum gap between field-send scrollbar updates during a fling (ms).
+	constexpr u64 FLING_SEND_INTERVAL_MS = 100;
 }
 
 void GUIScrollContainer::startFling(f32 axis_velocity_px_per_ms)
@@ -174,6 +176,13 @@ void GUIScrollContainer::stopFling()
 {
 	m_flinging = false;
 	m_fling_vel = 0.0f;
+	// Flush a throttled-away position change so the server ends up with the
+	// final scroll position even if the last step only moved the thumb silently
+	// (setPosAndSend would be a no-op here since the position already matches).
+	if (m_fling_send_pending && m_scrollbar) {
+		m_scrollbar->sendChanged();
+		m_fling_send_pending = false;
+	}
 }
 
 void GUIScrollContainer::setContentOffset(s32 offset_px)
@@ -226,8 +235,20 @@ void GUIScrollContainer::stepFling()
 	// momentum reaches the server / bound containers the same way a scrollbar
 	// drag does and the position survives a formspec rebuild.
 	const s32 pos = (s32)std::lround(m_fling_px / m_scrollfactor);
-	if (pos != m_scrollbar->getPos())
-		m_scrollbar->setPosAndSend(pos);
+	if (pos != m_scrollbar->getPos()) {
+		// Throttle the field-send: send at most every FLING_SEND_INTERVAL_MS,
+		// and move the thumb silently in between so the glide stays smooth
+		// without a per-frame TOSERVER_INVENTORY_FIELDS. hit_bound always sends
+		// (the fling is ending). stopFling() flushes any pending change.
+		if (hit_bound || now - m_fling_last_send_ms >= FLING_SEND_INTERVAL_MS) {
+			m_scrollbar->setPosAndSend(pos);
+			m_fling_last_send_ms = now;
+			m_fling_send_pending = false;
+		} else {
+			m_scrollbar->setPos(pos);
+			m_fling_send_pending = true;
+		}
+	}
 
 	// Re-apply the smooth sub-quantum pixel offset: the EGET handler above
 	// repositions the content to the coarse scrollbar quantum, so override it to

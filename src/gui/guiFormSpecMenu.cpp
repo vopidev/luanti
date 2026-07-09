@@ -5021,6 +5021,13 @@ bool GUIFormSpecMenu::handleTouchScroll(const SEvent &event)
 	// Only single-finger gestures pan. Anything else (e.g. the two-finger
 	// right-click) cancels tracking and is left to the normal pipeline.
 	if (event.TouchInput.touchedCount != 1) {
+		// A second finger while still Pending must not swallow the withheld
+		// press: replay it so the child under the first finger still reacts
+		// (unless the press was only catching an in-flight fling). The trailing
+		// events flow through the normal pipeline once tracking is reset.
+		if (m_touch_scroll_phase == TouchScrollPhase::Pending &&
+				!m_touch_scroll_caught_fling)
+			GUIModalMenu::preprocessEvent(m_touch_scroll_press);
 		resetTouchScroll();
 		return false;
 	}
@@ -5064,15 +5071,34 @@ bool GUIFormSpecMenu::handleTouchScroll(const SEvent &event)
 		if (!isTrackingTouch(id))
 			return false;
 
+		// A finger that already went across the scroll axis (see below) is
+		// neither a tap nor a pan: keep swallowing its motion.
+		if (m_touch_scroll_phase == TouchScrollPhase::Cancelled)
+			return true;
+
 		if (m_touch_scroll_phase == TouchScrollPhase::Pending) {
 			// Classify: did the finger travel past the threshold along the
 			// scroll axis? The threshold scales with the formspec unit size.
-			s32 travel = m_touch_scroll_target->axisDelta(pointer - m_touch_scroll_down_pos);
+			const v2s32 moved = pointer - m_touch_scroll_down_pos;
+			s32 travel = m_touch_scroll_target->axisDelta(moved);
 			if (travel < 0)
 				travel = -travel;
 			const s32 threshold = std::max<s32>(8, std::min(imgsize.X, imgsize.Y) / 4);
-			if (travel < threshold)
+			if (travel < threshold) {
+				// Scroll axis still ambiguous. But if the finger has instead
+				// swiped across it past the same threshold, this is a
+				// perpendicular swipe (e.g. horizontal drag over a full-width
+				// row in a vertical list): cancel without ever replaying the
+				// press, so it cannot activate the widget underneath on release.
+				s32 cross = m_touch_scroll_target->crossAxisDelta(moved);
+				if (cross < 0)
+					cross = -cross;
+				if (cross >= threshold) {
+					m_touch_scroll_phase = TouchScrollPhase::Cancelled;
+					return true;
+				}
 				return true; // still ambiguous: keep withholding
+			}
 
 			// Promote to panning. Anchor the origin here so the motion is
 			// smooth (the threshold pixels are not counted as scroll).
@@ -5115,6 +5141,13 @@ bool GUIFormSpecMenu::handleTouchScroll(const SEvent &event)
 	case ETIE_LEFT_UP: {
 		if (!isTrackingTouch(id))
 			return false;
+
+		// A cancelled perpendicular swipe ends here: swallow the release without
+		// replaying the press (no activation) and without launching a fling.
+		if (m_touch_scroll_phase == TouchScrollPhase::Cancelled) {
+			resetTouchScroll();
+			return true;
+		}
 
 		const bool was_tap = m_touch_scroll_phase == TouchScrollPhase::Pending;
 		const bool caught = m_touch_scroll_caught_fling;
