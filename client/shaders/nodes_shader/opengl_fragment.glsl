@@ -17,7 +17,6 @@ uniform vec3 cameraPosition;
 uniform float animationTimer;
 uniform float crackAnimationLength;
 uniform float crackLevel;
-uniform float crackTextureScale;
 
 #ifdef ENABLE_DYNAMIC_SHADOWS
 	// shadow texture
@@ -425,16 +424,6 @@ float getShadow(sampler2D shadowsampler, vec2 smTexCoord, float realDistance)
 #endif
 #endif
 
-// maps [0, N] to [0, 1] like GL_REPEAT would
-vec2 uv_repeat(vec2 v)
-{
-	if (v.x > 1.0)
-		v.x = fract(v.x);
-	if (v.y > 1.0)
-		v.y = fract(v.y);
-	return v;
-}
-
 void main(void)
 {
 	vec2 uv = varTexCoord.st;
@@ -458,12 +447,28 @@ void main(void)
 	// Apply crack overlay
 	float crack_progress = min(crackLevel, crackAnimationLength - 1.0);
 	if (crack_progress >= 0.0) {
-		// undo scaling of e.g. world-aligned nodes
-		vec2 orig_uv = uv_repeat(uv * vec2(crackTextureScale));
+		// Project the crack in node-local space along the dominant axis of
+		// the normal, independently of the base texture UV layout, so that
+		// it stays intact on UV-mapped meshes, nodeboxes and geometry
+		// spanning multiple nodes (there it tiles per node).
+		// worldPosition is aligned to the node grid because cameraOffset is
+		// a whole number of nodes; nodes are centered on grid coordinates,
+		// hence the +0.5. One node is 10 units (BS).
+		// -y keeps the crack image upright on vertical surfaces.
+		vec3 np = worldPosition / 10.0 + 0.5;
+		vec3 an = abs(vNormal);
+		vec2 crack_uv;
+		if (an.y >= max(an.x, an.z))
+			crack_uv = np.xz;             // up/down facing surface
+		else if (an.x >= an.z)
+			crack_uv = vec2(np.z, -np.y); // east/west facing surface
+		else
+			crack_uv = vec2(np.x, -np.y); // north/south facing surface
+		crack_uv = fract(crack_uv);
 
 		vec2 cuv_offset = vec2(0.0, crack_progress / crackAnimationLength);
 		vec2 cuv_factor = vec2(1.0, 1.0 / crackAnimationLength);
-		vec4 crack = texture2D(crackTexture, cuv_offset + orig_uv * cuv_factor);
+		vec4 crack = texture2D(crackTexture, cuv_offset + crack_uv * cuv_factor);
 		base = mix(base, crack, crack.a);
 	}
 
