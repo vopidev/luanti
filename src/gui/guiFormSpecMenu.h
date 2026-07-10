@@ -30,6 +30,8 @@ class InventoryManager;
 class ISimpleTextureSource;
 class Client;
 class GUIScrollContainer;
+class GUIEditBoxWithScrollBar;
+class ITouchScrollTarget;
 class ISoundManager;
 class JoystickController;
 #if IS_VOPI_ENGINE
@@ -403,7 +405,7 @@ protected:
 		Cancelled  // swipe went across the scroll axis: neither pan nor tap
 	};
 	TouchScrollPhase m_touch_scroll_phase = TouchScrollPhase::Inactive;
-	GUIScrollContainer *m_touch_scroll_target = nullptr;
+	ITouchScrollTarget *m_touch_scroll_target = nullptr;
 	size_t m_touch_scroll_id = 0;            // id of the tracked finger
 	v2s32 m_touch_scroll_down_pos;           // finger pos at press (threshold)
 	u64 m_touch_scroll_down_ms = 0;          // time of press (for flick velocity)
@@ -415,11 +417,17 @@ protected:
 	f32 m_touch_scroll_velocity = 0.0f;       // smoothed finger speed (axis px/ms)
 	bool m_touch_scroll_caught_fling = false; // press landed on a flinging list
 
+	// Read-only textareas that pan by touch drag (leaf ITouchScrollTargets;
+	// they win over any scroll_container they may sit in). Pointers are owned
+	// by the GUI element tree, cleared together with m_scroll_containers.
+	std::vector<GUIEditBoxWithScrollBar *> m_scroll_textareas;
+
 	// Handles raw touch events for drag-to-scroll. Returns true if the event
 	// was consumed and must not be processed further.
 	bool handleTouchScroll(const SEvent &event);
-	// Innermost scrollable scroll_container whose viewport contains p, or null.
-	GUIScrollContainer *findScrollableAt(v2s32 p) const;
+	// Innermost scrollable target (read-only textarea or scroll_container)
+	// whose viewport contains p, or null.
+	ITouchScrollTarget *findScrollableAt(v2s32 p) const;
 	// Resets drag-to-scroll tracking to idle.
 	void resetTouchScroll();
 	// True while a finger gesture with the given id is being tracked.

@@ -113,7 +113,7 @@ void GUIScrollContainer::updateScrolling()
 }
 
 #if IS_VOPI_ENGINE
-bool GUIScrollContainer::isScrollable() const
+bool GUIScrollContainer::isScrollable()
 {
 	return m_scrollbar && m_scrollfactor != 0.0f &&
 			m_scrollbar->getMax() > m_scrollbar->getMin();
@@ -141,16 +141,9 @@ void GUIScrollContainer::scrollByPixels(s32 origin_scrollpos, const v2s32 &pixel
 		m_scrollbar->setPosAndSend(new_pos);
 }
 
+using namespace touch_scroll; // shared fling tuning (touchScrollTarget.h)
+
 namespace {
-	// Inertial-scroll tuning (touch fling); tweak for feel, device-tested.
-	// Fraction of velocity retained per 16.667 ms frame (~0.7 s glide).
-	constexpr f32 FLING_DECAY_PER_FRAME = 0.95f;
-	// Minimum launch speed needed to start a fling (finger pixels per ms).
-	constexpr f32 FLING_MIN_START_SPEED = 0.2f;
-	// Speed below which an in-flight fling stops (finger pixels per ms).
-	constexpr f32 FLING_MIN_SPEED = 0.05f;
-	// Cap on launch speed so a hard flick can't rocket the content (px per ms).
-	constexpr f32 FLING_MAX_SPEED = 6.0f;
 	// Minimum gap between field-send scrollbar updates during a fling (ms).
 	constexpr u64 FLING_SEND_INTERVAL_MS = 100;
 }
@@ -214,8 +207,8 @@ void GUIScrollContainer::stepFling()
 	m_fling_last_ms = now;
 	if (dt == 0)
 		return;
-	if (dt > 64)
-		dt = 64; // clamp after a hitch so the content can't teleport
+	if (dt > FLING_MAX_STEP_MS)
+		dt = FLING_MAX_STEP_MS; // clamp after a hitch so the content can't teleport
 
 	// Integrate in pixel space so the glide is smooth (1 px), not quantised to
 	// coarse scrollbar-position units.

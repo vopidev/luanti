@@ -53,6 +53,7 @@ public:
 		SCROLLBAR_THUMB_BOTTOM_IMG,
 		SCROLLBAR_THUMB_TOP_SIZE,
 		SCROLLBAR_THUMB_BOTTOM_SIZE,
+		SCROLLBAR_VISIBLE,
 #endif
 		NUM_PROPERTIES,
 		NONE
@@ -144,6 +145,8 @@ public:
 			return SCROLLBAR_THUMB_TOP_SIZE;
 		} else if (name == "scrollbar_thumb_bottom_size") {
 			return SCROLLBAR_THUMB_BOTTOM_SIZE;
+		} else if (name == "scrollbar_visible") {
+			return SCROLLBAR_VISIBLE;
 #endif
 		} else {
 			return NONE;

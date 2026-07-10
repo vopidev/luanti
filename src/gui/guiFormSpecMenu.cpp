@@ -1829,14 +1829,20 @@ void GUIFormSpecMenu::createTextField(parserData *data, FieldSpec &spec,
 	}
 
 
+	auto style = getDefaultStyleForElement(is_multiline ? "textarea" : "field", spec.fname);
+
 #if IS_VOPI_ENGINE
 	GUIEditBoxWithScrollBar *box = nullptr;
 #endif
 	gui::IGUIEditBox *e = nullptr;
 	if (is_multiline) {
 #if IS_VOPI_ENGINE
+		// scrollbar_visible=false drops the built-in scrollbar entirely: the
+		// text keeps the full element width and stays scrollable by touch
+		// drag / mouse wheel.
 		box = new GUIEditBoxWithScrollBar(spec.fdefault.c_str(), true, Environment,
-				data->current_parent, spec.fid, rect, m_tsrc, is_editable, true);
+				data->current_parent, spec.fid, rect, m_tsrc, is_editable,
+				style.getBool(StyleSpec::SCROLLBAR_VISIBLE, true));
 		e = box;
 #else
 		e = new GUIEditBoxWithScrollBar(spec.fdefault.c_str(), true, Environment,
@@ -1847,8 +1853,6 @@ void GUIFormSpecMenu::createTextField(parserData *data, FieldSpec &spec,
 				data->current_parent, spec.fid);
 		e->grab();
 	}
-
-	auto style = getDefaultStyleForElement(is_multiline ? "textarea" : "field", spec.fname);
 
 	if (e) {
 		if (is_editable && spec.fname == m_focused_element)
@@ -1879,6 +1883,12 @@ void GUIFormSpecMenu::createTextField(parserData *data, FieldSpec &spec,
 #if IS_VOPI_ENGINE
 		if (box != nullptr)
 			box->setScrollbarStyle(style, m_tsrc);
+#endif
+#if IS_VOPI_ENGINE && (defined(__ANDROID__) || defined(__IOS__))
+		// Read-only textareas pan by touch drag: register them as gesture
+		// targets (editable ones keep press-to-place-cursor semantics).
+		if (box && !is_editable)
+			m_scroll_textareas.push_back(box);
 #endif
 
 		e->drop();
@@ -3597,6 +3607,9 @@ void GUIFormSpecMenu::removeAll()
 	// containers it may reference are torn down. Lives here (not in
 	// regenerateGui) so the destructor path is covered too.
 	resetTouchScroll();
+	// Same hygiene for the gesture-target index of read-only textareas: the
+	// elements are about to be destroyed by removeAllChildren().
+	m_scroll_textareas.clear();
 #endif
 
 	// Remove children
@@ -3778,6 +3791,9 @@ void GUIFormSpecMenu::regenerateGui(v2u32 screensize)
 	m_inventory_rings.clear();
 	m_dropdowns.clear();
 	m_scroll_containers.clear();
+#if IS_VOPI_ENGINE && (defined(__ANDROID__) || defined(__IOS__))
+	m_scroll_textareas.clear();
+#endif
 	theme_by_name.clear();
 	theme_by_type.clear();
 	m_clickthrough_elements.clear();
@@ -5008,8 +5024,17 @@ void GUIFormSpecMenu::resetTouchScroll()
 	m_touch_scroll_caught_fling = false;
 }
 
-GUIScrollContainer *GUIFormSpecMenu::findScrollableAt(v2s32 p) const
+ITouchScrollTarget *GUIFormSpecMenu::findScrollableAt(v2s32 p) const
 {
+	// Read-only textareas are leaves: they can sit inside a scroll container
+	// but never contain one, so a scrollable textarea under the finger always
+	// wins over any container match.
+	for (GUIEditBoxWithScrollBar *ta : m_scroll_textareas) {
+		if (ta && ta->isTrulyVisible() && ta->isScrollable() &&
+				ta->getAbsoluteClippingRect().isPointInside(p))
+			return ta;
+	}
+
 	// Pick the innermost (deepest) scrollable container whose viewport contains
 	// the point. m_scroll_containers preserves declaration order and nested
 	// containers are declared after their parent, so reverse iteration yields
@@ -5056,7 +5081,14 @@ bool GUIFormSpecMenu::handleTouchScroll(const SEvent &event)
 				return false;
 			}
 		}
-		GUIScrollContainer *target = findScrollableAt(pointer);
+		// Same for the built-in scrollbar of a read-only textarea.
+		for (GUIEditBoxWithScrollBar *ta : m_scroll_textareas) {
+			if (ta && ta->isTrulyVisible() && ta->isPointOverScrollbar(pointer)) {
+				resetTouchScroll();
+				return false;
+			}
+		}
+		ITouchScrollTarget *target = findScrollableAt(pointer);
 		if (!target) {
 			resetTouchScroll();
 			return false; // not over a scrollable container: normal handling
@@ -5162,7 +5194,7 @@ bool GUIFormSpecMenu::handleTouchScroll(const SEvent &event)
 		const bool was_tap = m_touch_scroll_phase == TouchScrollPhase::Pending;
 		const bool caught = m_touch_scroll_caught_fling;
 		const SEvent press = m_touch_scroll_press;
-		GUIScrollContainer *target = m_touch_scroll_target;
+		ITouchScrollTarget *target = m_touch_scroll_target;
 		const f32 velocity = m_touch_scroll_velocity;
 		// Ignore stale velocity if the finger paused before lifting.
 		const bool moving = (porting::getTimeMs() - m_touch_scroll_last_ms)
