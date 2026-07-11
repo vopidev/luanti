@@ -475,8 +475,21 @@ std::optional<u16> TouchControls::getHotbarDropRequest()
 
 void TouchControls::setInventoryButtonRect(const recti &rect)
 {
-	if (m_inventory_btn)
-		m_inventory_btn->setRelativePosition(rect);
+	if (!m_inventory_btn)
+		return;
+
+	// The button is created with a zero-size placeholder rect (which
+	// IGUIElement clamps to its 1x1 MinSize), so the texture loaded at
+	// creation time was pre-scaled to a single pixel when
+	// gui_scaling_filter is on — stretched over the real rect it drew as
+	// a solid color square. Reload the texture whenever the size actually
+	// changes so the pre-scale matches the on-screen size; the per-frame
+	// calls with an unchanged size and the zero-size hide path skip it.
+	bool size_changed =
+			m_inventory_btn->getRelativePosition().getSize() != rect.getSize();
+	m_inventory_btn->setRelativePosition(rect);
+	if (size_changed && rect.getWidth() > 0)
+		loadButtonTexture(m_inventory_btn.get(), button_image_names[inventory_id]);
 }
 
 void TouchControls::pushTouchableHudRects(std::vector<std::pair<u32, recti>> rects)
