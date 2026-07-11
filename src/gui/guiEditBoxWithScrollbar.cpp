@@ -57,6 +57,13 @@ void GUIEditBoxWithScrollBar::draw()
 		OverrideBgColor = 0x00000001;
 	}
 
+#if IS_VOPI_ENGINE
+	// The base draw() re-breaks the text when the active font changed since
+	// the last break (e.g. a skin font swap); drop the cached height with it.
+	if (LastBreakFont != getActiveFont())
+		invalidateTextHeight();
+#endif
+
 	CGUIEditBox::draw();
 }
 
@@ -114,8 +121,6 @@ void GUIEditBoxWithScrollBar::setScrollbarStyle(const StyleSpec &style, ISimpleT
 
 // --- Touch drag-to-scroll (VOPI Engine, ITouchScrollTarget) ---
 
-using namespace touch_scroll; // shared fling tuning (touchScrollTarget.h)
-
 bool GUIEditBoxWithScrollBar::OnEvent(const SEvent &event)
 {
 	// Read-only multiline boxes: a pointer drag pans the text instead of
@@ -129,12 +134,21 @@ bool GUIEditBoxWithScrollBar::OnEvent(const SEvent &event)
 		const v2s32 p(event.MouseInput.X, event.MouseInput.Y);
 		switch (event.MouseInput.Event) {
 		case EMIE_LMOUSE_PRESSED_DOWN:
-			stopFling();
-			if (AbsoluteClippingRect.isPointInside(p)) {
-				m_panning = true;
-				m_pan_origin_y = p.Y;
-				m_pan_origin_scrollpos = VScrollPos;
+			if (!AbsoluteClippingRect.isPointInside(p)) {
+				// A press whose coordinates lie outside the box only arrives
+				// through focused-element dispatch. Mirror the base class:
+				// when focused, fall through to it (it declines the press so
+				// the parent formspec still sees e.g. click-outside-to-drop);
+				// when not, swallow it like the base would — but without its
+				// selection-marking side effect.
+				if (Environment->hasFocus(this))
+					break;
+				return true;
 			}
+			stopFling();
+			m_panning = true;
+			m_pan_origin_y = p.Y;
+			m_pan_origin_scrollpos = VScrollPos;
 			return true; // never start mouse marking
 		case EMIE_MOUSE_MOVED:
 			if (m_panning) {
@@ -149,8 +163,13 @@ bool GUIEditBoxWithScrollBar::OnEvent(const SEvent &event)
 			}
 			break;
 		case EMIE_LMOUSE_LEFT_UP:
-			m_panning = false;
-			return true; // no cursor placement, no marking
+			if (m_panning) {
+				m_panning = false;
+				return true;
+			}
+			if (Environment->hasFocus(this))
+				return true; // no cursor placement, no marking
+			break; // not ours: bubbles via the base, like stock behavior
 		case EMIE_LMOUSE_DOUBLE_CLICK:
 		case EMIE_LMOUSE_TRIPLE_CLICK:
 			return true; // no word/line selection
@@ -158,11 +177,8 @@ bool GUIEditBoxWithScrollBar::OnEvent(const SEvent &event)
 			// The base class wheel-scrolls only through a visible scrollbar;
 			// cover the scrollbar-less (style scrollbar_visible=false) case.
 			if (!VScrollBar && isScrollable()) {
-				s32 step = 10;
-				if (IGUIFont *font = getActiveFont())
-					step = 3 * (s32)font->getDimension(L"Ay").Height;
 				setScrollPosClamped(VScrollPos -
-						(s32)(event.MouseInput.Wheel * (f32)step));
+						(s32)(event.MouseInput.Wheel * (f32)wheelStepPixels()));
 				return true;
 			}
 			break;
@@ -175,14 +191,28 @@ bool GUIEditBoxWithScrollBar::OnEvent(const SEvent &event)
 
 void GUIEditBoxWithScrollBar::OnPostRender(u32 timeMs)
 {
-	if (m_flinging)
+	if (isFlinging())
 		stepFling();
 	CGUIEditBox::OnPostRender(timeMs);
 }
 
+s32 GUIEditBoxWithScrollBar::textHeightPixels()
+{
+	// Measuring walks every wrapped line through the font engine, so pan/fling
+	// hot paths must not pay it per event: read-only boxes cache the height
+	// (their text only changes via the overridden mutators, which invalidate),
+	// writable boxes measure fresh (their edits re-break the text through
+	// non-virtual base paths).
+	if (IsWritable)
+		return (s32)getTextDimension().Height;
+	if (m_text_height_cache < 0)
+		m_text_height_cache = (s32)getTextDimension().Height;
+	return m_text_height_cache;
+}
+
 s32 GUIEditBoxWithScrollBar::scrollRangePixels()
 {
-	return std::max(0, (s32)getTextDimension().Height - FrameRect.getHeight());
+	return std::max(0, textHeightPixels() - FrameRect.getHeight());
 }
 
 bool GUIEditBoxWithScrollBar::isScrollable()
@@ -192,9 +222,22 @@ bool GUIEditBoxWithScrollBar::isScrollable()
 
 void GUIEditBoxWithScrollBar::setScrollPosClamped(s32 pos)
 {
-	VScrollPos = core::s32_clamp(pos, 0, scrollRangePixels());
+	const s32 clamped = core::s32_clamp(pos, 0, scrollRangePixels());
+	if (clamped == VScrollPos && (!VScrollBar || VScrollBar->getPos() == clamped))
+		return;
+	VScrollPos = clamped;
 	if (VScrollBar)
-		VScrollBar->setPos(VScrollPos);
+		VScrollBar->setPos(clamped);
+}
+
+s32 GUIEditBoxWithScrollBar::wheelStepPixels() const
+{
+	// Keep in sync with createVScrollBar(): one notch = the scrollbar's small
+	// step (3 text lines), so wheel speed matches the scrollbar-driven path.
+	s32 font_height = 1;
+	if (IGUIFont *font = getActiveFont())
+		font_height = (s32)font->getDimension(L"Ay").Height;
+	return 3 * font_height;
 }
 
 void GUIEditBoxWithScrollBar::scrollByPixels(s32 origin_scrollpos, const v2s32 &pixel_delta)
@@ -208,59 +251,63 @@ void GUIEditBoxWithScrollBar::startFling(f32 axis_velocity_px_per_ms)
 {
 	if (!isScrollable())
 		return;
-	if (std::fabs(axis_velocity_px_per_ms) < FLING_MIN_START_SPEED) {
-		stopFling();
-		return;
-	}
-	m_fling_vel = std::max(-FLING_MAX_SPEED,
-			std::min(axis_velocity_px_per_ms, FLING_MAX_SPEED));
-	// Start from the current offset so the hand-off from the drag is seamless.
-	m_fling_px = (f32)VScrollPos;
-	m_fling_last_ms = porting::getTimeMs();
-	m_flinging = true;
+	// Finger velocity is positive downwards while a downward drag decreases
+	// VScrollPos, so the glide runs along the negated axis. Seeding from the
+	// current offset keeps the drag-to-glide hand-off seamless.
+	m_fling.start(-axis_velocity_px_per_ms, (f32)VScrollPos,
+			porting::getTimeMs());
 }
 
 void GUIEditBoxWithScrollBar::stopFling()
 {
-	m_flinging = false;
-	m_fling_vel = 0.0f;
+	m_fling.stop();
 }
 
 void GUIEditBoxWithScrollBar::stepFling()
 {
-	const u64 now = porting::getTimeMs();
-	u64 dt = now - m_fling_last_ms;
-	m_fling_last_ms = now;
-	if (dt == 0)
-		return;
-	if (dt > FLING_MAX_STEP_MS)
-		dt = FLING_MAX_STEP_MS; // clamp after a hitch so the text can't teleport
-
-	// Finger velocity is positive downwards and a downward drag decreases the
-	// scroll offset, so the glide continues in that same direction.
-	m_fling_px -= m_fling_vel * (f32)dt;
-
-	const f32 hi = (f32)scrollRangePixels();
-	bool hit_bound = false;
-	if (m_fling_px <= 0.0f) {
-		m_fling_px = 0.0f;
-		hit_bound = true;
-	} else if (m_fling_px >= hi) {
-		m_fling_px = hi;
-		hit_bound = true;
-	}
-
-	setScrollPosClamped((s32)std::lround(m_fling_px));
-
-	// Exponential friction, frame-rate independent.
-	m_fling_vel *= std::pow(FLING_DECAY_PER_FRAME, (f32)dt / 16.667f);
-	if (hit_bound || std::fabs(m_fling_vel) < FLING_MIN_SPEED)
-		stopFling();
+	m_fling.step(porting::getTimeMs(), 0.0f, (f32)scrollRangePixels());
+	// Apply the (possibly final, clamped) position either way.
+	setScrollPosClamped((s32)std::lround(m_fling.px));
 }
 
 bool GUIEditBoxWithScrollBar::isPointOverScrollbar(const v2s32 &p) const
 {
 	return VScrollBar && VScrollBar->isVisible() &&
 			VScrollBar->getAbsoluteClippingRect().isPointInside(p);
+}
+
+// Mutators that re-break the text: keep the cached wrapped-text height honest.
+
+void GUIEditBoxWithScrollBar::setText(const wchar_t *text)
+{
+	CGUIEditBox::setText(text);
+	invalidateTextHeight();
+}
+
+void GUIEditBoxWithScrollBar::setOverrideFont(gui::IGUIFont *font)
+{
+	CGUIEditBox::setOverrideFont(font);
+	invalidateTextHeight();
+}
+
+void GUIEditBoxWithScrollBar::setWordWrap(bool enable)
+{
+	CGUIEditBox::setWordWrap(enable);
+	invalidateTextHeight();
+}
+
+void GUIEditBoxWithScrollBar::setMultiLine(bool enable)
+{
+	CGUIEditBox::setMultiLine(enable);
+	invalidateTextHeight();
+}
+
+void GUIEditBoxWithScrollBar::updateAbsolutePosition()
+{
+	const core::rect<s32> old_rect = AbsoluteRect;
+	CGUIEditBox::updateAbsolutePosition();
+	// The base re-breaks the text only when the rect actually changed.
+	if (old_rect != AbsoluteRect)
+		invalidateTextHeight();
 }
 #endif

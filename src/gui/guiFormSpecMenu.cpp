@@ -1837,12 +1837,14 @@ void GUIFormSpecMenu::createTextField(parserData *data, FieldSpec &spec,
 	gui::IGUIEditBox *e = nullptr;
 	if (is_multiline) {
 #if IS_VOPI_ENGINE
-		// scrollbar_visible=false drops the built-in scrollbar entirely: the
-		// text keeps the full element width and stays scrollable by touch
-		// drag / mouse wheel.
+		// scrollbar_visible=false drops the built-in scrollbar entirely; the
+		// text keeps the full element width. Read-only boxes only: they stay
+		// scrollable by touch drag / mouse wheel, while an editable box would
+		// lose its last scroll affordance (selection owns its pointer drags
+		// and the base wheel path needs a visible scrollbar).
 		box = new GUIEditBoxWithScrollBar(spec.fdefault.c_str(), true, Environment,
 				data->current_parent, spec.fid, rect, m_tsrc, is_editable,
-				style.getBool(StyleSpec::SCROLLBAR_VISIBLE, true));
+				is_editable || style.getBool(StyleSpec::SCROLLBAR_VISIBLE, true));
 		e = box;
 #else
 		e = new GUIEditBoxWithScrollBar(spec.fdefault.c_str(), true, Environment,
@@ -5028,10 +5030,13 @@ ITouchScrollTarget *GUIFormSpecMenu::findScrollableAt(v2s32 p) const
 {
 	// Read-only textareas are leaves: they can sit inside a scroll container
 	// but never contain one, so a scrollable textarea under the finger always
-	// wins over any container match.
+	// wins over any container match. Test containment before isScrollable():
+	// the latter measures the wrapped text, and only the box actually under
+	// the finger should pay that.
 	for (GUIEditBoxWithScrollBar *ta : m_scroll_textareas) {
-		if (ta && ta->isTrulyVisible() && ta->isScrollable() &&
-				ta->getAbsoluteClippingRect().isPointInside(p))
+		if (ta && ta->isTrulyVisible() &&
+				ta->getAbsoluteClippingRect().isPointInside(p) &&
+				ta->isScrollable())
 			return ta;
 	}
 

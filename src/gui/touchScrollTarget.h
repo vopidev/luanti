@@ -8,6 +8,9 @@
 
 #if IS_VOPI_ENGINE
 
+#include <algorithm>
+#include <cmath>
+
 // VOPI Engine: a GUI element whose content can be panned by a touch drag and
 // glided by inertial scrolling (a "fling"). The formspec touch gesture layer
 // (GUIFormSpecMenu::handleTouchScroll) speaks to its targets — scroll
@@ -55,6 +58,81 @@ namespace touch_scroll
 	constexpr f32 FLING_MAX_SPEED = 6.0f;
 	// Clamp on integration steps after a frame hitch so content can't teleport.
 	constexpr u64 FLING_MAX_STEP_MS = 64;
+	// Reference frame length the per-frame decay constant is expressed in (ms).
+	constexpr f32 FLING_FRAME_MS = 16.667f;
+
+	// Shared inertial-scroll integrator: a float-pixel position driven by a
+	// decaying velocity, so every scrollable surface glides with the same
+	// physics. Owners seed it with start(), advance it once per frame with
+	// step(), and write the integer position back to their own scroll
+	// mechanism. Velocity follows the POSITION axis: positive velocity
+	// increases px — callers negate it when their finger axis runs against
+	// their scroll-position axis.
+	struct FlingState
+	{
+		bool active = false;
+		f32 vel = 0.0f;  //< axis velocity, pixels per millisecond
+		f32 px = 0.0f;   //< integrated position, pixels
+		u64 last_ms = 0;
+
+		// Arms the fling (re-seeding any glide in flight). Returns false and
+		// leaves it inactive when |velocity| is below the launch gate; the
+		// velocity is capped to FLING_MAX_SPEED.
+		bool start(f32 velocity_px_per_ms, f32 start_px, u64 now_ms)
+		{
+			if (std::fabs(velocity_px_per_ms) < FLING_MIN_START_SPEED) {
+				active = false;
+				return false;
+			}
+			vel = std::max(-FLING_MAX_SPEED,
+					std::min(velocity_px_per_ms, FLING_MAX_SPEED));
+			px = start_px;
+			last_ms = now_ms;
+			active = true;
+			return true;
+		}
+
+		void stop()
+		{
+			active = false;
+			vel = 0.0f;
+		}
+
+		// Integrates up to now_ms, clamping px to [lo, hi]. Returns true while
+		// the glide continues; deactivates and returns false on a bound hit or
+		// once friction decays the velocity below the stop gate. px holds the
+		// final clamped position either way — apply it after every call.
+		bool step(u64 now_ms, f32 lo, f32 hi)
+		{
+			if (!active)
+				return false;
+			u64 dt = now_ms - last_ms;
+			last_ms = now_ms;
+			if (dt == 0)
+				return true;
+			if (dt > FLING_MAX_STEP_MS)
+				dt = FLING_MAX_STEP_MS; // clamp after a hitch: no teleporting
+
+			px += vel * (f32)dt;
+
+			bool hit_bound = false;
+			if (px <= lo) {
+				px = lo;
+				hit_bound = true;
+			} else if (px >= hi) {
+				px = hi;
+				hit_bound = true;
+			}
+
+			// Exponential friction, frame-rate independent.
+			vel *= std::pow(FLING_DECAY_PER_FRAME, (f32)dt / FLING_FRAME_MS);
+			if (hit_bound || std::fabs(vel) < FLING_MIN_SPEED) {
+				stop();
+				return false;
+			}
+			return true;
+		}
+	};
 }
 
 #endif // IS_VOPI_ENGINE

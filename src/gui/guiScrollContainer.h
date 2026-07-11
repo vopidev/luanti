@@ -75,7 +75,7 @@ public:
 	void startFling(f32 axis_velocity_px_per_ms) override;
 	// Stops any in-flight inertial scrolling.
 	void stopFling() override;
-	inline bool isFlinging() const override { return m_flinging; }
+	inline bool isFlinging() const override { return m_fling.active; }
 
 	// Per-frame hook: advances an in-flight fling. Called by the GUI environment.
 	virtual void OnPostRender(u32 timeMs) override;
@@ -95,19 +95,17 @@ private:
 	std::optional<s32> m_content_padding_px; //< in pixels
 
 #if IS_VOPI_ENGINE
-	// Inertial scrolling (fling) state. The fling is integrated in floating-point
-	// pixel space so the content glides smoothly (1 px steps) instead of jumping
-	// in coarse scrollbar-position units; the integer scrollbar position (the
-	// thumb) is re-synced from the pixel offset each frame.
+	// Inertial scrolling: the shared integrator (touchScrollTarget.h) glides in
+	// floating-point pixel space so the content moves smoothly (1 px steps)
+	// instead of jumping in coarse scrollbar-position units; the integer
+	// scrollbar position (the thumb) is re-synced from the pixel offset each
+	// frame.
 	void stepFling();
 	// Sets the content (mover) offset along the scroll axis directly, in pixels,
 	// skipping the child reposition when it is unchanged. Used by the fling for
 	// sub-quantum-smooth motion.
 	void setContentOffset(s32 offset_px);
-	bool m_flinging = false;
-	f32 m_fling_vel = 0.0f; //< axis velocity, pixels per millisecond
-	f32 m_fling_px = 0.0f;  //< current content offset along the axis, in pixels
-	u64 m_fling_last_ms = 0;
+	touch_scroll::FlingState m_fling;
 	// Field sends during a fling are throttled: setPosAndSend() emits a scrollbar
 	// change that a named scroll_container turns into a TOSERVER_INVENTORY_FIELDS
 	// (on_player_receive_fields), which at frame rate for the whole momentum

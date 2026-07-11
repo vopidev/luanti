@@ -4026,10 +4026,11 @@ Some types may inherit styles from parent types.
       square cap texture stays round at any display scale.
     * scrollbar_thumb_bottom_size - (textarea only) integer, size in pixels of the bottom cap.
       Auto-sizes like scrollbar_thumb_top_size when not set.
-    * scrollbar_visible - (textarea only) boolean, set to false to remove the built-in
-      vertical scrollbar entirely. The text then uses the full element width and stays
-      scrollable: read-only textareas pan by touch drag (with inertia) on mobile and by
-      mouse drag / mouse wheel on desktop. Default true.
+    * scrollbar_visible - (read-only textarea only) boolean, set to false to remove the
+      built-in vertical scrollbar entirely. The text then uses the full element width and
+      stays scrollable: read-only textareas pan by touch drag (with inertia) on mobile and
+      by mouse drag / mouse wheel on desktop. Ignored for editable (named) textareas,
+      which always keep their scrollbar. Default true.
 * model
     * bgcolor - color, sets background color.
     * noclip - boolean, set to true to allow the element to exceed formspec bounds.

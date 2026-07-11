@@ -57,11 +57,18 @@ public:
 	void scrollByPixels(s32 origin_scrollpos, const v2s32 &pixel_delta) override;
 	void startFling(f32 axis_velocity_px_per_ms) override;
 	void stopFling() override;
-	bool isFlinging() const override { return m_flinging; }
+	bool isFlinging() const override { return m_fling.active; }
 
 	// True when p lies on the visible built-in scrollbar: the formspec touch
 	// layer then leaves the press to the scrollbar's own thumb/track handling.
 	bool isPointOverScrollbar(const v2s32 &p) const;
+
+	// Mutators that re-break the text drop the cached wrapped-text height.
+	void setText(const wchar_t *text) override;
+	void setOverrideFont(gui::IGUIFont *font = 0) override;
+	void setWordWrap(bool enable) override;
+	void setMultiLine(bool enable) override;
+	void updateAbsolutePosition() override;
 #endif
 
 protected:
@@ -69,14 +76,24 @@ protected:
 	void createVScrollBar();
 
 #if IS_VOPI_ENGINE
+	// Wrapped-text height in pixels. Cached for read-only boxes (their text
+	// only changes through the overridden mutators, which invalidate it);
+	// writable boxes always measure fresh, since edits re-break the text
+	// through non-virtual base paths this class cannot observe.
+	s32 textHeightPixels();
+	void invalidateTextHeight() { m_text_height_cache = -1; }
 	// Scrollable overflow in pixels; 0 when the text fits the frame. Matches
 	// the updateVScrollBar() formula so pan/fling clamping always agrees with
 	// the scrollbar's own max.
 	s32 scrollRangePixels();
 	// Clamps and applies a scroll position, keeping the scrollbar (when
 	// present) in sync so updateVScrollBar() doesn't treat the difference as
-	// a user scrollbar move and revert it on the next draw.
+	// a user scrollbar move and revert it on the next draw. Skips clean no-ops.
 	void setScrollPosClamped(s32 pos);
+	// Pixels one mouse-wheel notch scrolls: 3 text lines — the same step
+	// createVScrollBar() configures as the scrollbar's small step, so wheel
+	// speed does not depend on scrollbar_visible.
+	s32 wheelStepPixels() const;
 	void stepFling();
 
 	// Pointer pan state (read-only boxes: drag pans the text, no selection).
@@ -84,13 +101,11 @@ protected:
 	s32 m_pan_origin_y = 0;         // pointer y when the pan started
 	s32 m_pan_origin_scrollpos = 0; // VScrollPos when the pan started
 
-	// Inertial scrolling (fling), integrated in float pixel space for a
-	// smooth glide (cf. GUIScrollContainer) and re-synced to VScrollPos
-	// every frame.
-	bool m_flinging = false;
-	f32 m_fling_vel = 0.0f; //< axis velocity, pixels per millisecond
-	f32 m_fling_px = 0.0f;  //< current scroll offset, in pixels
-	u64 m_fling_last_ms = 0;
+	// Inertial scrolling: shared integrator (touchScrollTarget.h), re-synced
+	// to VScrollPos every frame.
+	touch_scroll::FlingState m_fling;
+
+	s32 m_text_height_cache = -1; // <0 = dirty
 #endif
 
 	bool m_bg_color_used;
