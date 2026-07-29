@@ -598,6 +598,15 @@ void set_default_settings()
 	settings->setDefault("mesh_icon_padding_percent", "7.0");
 	settings->setDefault("image_icon_padding_percent", "7.0");
 
+	// Outline around 3D node icons in inventory slots
+	settings->setDefault("inventory_mesh_outline", "true");
+	settings->setDefault("inventory_mesh_outline_percent", "4.5");
+	settings->setDefault("inventory_mesh_outline_color", "#000000");
+
+	// Bake 3D node icons into textures (with the outline above)
+	settings->setDefault("inventory_icon_bake", "true");
+	settings->setDefault("inventory_icon_bake_resolution", "256");
+
 	// Text appearance
 	settings->setDefault("chat_font_scale", "1.0");
 	settings->setDefault("info_font_scale", "1.0");
