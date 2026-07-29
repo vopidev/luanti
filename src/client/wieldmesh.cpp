@@ -19,6 +19,9 @@
 #include "util/numeric.h"
 #include <map>
 #include <IMeshManipulator.h>
+#if IS_VOPI_ENGINE
+#include "itemgroup.h"
+#endif
 #include "client/renderingengine.h"
 #include <SMesh.h>
 #include <IMeshBuffer.h>
@@ -651,7 +654,16 @@ void createItemMesh(Client *client, const ItemDefinition &def,
 	const NodeVisuals &v = *(f.visuals);
 	assert(result);
 
+#if IS_VOPI_ENGINE
+	// Icon baking may build item meshes before the first WieldMeshSceneNode
+	// (which normally creates this cache); create it on demand instead of
+	// failing. The extra reference keeps it alive for the whole process,
+	// avoiding re-creation between worlds.
+	if (!g_extrusion_mesh_cache)
+		g_extrusion_mesh_cache = new ExtrusionMeshCache();
+#else
 	FATAL_ERROR_IF(!g_extrusion_mesh_cache, "Extrusion mesh cache is not yet initialized");
+#endif
 
 	scene::SMesh *mesh = nullptr;
 
@@ -705,6 +717,14 @@ void createItemMesh(Client *client, const ItemDefinition &def,
 			MapNode n(ndef->getId(def.name));
 			if (def.place_param2)
 				n.setParam2(*def.place_param2);
+#if IS_VOPI_ENGINE
+			// Per-item icon orientation override (item group "icon_facedir"):
+			// rotates the node in its inventory icon only, without affecting
+			// world placement (unlike place_param2). Used to normalize models
+			// whose "front" in the source mesh differs from the others.
+			else if (int icon_facedir = itemgroup_get(def.groups, "icon_facedir"))
+				n.setParam2(rangelim(icon_facedir, 0, 23));
+#endif
 
 			mesh = createGenericNodeMesh(client, n, &result->buffer_info, f);
 			scaleMesh(mesh, v3f(0.12f));
@@ -728,6 +748,33 @@ void createItemMesh(Client *client, const ItemDefinition &def,
 
 		rotateMeshXZby(mesh, -45);
 		rotateMeshYZby(mesh, -30);
+
+#if IS_VOPI_ENGINE
+		// Normalize generic node meshes (needs_shading is set only on that
+		// path) to the slot frame: center by bounding box and fit to the
+		// silhouette of a rotated unit cube. Keeps 1x1x1 nodes unchanged
+		// (their fit factor is exactly 1) while shrinking multiblock models
+		// into the slot and upscaling sub-node models to a readable size.
+		if (result->needs_shading) {
+			recalculateBoundingBox(mesh);
+			const aabb3f box = mesh->getBoundingBox();
+			translateMesh(mesh, -box.getCenter());
+
+			// Silhouette half-extents of a unit cube (after scaleMesh(0.12f)
+			// and the -45/-30 degree rotations above):
+			// X: h*sqrt(2), Y: h*(cos(30deg) + sqrt(2)*sin(30deg))
+			const f32 h = 0.12f * BS * 0.5f;
+			const f32 frame_x = h * 1.41421f;
+			const f32 frame_y = h * 1.57314f;
+
+			const v3f ext = box.getExtent() * 0.5f;
+			if (ext.X > 0.0f && ext.Y > 0.0f) {
+				const f32 fit = std::min(frame_x / ext.X, frame_y / ext.Y);
+				scaleMesh(mesh, v3f(fit));
+			}
+		}
+
+#endif
 	}
 
 	// might need to be re-colorized, this is done only when needed
