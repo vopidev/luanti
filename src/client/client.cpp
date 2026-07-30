@@ -23,6 +23,9 @@
 #include "gettext.h"
 #include "gettime.h"
 #include "guiscalingfilter.h"
+#if IS_VOPI_ENGINE
+#include "icon_baker.h"
+#endif
 #include "item_visuals_manager.h"
 #include "itemdef.h"
 #include "mapblock.h"
@@ -478,6 +481,16 @@ void Client::step(float dtime)
 	// large inventory is first shown, at the cost of a brief FPS dip.
 	if (m_state == LC_Ready && m_camera)
 		m_item_visuals_manager->processBakeQueue(this, 12.0f);
+
+	// --dump-baked-icons: once content and camera are ready (shader
+	// constant setters dereference the camera during the bake draw),
+	// export every icon_bake-marked node icon to PNG files and quit.
+	if (!g_dump_baked_icons_path.empty() && !m_icons_dumped &&
+			m_state == LC_Ready && m_camera) {
+		m_icons_dumped = true;
+		dumpBakedIcons(this, g_dump_baked_icons_path);
+		*porting::signal_handler_killstatus() = 1;
+	}
 #endif
 
 	ReceiveAll();

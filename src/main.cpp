@@ -36,6 +36,9 @@
 #if CHECK_CLIENT_BUILD()
 #include "client/clientlauncher.h"
 #if IS_VOPI_ENGINE
+#include "client/icon_baker.h"
+#endif
+#if IS_VOPI_ENGINE
 #include "translation.h"
 #endif
 #endif
@@ -303,6 +306,10 @@ int main(int argc, char *argv[])
 		return run_dedicated_server(game_params, cmd_args) ? 0 : 1;
 
 #if CHECK_CLIENT_BUILD()
+#if IS_VOPI_ENGINE
+	if (cmd_args.exists("dump-baked-icons"))
+		g_dump_baked_icons_path = cmd_args.get("dump-baked-icons");
+#endif
 	retval = ClientLauncher().run(game_params, cmd_args) ? 0 : 1;
 #else
 	retval = 0;
@@ -457,6 +464,10 @@ static void set_allowed_options(OptionList *allowed_options)
 			_("Skip main menu, go directly in-game"))));
 	allowed_options->insert(std::make_pair("console", ValueSpec(VALUETYPE_FLAG,
 			_("Start with the console open (Windows only)"))));
+#if IS_VOPI_ENGINE
+	allowed_options->insert(std::make_pair("dump-baked-icons", ValueSpec(VALUETYPE_STRING,
+			_("Bake icon_bake-marked node inventory icons into PNG files under the given directory, then exit"))));
+#endif
 #endif
 
 #undef SERVER_ONLY

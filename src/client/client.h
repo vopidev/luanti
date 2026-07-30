@@ -643,6 +643,9 @@ private:
 	// Whether the server wants us to report node selection (TOSERVER_NODE_SELECTED).
 	// Set by TOCLIENT_NODE_SELECTION_REPORTING; gates the per-selection-change send.
 	bool m_server_wants_node_selection = false;
+	// --dump-baked-icons already ran for this session (the mode exports
+	// icons once, then requests shutdown)
+	bool m_icons_dumped = false;
 #endif
 
 	// Client modding

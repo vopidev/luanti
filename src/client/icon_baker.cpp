@@ -8,18 +8,27 @@
 
 #include <cmath>
 #include <cstring>
+#include <set>
 #include <vector>
 #include <IVideoDriver.h>
 #include <ITexture.h>
 #include <IImage.h>
 #include <IMesh.h>
 #include <IMeshBuffer.h>
+#include "client/client.h"
+#include "client/renderingengine.h"
 #include "client/wieldmesh.h"
 #include "client/mesh.h"
+#include "filesys.h"
+#include "itemdef.h"
+#include "itemgroup.h"
+#include "nodedef.h"
 #include "settings.h"
 #include "util/numeric.h"
 #include "util/string.h"
 #include "log.h"
+
+std::string g_dump_baked_icons_path;
 
 // Clamp the bake resolution to power-of-two sizes: NPOT textures with
 // mipmaps are not universally supported on GLES2 targets.
@@ -143,8 +152,8 @@ static void bleedEdges(video::IImage *img)
 	}
 }
 
-video::ITexture *bakeItemIcon(video::IVideoDriver *driver, ItemMesh *imesh,
-		const std::string &texture_name)
+video::IImage *bakeItemIconImage(video::IVideoDriver *driver, ItemMesh *imesh,
+		u32 supersample)
 {
 	if (!imesh || !imesh->mesh)
 		return nullptr;
@@ -152,9 +161,9 @@ video::ITexture *bakeItemIcon(video::IVideoDriver *driver, ItemMesh *imesh,
 		return nullptr;
 
 	const u32 size = bakeResolution();
-	// Render at 2x and box-downsample: cheap supersampling that smooths
-	// mesh edges without increasing the final texture (and memory) size.
-	const u32 render_size = std::min(size * 2, 1024u);
+	// Render larger and box-downsample: cheap supersampling that smooths
+	// mesh edges without increasing the final image size.
+	const u32 render_size = std::min(size * std::max(supersample, 1u), 2048u);
 
 	// Shared scratch RTT, reused for every bake. Looked up by name so no
 	// dangling pointer is kept across texture cache clears.
@@ -232,8 +241,7 @@ video::ITexture *bakeItemIcon(video::IVideoDriver *driver, ItemMesh *imesh,
 	// handles RTT flipping and format conversion internally).
 	const u8 *src = (const u8 *)rtt->lock(video::ETLM_READ_ONLY);
 	if (!src) {
-		warningstream << "bakeItemIcon(): lock failed for " << texture_name
-				<< std::endl;
+		warningstream << "bakeItemIconImage(): lock failed" << std::endl;
 		return nullptr;
 	}
 
@@ -287,10 +295,140 @@ video::ITexture *bakeItemIcon(video::IVideoDriver *driver, ItemMesh *imesh,
 			dilateAlphaOutline(img, radius, color);
 	}
 	bleedEdges(img);
+	return img;
+}
+
+video::ITexture *bakeItemIcon(video::IVideoDriver *driver, ItemMesh *imesh,
+		const std::string &texture_name)
+{
+	video::IImage *img = bakeItemIconImage(driver, imesh, 2);
+	if (!img)
+		return nullptr;
 
 	video::ITexture *tex = driver->addTexture(texture_name.c_str(), img);
 	img->drop();
 	return tex;
+}
+
+// Plain texture file name: no path separators or texture modifiers.
+static bool isPlainPngName(const std::string &s)
+{
+	if (s.size() < 5 || !str_ends_with(s, ".png"))
+		return false;
+	for (char c : s) {
+		const bool ok = (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z')
+				|| (c >= '0' && c <= '9') || c == '_' || c == '-' || c == '.';
+		if (!ok)
+			return false;
+	}
+	return true;
+}
+
+bool dumpBakedIcons(Client *client, const std::string &out_dir)
+{
+	video::IVideoDriver *driver = RenderingEngine::get_video_driver();
+	IItemDefManager *idef = client->idef();
+	const NodeDefManager *ndef = client->getNodeDefManager();
+
+	std::set<std::string> names;
+	idef->getAll(names);
+
+	u32 written = 0, errors = 0, shared = 0, candidates = 0;
+	std::set<std::string> produced;
+
+	for (const std::string &name : names) {
+		// Builtin specials (air, ignore, unknown, hand) have no namespace
+		const size_t colon = name.find(':');
+		if (colon == std::string::npos)
+			continue;
+
+		const ItemDefinition &def = idef->get(name);
+		const int rot = itemgroup_get(def.groups, "icon_bake");
+
+		if (rot <= 0) {
+			// A generic-drawtype node with neither an inventory image nor
+			// the icon_bake group renders as a live 3D mesh in slots —
+			// most likely an unmigrated icon, so report it.
+			if (def.type == ITEM_NODE && def.inventory_image.name.empty()) {
+				const ContentFeatures &f = ndef->get(name);
+				if (f.drawtype != NDT_AIRLIKE &&
+						f.drawtype != NDT_PLANTLIKE &&
+						f.drawtype != NDT_PLANTLIKE_ROOTED) {
+					actionstream << "dumpBakedIcons(): candidate without an"
+							" icon (no icon_bake group): " << name
+							<< std::endl;
+					candidates++;
+				}
+			}
+			continue;
+		}
+
+		auto fail = [&](const char *why) {
+			errorstream << "dumpBakedIcons(): " << name << ": " << why
+					<< std::endl;
+			errors++;
+		};
+
+		if (def.type != ITEM_NODE) {
+			fail("icon_bake is set on a non-node item");
+			continue;
+		}
+		if (def.inventory_image.name.empty()) {
+			fail("icon_bake is set but inventory_image is empty");
+			continue;
+		}
+		if (!isPlainPngName(def.inventory_image.name)) {
+			fail("inventory_image is not a plain .png file name");
+			continue;
+		}
+		if (ndef->get(name).drawtype == NDT_AIRLIKE) {
+			fail("airlike nodes have nothing to bake");
+			continue;
+		}
+		if (!produced.insert(def.inventory_image.name).second) {
+			// Several nodes may deliberately share one icon file; it is
+			// baked from the alphabetically first node that declares it.
+			actionstream << "dumpBakedIcons(): " << name << " reuses "
+					<< def.inventory_image.name << std::endl;
+			shared++;
+			continue;
+		}
+
+		// Empty animations force the generic-node branch of
+		// createItemMesh() even though inventory_image is declared: it
+		// names the file generated here, which may not exist yet.
+		AnimationInfo no_anim;
+		ItemMesh imesh;
+		createItemMesh(client, def, no_anim, no_anim, &imesh);
+		video::IImage *img = imesh.mesh ?
+				bakeItemIconImage(driver, &imesh, 4) : nullptr;
+
+		bool ok = false;
+		if (img) {
+			const std::string mod_dir = out_dir + DIR_DELIM
+					+ name.substr(0, colon);
+			fs::CreateAllDirs(mod_dir);
+			const std::string path = mod_dir + DIR_DELIM
+					+ def.inventory_image.name;
+			ok = driver->writeImageToFile(img, path.c_str());
+			img->drop();
+		}
+		if (imesh.mesh)
+			imesh.mesh->drop();
+
+		if (ok)
+			written++;
+		else
+			fail("mesh creation, bake or PNG write failed");
+	}
+
+	actionstream << "dumpBakedIcons(): wrote " << written << " icons ("
+			<< shared << " shared references) into " << out_dir << ", "
+			<< errors << " errors, " << candidates
+			<< " unmarked candidates" << std::endl;
+	actionstream << (errors ? "ICON DUMP FAILED" : "ICON DUMP OK")
+			<< std::endl;
+	return errors == 0;
 }
 
 #endif
