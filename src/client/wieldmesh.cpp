@@ -718,12 +718,14 @@ void createItemMesh(Client *client, const ItemDefinition &def,
 			if (def.place_param2)
 				n.setParam2(*def.place_param2);
 #if IS_VOPI_ENGINE
-			// Per-item icon orientation override (item group "icon_facedir"):
-			// rotates the node in its inventory icon only, without affecting
-			// world placement (unlike place_param2). Used to normalize models
-			// whose "front" in the source mesh differs from the others.
-			else if (int icon_facedir = itemgroup_get(def.groups, "icon_facedir"))
-				n.setParam2(rangelim(icon_facedir, 0, 23));
+			// Item group "icon_bake" marks a node for baked-icon export
+			// (--dump-baked-icons) and explicitly sets the icon orientation:
+			// value N shows the node rotated to facedir N-1, so 1 is the
+			// model exactly as authored. It overrides place_param2 here —
+			// icon orientation of marked nodes is fully explicit — and only
+			// affects the icon mesh, never world placement.
+			if (int icon_bake = itemgroup_get(def.groups, "icon_bake"))
+				n.setParam2(rangelim(icon_bake - 1, 0, 23));
 #endif
 
 			mesh = createGenericNodeMesh(client, n, &result->buffer_info, f);
