@@ -1105,7 +1105,17 @@ void Server::AsyncRunStep(float dtime, bool initial_step)
 		counter += dtime;
 		static thread_local const float save_interval =
 			g_settings->getFloat("server_map_save_interval");
-		if (counter >= save_interval) {
+		bool emergency_save = false;
+#if IS_VOPI_ENGINE && defined(__IOS__)
+		// The platform requests an immediate save when the app is about to be
+		// suspended: iOS freezes the process seconds after backgrounding and
+		// may kill it while suspended, losing everything since the last
+		// periodic save.
+		emergency_save = porting::consumeEmergencyWorldSaveRequest();
+		if (emergency_save)
+			actionstream << "Server: emergency world save requested by platform" << std::endl;
+#endif
+		if (counter >= save_interval || emergency_save) {
 			counter = 0.0;
 			EnvAutoLock lock(this);
 
