@@ -10,14 +10,6 @@
 #include "itemdef.h"
 #include "inventory.h"
 #include <IMesh.h>
-#if IS_VOPI_ENGINE
-#include "icon_baker.h"
-#include "renderingengine.h"
-#include "settings.h"
-#include "porting.h"
-#include "log.h"
-#include <IVideoDriver.h>
-#endif
 
 struct ItemVisualsManager::ItemVisuals
 {
@@ -31,13 +23,6 @@ struct ItemVisualsManager::ItemVisuals
 	std::vector<FrameSpec> frames_normal;
 	std::vector<FrameSpec> frames_overlay;
 
-#if IS_VOPI_ENGINE
-	// Pre-rendered outlined icon (icon_baker); nullptr when not baked
-	video::ITexture *baked_icon = nullptr;
-	// Already submitted to (or rejected by) the background bake queue
-	bool bake_requested = false;
-#endif
-
 	ItemVisuals() :
 		palette(nullptr)
 	{}
@@ -46,10 +31,6 @@ struct ItemVisualsManager::ItemVisuals
 	{
 		if (item_mesh.mesh)
 			item_mesh.mesh->drop();
-#if IS_VOPI_ENGINE
-		if (baked_icon)
-			RenderingEngine::get_video_driver()->removeTexture(baked_icon);
-#endif
 	}
 
 	DISABLE_CLASS_COPY(ItemVisuals);
@@ -125,10 +106,6 @@ ItemVisualsManager::~ItemVisualsManager()
 void ItemVisualsManager::clear()
 {
 	m_cached_item_visuals.clear();
-#if IS_VOPI_ENGINE
-	m_bake_queue.clear();
-	m_bake_queue_pos = 0;
-#endif
 }
 
 
@@ -159,66 +136,6 @@ ItemMesh *ItemVisualsManager::getItemMesh(const ItemStack &item, Client *client)
 	ItemVisuals *iv = createItemVisuals(item, client);
 	return iv ? &(iv->item_mesh) : nullptr;
 }
-
-#if IS_VOPI_ENGINE
-video::ITexture *ItemVisualsManager::getBakedIcon(const ItemStack &item,
-		Client *client) const
-{
-	// Never bakes synchronously: the first sight of an item enqueues a
-	// background bake request and the slot keeps the direct mesh render
-	// until processBakeQueue() delivers the texture a few frames later.
-	// This keeps the pipeline-stalling GPU readback of a bake off the
-	// first-scroll path of large inventories, and only items the player
-	// actually sees ever consume icon memory.
-	ItemVisuals *iv = createItemVisuals(item, client);
-	if (!iv)
-		return nullptr;
-
-	if (!iv->baked_icon && !iv->bake_requested) {
-		iv->bake_requested = true;
-		if (bakeQualifies(iv) && g_settings->getBool("inventory_icon_bake"))
-			m_bake_queue.push_back(item.name);
-	}
-	return iv->baked_icon;
-}
-
-bool ItemVisualsManager::bakeQualifies(const ItemVisuals *iv) const
-{
-	// Only generic-node 3D icons. Nodes with animated tiles are baked
-	// too — icons deliberately show a static first frame (the baker
-	// forces frame 0), trading the live animation for the outline.
-	return iv->item_mesh.mesh && iv->item_mesh.needs_shading;
-}
-
-void ItemVisualsManager::processBakeQueue(Client *client, float budget_ms) const
-{
-	if (m_bake_queue_pos >= m_bake_queue.size())
-		return;
-
-	const u64 t0 = porting::getTimeUs();
-	const u64 budget_us = (u64)(budget_ms * 1000.0f);
-	u32 processed = 0;
-
-	while (m_bake_queue_pos < m_bake_queue.size()) {
-		if (processed && porting::getTimeUs() - t0 >= budget_us)
-			break;
-		const std::string name = m_bake_queue[m_bake_queue_pos++];
-		ItemStack stack(name, 1, 0, client->idef());
-		ItemVisuals *iv = createItemVisuals(stack, client);
-		if (iv && bakeQualifies(iv) && !iv->baked_icon) {
-			iv->baked_icon = bakeItemIcon(RenderingEngine::get_video_driver(),
-					&iv->item_mesh, "__baked_icon:" + name);
-		}
-		processed++;
-	}
-
-	// Fully processed: reclaim the request list
-	if (m_bake_queue_pos >= m_bake_queue.size()) {
-		m_bake_queue.clear();
-		m_bake_queue_pos = 0;
-	}
-}
-#endif
 
 AnimationInfo *ItemVisualsManager::getInventoryAnimation(const ItemStack &item,
 		Client *client) const

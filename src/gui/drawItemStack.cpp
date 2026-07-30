@@ -79,20 +79,8 @@ void drawItemStack(
 	if (clip != nullptr)
 		viewrect.clipAgainst(*clip);
 
-#if IS_VOPI_ENGINE
-	// Prefer the baked icon (pre-rendered 3D view with outline) over the
-	// direct mesh render, unless the slot needs live rotation animation.
-	video::ITexture *baked_icon = nullptr;
-	if (!inventory_texture && !(enable_animations && rotation_kind < IT_ROT_NONE))
-		baked_icon = item_visuals->getBakedIcon(item, client);
-#endif
-
 	// Render as mesh if animated or no inventory image
-	if (
-#if IS_VOPI_ENGINE
-			!baked_icon &&
-#endif
-			((enable_animations && rotation_kind < IT_ROT_NONE) || !inventory_texture)) {
+	if ((enable_animations && rotation_kind < IT_ROT_NONE) || !inventory_texture) {
 		imesh = item_visuals->getItemMesh(item, client);
 		has_mesh = imesh && imesh->mesh;
 	}
@@ -212,13 +200,6 @@ void drawItemStack(
 		draw_overlay = def.type == ITEM_NODE && !inventory_texture;
 	} else { // Otherwise just draw as 2D
 		video::SColor color;
-#if IS_VOPI_ENGINE
-		if (baked_icon) {
-			// Per-stack tint is applied on the quad; shading is baked in.
-			color = item_visuals->getItemstackColor(item, client);
-			inventory_texture = baked_icon;
-		} else
-#endif
 		if (inventory_texture) {
 			color = item_visuals->getItemstackColor(item, client);
 		} else {
@@ -231,13 +212,8 @@ void drawItemStack(
 
 #if IS_VOPI_ENGINE
 		// Inset the 2D inventory image by the configured padding percent.
-		// Baked icons use half the mesh padding: the direct mesh path widens
-		// the projection by 1/(1-p), which shrinks the model by (1-p) per
-		// slot — one p in total, not the 2*p an image inset would apply.
 		f32 avg_slot_size = (rect.getWidth() + rect.getHeight()) / 2.0f;
-		f32 image_padding_px = baked_icon ?
-				avg_slot_size * (mesh_icon_padding_percent / 200.0f) :
-				avg_slot_size * (image_icon_padding_percent / 100.0f);
+		f32 image_padding_px = avg_slot_size * (image_icon_padding_percent / 100.0f);
 
 		const core::dimension2d texture_dim = inventory_texture->getOriginalSize();
 		const core::rect<s32> source_rect(0, 0, texture_dim.Width, texture_dim.Height);

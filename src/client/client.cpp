@@ -474,14 +474,6 @@ void Client::step(float dtime)
 	m_animation_time = fmodf(m_animation_time + dtime, 60.0f);
 
 #if IS_VOPI_ENGINE
-	// Bake a few pending on-demand icon requests per step. Gated on the
-	// camera because shader constant setters dereference it during the
-	// bake draw. The budget only applies while requests are pending, so a
-	// generous value shortens the visible mesh->icon swap wave when a
-	// large inventory is first shown, at the cost of a brief FPS dip.
-	if (m_state == LC_Ready && m_camera)
-		m_item_visuals_manager->processBakeQueue(this, 12.0f);
-
 	// --dump-baked-icons: once content and camera are ready (shader
 	// constant setters dereference the camera during the bake draw),
 	// export every icon_bake-marked node icon to PNG files and quit.
