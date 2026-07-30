@@ -174,7 +174,7 @@ video::IImage *bakeItemIconImage(video::IVideoDriver *driver, ItemMesh *imesh,
 				core::dimension2du(render_size, render_size),
 				rtt_name.c_str(), video::ECF_A8R8G8B8);
 	if (!rtt) {
-		warningstream << "bakeItemIcon(): failed to create render target"
+		warningstream << "bakeItemIconImage(): failed to create render target"
 				<< std::endl;
 		return nullptr;
 	}
@@ -262,6 +262,11 @@ video::IImage *bakeItemIconImage(video::IVideoDriver *driver, ItemMesh *imesh,
 	// darken icon edges.
 	video::IImage *img = driver->createImage(video::ECF_A8R8G8B8,
 			core::dimension2du(size, size));
+	if (!img) {
+		warningstream << "bakeItemIconImage(): image allocation failed"
+				<< std::endl;
+		return nullptr;
+	}
 	const u32 dpitch = img->getPitch();
 	u8 *dst = (u8 *)img->getData();
 	const u32 f = render_size / size;
@@ -301,18 +306,6 @@ video::IImage *bakeItemIconImage(video::IVideoDriver *driver, ItemMesh *imesh,
 	}
 	bleedEdges(img);
 	return img;
-}
-
-video::ITexture *bakeItemIcon(video::IVideoDriver *driver, ItemMesh *imesh,
-		const std::string &texture_name)
-{
-	video::IImage *img = bakeItemIconImage(driver, imesh, 2);
-	if (!img)
-		return nullptr;
-
-	video::ITexture *tex = driver->addTexture(texture_name.c_str(), img);
-	img->drop();
-	return tex;
 }
 
 // Plain texture file name: no path separators or texture modifiers.

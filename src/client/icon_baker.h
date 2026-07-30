@@ -39,13 +39,6 @@ video::IImage *bakeItemIconImage(video::IVideoDriver *driver,
 		ItemMesh *imesh, u32 supersample);
 
 /*
-	bakeItemIconImage variant that uploads the result as a regular cached
-	texture named `texture_name`. Returns nullptr on bake failure.
-*/
-video::ITexture *bakeItemIcon(video::IVideoDriver *driver,
-		ItemMesh *imesh, const std::string &texture_name);
-
-/*
 	--dump-baked-icons implementation: bakes the icon of every item
 	carrying the "icon_bake" group into
 	`<out_dir>/<modname>/<inventory_image>` PNG files (the group value
