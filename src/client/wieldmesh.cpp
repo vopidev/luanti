@@ -357,6 +357,38 @@ static scene::SMesh *createGenericNodeMesh(Client *client, MapNode n,
 		n.setParam2(1);
 	}
 
+#if IS_VOPI_ENGINE
+	// Connected nodeboxes (fences) render an isolated node as a bare
+	// post. Mesh a second node next to it instead: the pair connects only
+	// to each other, producing the classic two-posts-with-rails segment
+	// (the auto-fit below frames the doubled width like any multiblock).
+	if (f.drawtype == NDT_NODEBOX && f.node_box.type == NODEBOX_CONNECTED) {
+		MeshCollector collector2(v3f(0), v3f());
+		// side_length 2: the meshed volume must contain both fence nodes
+		MeshMakeData mmd(client->ndef(), 2, MeshGrid{1});
+		mmd.fillSingleNode(n);
+		mmd.m_vmanip.setNodeNoEmerge(v3s16(1, 0, 0), n);
+		MapblockMeshGenerator(&mmd, &collector2).generate();
+
+		buffer_info->clear();
+		scene::SMesh *mesh = new scene::SMesh();
+		for (int layer = 0; layer < MAX_TILE_LAYERS; layer++) {
+			for (PreMeshBuffer &p : collector2.prebuffers[layer]) {
+				for (video::S3DVertex &v : p.vertices)
+					v.Color.setAlpha(255);
+				auto buf = make_irr<scene::SMeshBuffer>();
+				buf->append(&p.vertices[0], p.vertices.size(),
+						&p.indices[0], p.indices.size());
+				p.layer.applyMaterialOptions(buf->Material, layer);
+				mesh->addMeshBuffer(buf.get());
+				buffer_info->emplace_back(layer, p.layer);
+			}
+		}
+		mesh->recalculateBoundingBox();
+		return mesh;
+	}
+#endif
+
 	MeshCollector collector(v3f(0), v3f());
 	{
 		MeshMakeData mmd(client->ndef(), 1, MeshGrid{1});
