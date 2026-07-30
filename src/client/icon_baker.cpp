@@ -348,8 +348,12 @@ bool dumpBakedIcons(Client *client, const std::string &out_dir)
 		if (rot <= 0) {
 			// A generic-drawtype node with neither an inventory image nor
 			// the icon_bake group renders as a live 3D mesh in slots —
-			// most likely an unmigrated icon, so report it.
-			if (def.type == ITEM_NODE && def.inventory_image.name.empty()) {
+			// most likely an unmigrated icon, so report it. Nodes hidden
+			// from players (runtime states, multiblock helpers) are not
+			// icon candidates.
+			if (def.type == ITEM_NODE && def.inventory_image.name.empty() &&
+					itemgroup_get(def.groups,
+						"not_in_creative_inventory") <= 0) {
 				const ContentFeatures &f = ndef->get(name);
 				if (f.drawtype != NDT_AIRLIKE &&
 						f.drawtype != NDT_PLANTLIKE &&
