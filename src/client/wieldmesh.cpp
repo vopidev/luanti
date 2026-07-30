@@ -557,9 +557,52 @@ void WieldMeshSceneNode::setItem(const ItemStack &item, Client *client, bool che
 			if (def.place_param2)
 				n.setParam2(*def.place_param2);
 
+#if IS_VOPI_ENGINE
+			// Nodes in the "wield_raw" group (the per-skin player hand
+			// meshes) are authored against the legacy wield transform and
+			// skip the normalization below.
+			const bool wield_normalize =
+					itemgroup_get(def.groups, "wield_raw") == 0;
+
+			// Same orientation source as baked icons: "icon_bake" value N
+			// shows the node at facedir N-1 and overrides place_param2, so
+			// the item in hand shows the same side as its inventory icon.
+			int icon_bake = itemgroup_get(def.groups, "icon_bake");
+			if (icon_bake && wield_normalize)
+				n.setParam2(rangelim(icon_bake - 1, 0, 23));
+#endif
+
 			mesh = createGenericNodeMesh(client, n, &m_buffer_info, f);
+
+#if IS_VOPI_ENGINE
+			if (wield_normalize) {
+				// Normalize like the baked icons: center by bounding box
+				// and uniformly fit the largest extent to one node, so any
+				// model (multiblock meshes, sub-node decor) wields at a
+				// consistent size. Cubic nodes measure exactly one node and
+				// keep fit == 1. Upscaling is capped so thin sub-node
+				// models (buttons, plates) don't balloon to cube size.
+				recalculateBoundingBox(mesh);
+				const aabb3f box = mesh->getBoundingBox();
+				translateMesh(mesh, -box.getCenter());
+
+				const v3f ext = box.getExtent();
+				const f32 max_ext = std::max(ext.X, std::max(ext.Y, ext.Z));
+				if (max_ext > 0.0f)
+					scaleMesh(mesh, v3f(std::min(BS / max_ext, 2.0f)));
+			}
+#endif
 			changeToMesh(mesh);
 			mesh->drop();
+#if IS_VOPI_ENGINE
+			if (wield_normalize) {
+				// visual_scale is already baked into the mesh vertices and
+				// therefore into the fit above; the legacy division below
+				// would apply it a second time.
+				m_meshnode->setScale(wield_scale * WIELD_SCALE_FACTOR / BS);
+				break;
+			}
+#endif
 			m_meshnode->setScale(
 				wield_scale * WIELD_SCALE_FACTOR
 				/ (BS * f.visual_scale));
