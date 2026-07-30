@@ -605,6 +605,7 @@ void set_default_settings()
 	settings->setDefault("inventory_mesh_outline_percent", "4.5");
 	settings->setDefault("inventory_mesh_outline_color", "#000000");
 	settings->setDefault("inventory_icon_bake_resolution", "256");
+	settings->setDefault("inventory_icon_bake_margin_percent", "5.0");
 
 	// Text appearance
 	settings->setDefault("chat_font_scale", "1.0");

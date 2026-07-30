@@ -188,11 +188,16 @@ video::IImage *bakeItemIconImage(video::IVideoDriver *driver, ItemMesh *imesh,
 			video::SColor(0, 0, 0, 0)))
 		return nullptr;
 
-	// Same ortho frame as drawItemStack's direct mesh path minus the icon
-	// padding (applied at draw time): createItemMesh fitted the mesh into
-	// [-1,1] already.
+	// Same ortho frame as drawItemStack's direct mesh path (createItemMesh
+	// fitted the mesh into [-1,1] already), widened by the configured
+	// margin so the model keeps a breathing edge inside the canvas — the
+	// outline needs room and slots read better when icons do not touch
+	// their borders. The draw-time image padding applies on top of this.
+	const f32 bake_margin = rangelim(g_settings->getFloat(
+			"inventory_icon_bake_margin_percent"), 0.0f, 25.0f);
+	const f32 frame = 2.0f / (1.0f - 2.0f * bake_margin / 100.0f);
 	core::matrix4 proj;
-	proj.buildProjectionMatrixOrthoLH(2.0f, 2.0f, -1.0f, 100.0f);
+	proj.buildProjectionMatrixOrthoLH(frame, frame, -1.0f, 100.0f);
 	driver->setTransform(video::ETS_PROJECTION, proj);
 	driver->setTransform(video::ETS_VIEW, core::IdentityMatrix);
 	driver->setTransform(video::ETS_WORLD, core::IdentityMatrix);
