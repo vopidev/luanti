@@ -263,6 +263,12 @@ bool GUIModalMenu::preprocessEvent(const SEvent &event)
 			return retval;
 		}
 	}
+#ifdef __ANDROID__
+	// Android replaces the dropdown with a native selection dialog. iOS
+	// deliberately does not: its combo-dialog porting hooks are stubs, so
+	// intercepting the event here left every formspec dropdown dead — the
+	// tap opened nothing and no selection could ever be delivered. Fall
+	// through and let Irrlicht's own dropdown open instead.
 	if (event.EventType == EET_GUI_EVENT) {
 		if (event.GUIEvent.EventType == gui::EGET_LISTBOX_OPENED) {
 			gui::IGUIComboBox *dropdown = (gui::IGUIComboBox *) event.GUIEvent.Caller;
@@ -285,6 +291,7 @@ bool GUIModalMenu::preprocessEvent(const SEvent &event)
 			return true; // Prevent the Irrlicht dropdown from opening.
 		}
 	}
+#endif
 #endif
 
 	// If the second touch arrives here again, that means nobody handled it.
