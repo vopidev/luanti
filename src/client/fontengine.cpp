@@ -103,9 +103,15 @@ gui::IGUIFont *FontEngine::getFont(FontSpec spec, bool may_fail)
 	// Font does not yet exist
 	gui::IGUIFont *font = initFont(spec);
 
-	if (!font && !may_fail) {
-		auto err = gettext("Failed to find a valid font");
-		throw BaseException(err);
+	if (!font) {
+		if (!may_fail) {
+			auto err = gettext("Failed to find a valid font");
+			throw BaseException(err);
+		}
+		// Never cache a failed load: a null entry would satisfy later
+		// lookups (bypassing the throw above) and clearCache() would
+		// crash dropping it.
+		return nullptr;
 	}
 
 	m_font_cache[spec.getHash()][spec.size] = font;
