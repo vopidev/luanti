@@ -1,5 +1,10 @@
 file(GLOB unittest_HDRS "${CMAKE_CURRENT_SOURCE_DIR}/*.h")
 
+set(vopi_unittest_SRCS "")
+if(IS_VOPI_ENGINE)
+	set(vopi_unittest_SRCS ${CMAKE_CURRENT_SOURCE_DIR}/test_content_vfs.cpp)
+endif()
+
 set(unittest_SRCS
 	${unittest_HDRS}
 	${CMAKE_CURRENT_SOURCE_DIR}/test.cpp
@@ -11,6 +16,7 @@ set(unittest_SRCS
 	${CMAKE_CURRENT_SOURCE_DIR}/test_collision.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/test_compression.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/test_connection.cpp
+	${vopi_unittest_SRCS}
 	${CMAKE_CURRENT_SOURCE_DIR}/test_craft.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/test_datastructures.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/test_filesys.cpp

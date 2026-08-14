@@ -516,6 +516,10 @@ if(BUILD_UNITTESTS OR BUILD_BENCHMARKS)
 	list(APPEND common_SRCS catch.cpp)
 endif()
 
+if(IS_VOPI_ENGINE)
+	list(APPEND common_SRCS content_vfs.cpp)
+endif()
+
 # This gives us the icon and file version information
 if(WIN32)
 	set(WINRESOURCE_FILE "${CMAKE_CURRENT_SOURCE_DIR}/../misc/winresource.rc")

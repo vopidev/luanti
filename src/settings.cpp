@@ -191,11 +191,23 @@ std::string Settings::getMultiline(std::istream &is, size_t *num_lines)
 
 bool Settings::readConfigFile(const char *filename)
 {
+#if IS_VOPI_ENGINE
+	// fs::ReadFile instead of a raw ifstream so pack-mounted configs
+	// (game.conf, mod.conf, per-game minetest.conf) resolve through
+	// the ContentVFS overlay.
+	std::string content;
+	if (!fs::ReadFile(filename, content, false))
+		return false;
+
+	std::istringstream is(content);
+	return parseConfigLines(is);
+#else
 	std::ifstream is(filename);
 	if (!is.good())
 		return false;
 
 	return parseConfigLines(is);
+#endif
 }
 
 

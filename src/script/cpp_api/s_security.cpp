@@ -18,6 +18,7 @@
 #include <string>
 #include <algorithm>
 #include <iostream>
+#include <sstream>
 
 
 #define SECURE_API(lib, name) \
@@ -662,6 +663,46 @@ bool ScriptApiSecurity::safeLoadString(lua_State *L, std::string_view code, cons
 	return true;
 }
 
+#if IS_VOPI_ENGINE
+bool ScriptApiSecurity::safeLoadFile(lua_State *L, const char *path, const char *display_name)
+{
+	if (!display_name)
+		display_name = path;
+
+	std::string code;
+	std::string chunk_name_owned;
+	const char *chunk_name;
+
+	if (!path) {
+		// Read all of stdin
+		std::ostringstream oss;
+		oss << std::cin.rdbuf();
+		code = oss.str();
+		chunk_name = "=stdin";
+	} else {
+		// fs::ReadFile resolves through the ContentVFS overlay, so scripts
+		// inside mounted content packs load exactly like loose files.
+		if (!fs::ReadFile(path, code, false)) {
+			lua_pushfstring(L, "%s: cannot read file", path);
+			return false;
+		}
+		chunk_name_owned = std::string("@") + display_name;
+		chunk_name = chunk_name_owned.c_str();
+	}
+
+	// Skip a shebang line, keeping its line-ending so chunk line numbers
+	// keep matching the file.
+	size_t start = 0;
+	if (!code.empty() && code[0] == '#') {
+		start = code.find('\n');
+		start = (start == std::string::npos) ? code.size() : start;
+	}
+
+	bool result = safeLoadString(L,
+			std::string_view(code).substr(start), chunk_name);
+	return result;
+}
+#else
 bool ScriptApiSecurity::safeLoadFile(lua_State *L, const char *path, const char *display_name)
 {
 	FILE *fp;
@@ -729,6 +770,7 @@ bool ScriptApiSecurity::safeLoadFile(lua_State *L, const char *path, const char 
 		delete [] chunk_name;
 	return result;
 }
+#endif
 
 
 std::string ScriptApiSecurity::getCurrentModName(lua_State *L)

@@ -4,6 +4,7 @@
 
 #include <cctype>
 #include <fstream>
+#include <sstream>
 #include <json/json.h>
 #include <algorithm>
 #include "content/mods.h"
@@ -133,6 +134,22 @@ bool parseModContents(ModSpec &spec)
 	if (!mod_conf_has_depends) {
 		std::vector<std::string> dependencies;
 
+#if IS_VOPI_ENGINE
+		// fs::ReadFile so depends.txt inside mounted content packs works
+		std::string content;
+		const bool has_depends_txt = fs::ReadFile(
+				spec.path + DIR_DELIM + "depends.txt", content, false);
+		std::istringstream is(content);
+
+		if (has_depends_txt)
+			spec.deprecation_msgs.push_back("depends.txt is deprecated, please use mod.conf instead.");
+
+		while (has_depends_txt && is.good()) {
+			std::string dep;
+			std::getline(is, dep);
+			dependencies.push_back(dep);
+		}
+#else
 		std::ifstream is((spec.path + DIR_DELIM + "depends.txt").c_str());
 
 		if (is.good())
@@ -143,6 +160,7 @@ bool parseModContents(ModSpec &spec)
 			std::getline(is, dep);
 			dependencies.push_back(dep);
 		}
+#endif
 
 		for (auto &dependency : dependencies) {
 			std::unordered_set<char> symbols;

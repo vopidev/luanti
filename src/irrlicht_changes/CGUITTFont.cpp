@@ -35,6 +35,7 @@
 
 #include "log.h"
 #include "debug.h"
+#include "filesys.h"
 #include "util/basic_macros.h"
 #include "util/enriched_string.h"
 
@@ -102,6 +103,15 @@ SGUITTFace* SGUITTFace::loadFace(const io::path &filename)
 	// Prefer FT_New_Face because it doesn't require loading everything
 	// to memory.
 	bool ok = FT_New_Face(ft, filename.c_str(), 0, &face->face) == 0;
+#if IS_VOPI_ENGINE
+	if (!ok) {
+		// FreeType only takes real paths — fonts inside mounted content
+		// packs (ContentVFS) must go through the memory loader.
+		std::string buffer;
+		if (fs::ReadFile(filename.c_str(), buffer, false))
+			return createFace(std::move(buffer));
+	}
+#endif
 	return ok ? face.release() : nullptr;
 }
 

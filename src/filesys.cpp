@@ -3,6 +3,9 @@
 // Copyright (C) 2013 celeron55, Perttu Ahola <celeron55@gmail.com>
 
 #include "filesys.h"
+#if IS_VOPI_ENGINE
+#include "content_vfs.h"
+#endif
 #include "util/string.h"
 #include <iostream>
 #include <cstdio>
@@ -101,6 +104,9 @@ std::vector<DirListNode> GetDirListing(const std::string &pathstring)
 			return listing;
 		}
 	}
+#if IS_VOPI_ENGINE
+	ContentVFS::get().addDirEntries(pathstring, listing);
+#endif
 	return listing;
 }
 
@@ -114,6 +120,17 @@ bool CreateDir(const std::string &path)
 
 bool PathExists(const std::string &path)
 {
+#if IS_VOPI_ENGINE
+	if (GetFileAttributes(path.c_str()) != INVALID_FILE_ATTRIBUTES)
+		return true;
+	return ContentVFS::get().covers(path);
+#else
+	return (GetFileAttributes(path.c_str()) != INVALID_FILE_ATTRIBUTES);
+#endif
+}
+
+bool PathExistsNative(const std::string &path)
+{
 	return (GetFileAttributes(path.c_str()) != INVALID_FILE_ATTRIBUTES);
 }
 
@@ -124,16 +141,30 @@ bool IsPathAbsolute(const std::string &path)
 
 bool IsDir(const std::string &path)
 {
+#if IS_VOPI_ENGINE
+	DWORD attr = GetFileAttributes(path.c_str());
+	if (attr != INVALID_FILE_ATTRIBUTES)
+		return (attr & FILE_ATTRIBUTE_DIRECTORY);
+	return ContentVFS::get().statPath(path) == ContentVFS::Stat::Dir;
+#else
 	DWORD attr = GetFileAttributes(path.c_str());
 	return (attr != INVALID_FILE_ATTRIBUTES &&
 			(attr & FILE_ATTRIBUTE_DIRECTORY));
+#endif
 }
 
 bool IsFile(const std::string &path)
 {
+#if IS_VOPI_ENGINE
+	DWORD attr = GetFileAttributes(path.c_str());
+	if (attr != INVALID_FILE_ATTRIBUTES)
+		return !(attr & FILE_ATTRIBUTE_DIRECTORY);
+	return ContentVFS::get().statPath(path) == ContentVFS::Stat::File;
+#else
 	DWORD attr = GetFileAttributes(path.c_str());
 	return (attr != INVALID_FILE_ATTRIBUTES &&
 			!(attr & FILE_ATTRIBUTE_DIRECTORY));
+#endif
 }
 
 bool IsExecutable(const std::string &path)
@@ -266,6 +297,9 @@ std::vector<DirListNode> GetDirListing(const std::string &pathstring)
 
 	DIR *dp;
 	if((dp = opendir(pathstring.c_str())) == nullptr) {
+#if IS_VOPI_ENGINE
+		ContentVFS::get().addDirEntries(pathstring, listing);
+#endif
 		return listing;
 	}
 
@@ -310,6 +344,9 @@ std::vector<DirListNode> GetDirListing(const std::string &pathstring)
 	}
 	closedir(dp);
 
+#if IS_VOPI_ENGINE
+	ContentVFS::get().addDirEntries(pathstring, listing);
+#endif
 	return listing;
 }
 
@@ -329,6 +366,17 @@ bool CreateDir(const std::string &path)
 
 bool PathExists(const std::string &path)
 {
+#if IS_VOPI_ENGINE
+	if (access(path.c_str(), F_OK) == 0)
+		return true;
+	return ContentVFS::get().covers(path);
+#else
+	return access(path.c_str(), F_OK) == 0;
+#endif
+}
+
+bool PathExistsNative(const std::string &path)
+{
 	return access(path.c_str(), F_OK) == 0;
 }
 
@@ -340,16 +388,26 @@ bool IsPathAbsolute(const std::string &path)
 bool IsDir(const std::string &path)
 {
 	struct stat statbuf{};
-	if (stat(path.c_str(), &statbuf))
+	if (stat(path.c_str(), &statbuf)) {
+#if IS_VOPI_ENGINE
+		return ContentVFS::get().statPath(path) == ContentVFS::Stat::Dir;
+#else
 		return false; // Actually error; but certainly not a directory
+#endif
+	}
 	return ((statbuf.st_mode & S_IFDIR) == S_IFDIR);
 }
 
 bool IsFile(const std::string &path)
 {
 	struct stat statbuf{};
-	if (stat(path.c_str(), &statbuf))
+	if (stat(path.c_str(), &statbuf)) {
+#if IS_VOPI_ENGINE
+		return ContentVFS::get().statPath(path) == ContentVFS::Stat::File;
+#else
 		return false;
+#endif
+	}
 #ifdef S_IFSOCK
 	// sockets cannot be opened in any way, so they are not files.
 	if ((statbuf.st_mode & S_IFSOCK) == S_IFSOCK)
@@ -612,7 +670,9 @@ bool CreateAllDirs(const std::string &path)
 {
 	std::vector<std::string> tocreate;
 	std::string basepath = path, removed;
-	while (!PathExists(basepath)) {
+	// Native check on purpose: a ContentVFS entry covering the path must
+	// not suppress creating the real directory (dev overlays depend on it).
+	while (!PathExistsNative(basepath)) {
 		tocreate.push_back(basepath);
 		basepath = RemoveLastPathComponent(basepath, &removed);
 		if (removed.empty())
@@ -841,8 +901,15 @@ std::string AbsolutePath(const std::string &path)
 #else
 	char *abs_path = realpath(path.c_str(), NULL);
 #endif
-	if (!abs_path)
+	if (!abs_path) {
+#if IS_VOPI_ENGINE
+		// No real file behind the path: pack-mounted content still needs a
+		// canonical form (mod security path checks depend on it).
+		return ContentVFS::get().normalizedIfCovered(path);
+#else
 		return "";
+#endif
+	}
 	std::string abs_path_str(abs_path);
 	free(abs_path);
 	return abs_path_str;
@@ -1071,9 +1138,21 @@ bool extractZipFile(io::IFileSystem *fs, const char *filename, const std::string
 
 bool ReadFile(const std::string &path, std::string &out, bool log_error)
 {
+#if IS_VOPI_ENGINE
+	// The real filesystem wins; pack entries only fill the gaps (ContentVFS).
+	auto is = open_ifstream(path.c_str(), false, std::ios::ate);
+	if (!is.good()) {
+		if (ContentVFS::get().readFile(path, out))
+			return true;
+		if (log_error)
+			errorstream << "Failed to open \"" << path << "\"" << std::endl;
+		return false;
+	}
+#else
 	auto is = open_ifstream(path.c_str(), log_error, std::ios::ate);
 	if (!is.good())
 		return false;
+#endif
 
 	auto size = is.tellg();
 	out.resize(size);

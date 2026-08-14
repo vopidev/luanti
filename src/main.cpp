@@ -9,6 +9,9 @@
 #include "unittest/test.h"
 #include "server.h"
 #include "filesys.h"
+#if IS_VOPI_ENGINE
+#include "content_vfs.h"
+#endif
 #include "version.h"
 #include "defaultsettings.h"
 #include "migratesettings.h"
@@ -209,6 +212,14 @@ int main(int argc, char *argv[])
 	porting::initializeIOSPlatform();
 #else
 	porting::initializePaths();
+#endif
+
+#if IS_VOPI_ENGINE
+	// Mount content packs before anything reads game content: the fs::
+	// overlay must be in place for builtin, game discovery and media.
+	ContentVFS::get().mountPacksFromDir(porting::path_share + DIR_DELIM + "packs");
+	if (porting::path_user != porting::path_share)
+		ContentVFS::get().mountPacksFromDir(porting::path_user + DIR_DELIM + "packs");
 #endif
 
 	if (!create_userdata_path()) {

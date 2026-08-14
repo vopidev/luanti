@@ -43,6 +43,11 @@ bool CreateDir(const std::string &path);
 
 [[nodiscard]] bool PathExists(const std::string &path);
 
+// Existence on the real filesystem only, ignoring the ContentVFS overlay.
+// Write-side operations (directory creation and friends) must use this:
+// a pack entry shadowing the path must never suppress creating real files.
+[[nodiscard]] bool PathExistsNative(const std::string &path);
+
 [[nodiscard]] bool IsPathAbsolute(const std::string &path);
 
 [[nodiscard]] bool IsDir(const std::string &path);

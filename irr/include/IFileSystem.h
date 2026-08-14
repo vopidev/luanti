@@ -22,6 +22,18 @@ enum EFileSystemType
 	FILESYSTEM_VIRTUAL     // Virtual FileSystem
 };
 
+#if IS_VOPI_ENGINE
+//! Optional external file provider consulted by createAndOpenFile() when the
+//! native filesystem does not have the requested path (VOPI Engine: lets the
+//! application serve files from mounted content packs).
+//! On success the fetcher returns true and hands over a buffer allocated with
+//! new char[] — ownership passes to the returned IReadFile.
+typedef bool (*ExternalFileFetcher)(const char *filename, char **data, long *size);
+
+//! Installs (or clears, with nullptr) the process-wide external file fetcher.
+void setExternalFileFetcher(ExternalFileFetcher fetcher);
+#endif
+
 //! The FileSystem manages files and archives and provides access to them.
 /** It manages where files are, so that modules which use the the IO do not
 need to know where every file is located. A file could be in a .zip-Archive or

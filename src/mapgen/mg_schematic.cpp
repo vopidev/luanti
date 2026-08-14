@@ -4,6 +4,7 @@
 // Copyright (C) 2015-2018 paramat
 
 #include <fstream>
+#include <sstream>
 #include "mg_schematic.h"
 #include "server.h"
 #include "mapgen.h"
@@ -472,9 +473,18 @@ bool Schematic::serializeToLua(std::ostream *os, bool use_comments,
 bool Schematic::loadSchematicFromFile(const std::string &filename,
 	const NodeDefManager *ndef, StringMap *replace_names)
 {
+#if IS_VOPI_ENGINE
+	// Whole-file read via fs::ReadFile so schematics inside mounted
+	// content packs (ContentVFS) load too.
+	std::string data;
+	if (!fs::ReadFile(filename, data, true))
+		return false;
+	std::istringstream is(data, std::ios::binary);
+#else
 	auto is = open_ifstream(filename.c_str(), true);
 	if (!is.good())
 		return false;
+#endif
 
 	if (!m_ndef)
 		m_ndef = ndef;

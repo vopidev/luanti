@@ -56,15 +56,42 @@ CFileSystem::~CFileSystem()
 	}
 }
 
+#if IS_VOPI_ENGINE
+static ExternalFileFetcher g_external_file_fetcher = nullptr;
+
+void setExternalFileFetcher(ExternalFileFetcher fetcher)
+{
+	g_external_file_fetcher = fetcher;
+}
+#endif
+
 //! opens a file for read access
 IReadFile *CFileSystem::createAndOpenFile(const io::path &filename)
 {
 	if (filename.empty())
 		return 0;
 
+#if IS_VOPI_ENGINE
+	// Create the file using an absolute path so that it matches
+	// the scheme used by CNullDriver::getTexture().
+	IReadFile *file = CReadFile::createReadFile(getAbsolutePath(filename));
+	if (file)
+		return file;
+
+	// The native filesystem misses: give the external provider (mounted
+	// content packs) a chance before reporting failure.
+	if (g_external_file_fetcher) {
+		char *data = nullptr;
+		long size = 0;
+		if (g_external_file_fetcher(filename.c_str(), &data, &size))
+			return new CMemoryReadFile(data, size, filename, true);
+	}
+	return 0;
+#else
 	// Create the file using an absolute path so that it matches
 	// the scheme used by CNullDriver::getTexture().
 	return CReadFile::createReadFile(getAbsolutePath(filename));
+#endif
 }
 
 //! Creates an IReadFile interface for treating memory like a file.

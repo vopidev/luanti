@@ -5,6 +5,9 @@
 #include "cpp_api/s_base.h"
 #include "cpp_api/s_internal.h"
 #include "cpp_api/s_security.h"
+#if IS_VOPI_ENGINE
+#include "content_vfs.h"
+#endif
 #include "debug.h"
 #include "lua_api/l_object.h"
 #include "common/c_converter.h"
@@ -57,6 +60,170 @@ public:
 };
 
 
+#if IS_VOPI_ENGINE
+/*
+	ContentVFS io shim
+
+	Lua's raw io library goes straight to the C runtime and bypasses the
+	ContentVFS overlay, so builtin/mod code doing io.open()/io.lines() on
+	pack-mounted content (settingtypes.txt, credits.json, ...) would fail.
+	The shim keeps the real io functions as the fast path and falls back to
+	an in-memory file object served from the mounted packs — read-only:
+	write modes never consult the overlay. Installed per Lua state right
+	after the standard libs, so security wrappers installed later capture
+	the shimmed io.open as their "original" and path checks still apply.
+*/
+
+static int l_contentvfs_read(lua_State *L)
+{
+	const char *path = luaL_checkstring(L, 1);
+	std::string out;
+	if (ContentVFS::get().readFile(path, out))
+		lua_pushlstring(L, out.data(), out.size());
+	else
+		lua_pushnil(L);
+	return 1;
+}
+
+static const char content_vfs_io_shim[] = R"lua(
+local vfs_read = ...
+local real_open, real_lines = io.open, io.lines
+
+local function make_memfile(data)
+	local pos = 1
+	local file = {}
+
+	local function read_one(fmt)
+		if type(fmt) == "number" then
+			if fmt == 0 then
+				return pos <= #data and "" or nil
+			end
+			if pos > #data then
+				return nil
+			end
+			local chunk = data:sub(pos, pos + fmt - 1)
+			pos = pos + #chunk
+			return chunk
+		end
+		fmt = tostring(fmt):gsub("^%*", "")
+		if fmt == "a" or fmt == "all" then
+			local chunk = data:sub(pos)
+			pos = #data + 1
+			return chunk
+		elseif fmt == "l" or fmt == "line" or fmt == "L" then
+			if pos > #data then
+				return nil
+			end
+			local s = data:find("\n", pos, true)
+			local line
+			if s then
+				line = data:sub(pos, fmt == "L" and s or s - 1)
+				pos = s + 1
+			else
+				line = data:sub(pos)
+				pos = #data + 1
+			end
+			return line
+		end
+		error("unsupported read format for pack file: " .. tostring(fmt))
+	end
+
+	function file:read(...)
+		local n = select("#", ...)
+		if n == 0 then
+			return read_one("l")
+		end
+		local results = {}
+		for i = 1, n do
+			local r = read_one((select(i, ...)))
+			if r == nil then
+				break
+			end
+			results[i] = r
+		end
+		return unpack(results, 1, n)
+	end
+
+	function file:lines()
+		return function()
+			return read_one("l")
+		end
+	end
+
+	function file:seek(whence, offset)
+		whence = whence or "cur"
+		offset = offset or 0
+		if whence == "set" then
+			pos = offset + 1
+		elseif whence == "cur" then
+			pos = pos + offset
+		elseif whence == "end" then
+			pos = #data + 1 + offset
+		else
+			error("bad seek whence: " .. tostring(whence))
+		end
+		return pos - 1
+	end
+
+	function file:close()
+		return true
+	end
+
+	return file
+end
+
+io.open = function(path, mode)
+	mode = mode or "r"
+	local f, err = real_open(path, mode)
+	if f then
+		return f
+	end
+	if type(path) == "string" and not mode:find("[wa+]") then
+		local data = vfs_read(path)
+		if data then
+			return make_memfile(data)
+		end
+	end
+	return nil, err
+end
+
+io.lines = function(path, ...)
+	if path == nil then
+		return real_lines()
+	end
+	local ok, it = pcall(real_lines, path, ...)
+	if ok then
+		return it
+	end
+	local data = vfs_read(path)
+	if data then
+		local f = make_memfile(data)
+		return function()
+			return f:read("*l")
+		end
+	end
+	error("io.lines: cannot open " .. tostring(path), 2)
+end
+)lua";
+
+static void installContentVFSIOShim(lua_State *L)
+{
+	if (luaL_loadbuffer(L, content_vfs_io_shim,
+			sizeof(content_vfs_io_shim) - 1, "@content_vfs_io_shim")) {
+		errorstream << "ContentVFS io shim load failed: "
+				<< lua_tostring(L, -1) << std::endl;
+		lua_pop(L, 1);
+		return;
+	}
+	lua_pushcfunction(L, l_contentvfs_read);
+	if (lua_pcall(L, 1, 0, 0)) {
+		errorstream << "ContentVFS io shim install failed: "
+				<< lua_tostring(L, -1) << std::endl;
+		lua_pop(L, 1);
+	}
+}
+#endif // IS_VOPI_ENGINE
+
 /*
 	ScriptApiBase
 */
@@ -85,6 +252,13 @@ ScriptApiBase::ScriptApiBase(ScriptingType type):
 
 	// Load string.{pack,unpack,packsize}
 	setup_lstrpack(m_luastack);
+
+#if IS_VOPI_ENGINE
+	// Client/SSCSM states have no io library — nothing to shim there
+	if (m_type != ScriptingType::Client && m_type != ScriptingType::SSCSM &&
+			ContentVFS::get().isActive())
+		installContentVFSIOShim(m_luastack);
+#endif
 
 #if BUILD_WITH_TRACY
 	// Load tracy lua bindings
@@ -266,7 +440,21 @@ void ScriptApiBase::loadScript(const std::string &script_path)
 	if (ScriptApiSecurity::isSecure(L)) {
 		ok = ScriptApiSecurity::safeLoadFile(L, script_path.c_str());
 	} else {
+#if IS_VOPI_ENGINE
+		// Read via fs::ReadFile so pack-mounted scripts (ContentVFS)
+		// also load when mod security is disabled.
+		std::string code;
+		if (fs::ReadFile(script_path, code, false)) {
+			const std::string chunk_name = "@" + script_path;
+			ok = !luaL_loadbuffer(L, code.data(), code.size(),
+					chunk_name.c_str());
+		} else {
+			lua_pushfstring(L, "%s: cannot read file", script_path.c_str());
+			ok = false;
+		}
+#else
 		ok = !luaL_loadfile(L, script_path.c_str());
+#endif
 	}
 	ok = ok && !lua_pcall(L, 0, 0, error_handler);
 	if (!ok) {
